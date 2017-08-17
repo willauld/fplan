@@ -1,0 +1,52 @@
+# This an example input file
+
+# The format of this file will likely change in the future as
+# the program changes in the future.
+
+# most fields are options and have resonable defaults
+
+returns = 6		# return rate of investments
+inflation = 2.5		# yearly inflation rate
+
+# age range to simulate
+startage = 56
+endage = 100		# stops at 99
+
+# this section convers the working before retirement starts
+[prep]
+workyears = 2      # we retire at startage + 10
+maxsave = 0     # and save up $60k/yr (pre-tax)
+tax_rate = 25       # in 25% bracket while working
+
+
+# assume Social Security will start paying $35k/yr at age 70
+# the SS payout is scaled by inflation
+[income.social_sec]
+amount = 35000
+age = "70-"
+inflation = true
+tax = true                      # count this as income tax
+
+# extra payments required (here mortgage at $750/mo for 12 years)
+[expense.mortgage]
+amount = 3800
+age = "56-57"
+
+# after tax savings accounts
+[aftertax]
+bal = 700000
+basis = 400000		# for capital gains tax
+
+# pre-tax IRA accounts
+[IRA]
+bal = 1300000
+maxcontrib = 001
+
+# roth IRA accounts
+# in the future this will include the ability to separate contributions
+# from the account value and include the dates of the recent contributions.
+# Right now it is all a single contribution at the start of file plan
+# because the author just did a rollover. ;-)
+[roth]
+bal = 0000
+maxcontrib = 000

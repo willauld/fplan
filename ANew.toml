@@ -1,0 +1,76 @@
+# This an example input file for ARetirementPlanner.py
+
+# The format of this file will likely change in the future as
+# the program changes in the future.
+
+# most fields are options and have resonable defaults
+
+returns = 6		# return rate of investments
+inflation = 2.5		# yearly inflation rate
+
+# what to optimize for?
+#maximize = "PlusEstate"
+
+# age range to simulate
+startage = 68   # Ragsday.py does not handle younger than age 60
+endage = 72	# stops at 99
+
+# this section convers the working before retirement starts
+#[prep]
+#workyears = 2      # we retire at startage + 10
+#maxsave = 0     # and save up $60k/yr (pre-tax)
+#tax_rate = 25       # in 25% bracket while working
+
+[SocialSecurity]
+amount = 31000  # $31,000 at Full Retirement Age (FRA); Assumes inflation, 85% taxed
+FRA = 67
+age = "68-"
+
+[income.rental_midway]
+amount = 36000
+age = "67-"
+inflation = true
+tax = true          # count this as income tax
+
+[income.rental_vanhousen]
+amount = 2400
+age = "67-"
+inflation = true
+tax = true          # count this as income tax
+
+#[desired.income]
+#amount = 50000    # want $120,000 per year
+#age = "68-"
+#inflation = true
+#tax = true          # count this as income tax
+
+[max.income]
+amount = 100000
+age = "68-"
+inflation = true
+tax = false 
+
+## extra payments required (here mortgage at $750/mo for 12 years)
+#[expense.mortgage]
+#amount = 3800
+#age = "56-57"
+
+# after tax savings accounts
+[aftertax]
+bal =   700000
+basis = 400000		# for capital gains tax
+
+# pre-tax IRA accounts
+[IRA]
+bal = 2000000
+#rate = 7.25
+maxcontrib = 00
+
+# roth IRA accounts
+# in the future this will include the ability to separate contributions
+# from the account value and include the dates of the recent contributions.
+# Right now it is all a single contribution at the start of file plan
+# because the author just did a rollover. ;-)
+[roth]
+bal = 100000
+maxcontrib = 000

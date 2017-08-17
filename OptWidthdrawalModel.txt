@@ -1,0 +1,84 @@
+
+c[i] = [-1, 0, 0...]
+
+x[i] = +-----------------------------+
+      0| yearly after tax spend 
+	  1| SEPP
+	  2| toSavings  \
+	  3| toIRA       | workyr 0
+	  4| toRoth      |
+	  5| blank      /
+	  6| .
+	   | .
+	   | .
+	   | Repeat workyr times
+	   | .
+	   | .
+	   | .
+2+n*4+0| fromSavings \
+   	 +1| fromIRA      | numyr 0
+	 +2| fromRoth     |
+	 +3| IRA2Roth    /
+	   | .
+	   | .
+	   | .
+	   | Repeat numyr times
+	   | .
+	   | .
+	   | .
+	   +----------------------------+
+	   
+	   
+A[row_i]*x <=b[i]
+
+Row[0] SEPP <= 0 # when no SEPP
+Row[1] worktax * toSavings + toIRA + worktax * toRoth <= maxSave
+Row[2] toIRA <= IRAmaxContrib
+Row[3] toRoth <= RothmaxContrib
+Row[4] blank???
+Row[5] .
+Row[6] .
+Row[7] .
+repeat rows 1-4 for each workyr
+Row[] .
+Row[] .
+Row[] .
+Row[] Next for each numyr and each tax bracket in the yearly
+Row[] .
+# The constraint starts like this:
+    #   TAX = RATE * (IRA + IRA2ROTH + SS - SD - CUT) + BASE
+    #   CG_TAX = SAVINGS * (1-(BASIS/(S_BAL*rate^YR))) * 20%
+    #   GOAL + EXTRA >= SAVING + IRA + ROTH + SS - TAX
+	
+Row[] i_mul * yearly spend + (-1 + marginalRate)*(1/sepp_ratio)*SEPP + (-1+basis+cg_tax) * fromSavings + (-1+marginalRate) * fromIRA + -1 * fromRoth + marginalRate * IRA2Roth <= [(cut + stded)*marginalRate * i_mul - base]
+
+# final balance for savings needs to be positive
+Row[] r_rate^(numyr - year) * fromSavings + ... each retired year ... + r_rate^(numyr-year) * fromSavings + -(r_rate^(workyr+numyr - year))*toSavings ... each work year ... <= savingsStartBalance * r_rate^(workyr+numyr)
+
+# final balance for IRA needs to be positive
+Row[] r_rate^(numyr - year)*fromIRA + r_rate^(numyr-year)*IRA2Roth for each year in numyr + Sum(1/sepp_ratio * r_rate^(numyr - year) for all sepp years)*SEPP + ...for all workyr -(r_rate^(workyr+numyr-year))*toIRA... <= IRAStartBalance * r_rate^(workyr+numyr)
+
+# IRA balance at SEPP end needs to not touch SEPP money
+Row[] r_rate^(sepp_end - year)*fromIRA + r_rate^(sepp_end-year)*IRA2Roth for each year in sepp_end + for every year in workyr -(r_rate^(sepp_end + workyr - year))*toIRA + r_rate^sepp_end * Sepp <= IRAStartBalance*r_rate^sepp_end
+
+# before 59, Roth can only spend from contributions
+Row[] Lines 254-270 ??? come back and do this later
+
+    # after 59 all of Roth can be spent, but contributions need to age
+    # 5 years and the balance each year needs to be positive
+Row[] Lines 272 - 295 ??? come back and do this later
+
+# starting with age 70 the user must take RMD payments
+Row[] sum(y=0-year: -(r_rate^(year-y))* DIRA_y) + sum(y=0-year -(r_rate^(year-y))*DIRA2Roth_y) + sum(y=0-workyr (r_rate^(workyr+year-y))*DIRA_y) + -rmd * DIRA_year <= -(IRAStartBalance * r_rate^(workyr+year))
+
+one of the above constraints (rows) for each year age 70+
+
+
+
+
+
+Will's Questions:
+- Looks like SS is being taxed 100% rather than the max of 85%, is this true?
+- I believe the calculation for self.worktax should be worktax = 1/(1-tax_rate), NOT 1+tax_rate?
+- 
+
