@@ -245,22 +245,26 @@ def solve():
         print("\nConstructing Spending + Estate Model:\n")
     else:
         print("\nConstructing Spending Model:\n")
-
+    
     #
     # Add constraint (2')
     #
     for year in range(S.numyr):
-        p = 1 - (S.aftertax['basis']/(S.aftertax['bal']*S.aftertax['rate']**year))
-        adj_inf = S.i_rate**year
         row = [0] * nvars
-        row[index_w(year,2)] = cg_tax_rate*p-1 # Amount available after cap gains tax
-        row[index_w(year,1)] = -1       # Roth not taxable
-        row[index_D(year)] = 1          # Investment Deponsits
-        row[index_s(year)] = 1          # Spendable
-        for k in range(len(taxtable)):
-            row[index_x(year,k)] = (taxtable[k][2]-1) # Bracket amount available after tax
+        for j in range(len(accounttable)):
+            row[index_w(year,j)] = -1
+        # NEXT 4 ROWS REPLACE TT1 and TT2
+        for k in range(len(taxtable)): # was -1 but I think this is a bug so I removed it
+            row[index_x(year,k)] = taxtable[k][2] # income tax
+        p = 1 - (S.aftertax['basis']/(S.aftertax['bal']*S.aftertax['rate']**year))
+        row[index_w(year,2)] = cg_tax_rate*p-1 #  cap gains tax #over writes the -1 above
+        # END REPLACE
+        #row[index_Ft(year)] = 1
+        #row[index_Fcg(year)] = 1
+        row[index_D(year)] = 1
+        row[index_s(year)] = 1
         A+=[row]
-        b+=[stded*adj_inf+SS_notTaxable*S.SS[year]]
+        b+=[S.income[year] + S.SS[year]]
     #
     # Add constraint (3a')
     #
@@ -524,6 +528,12 @@ def consistancy_check(res):
         for i in range(S.numyr):
             row[index_D(i)] = ky
             ky+=1
+        for i in range(S.numyr):
+            row[index_Ft(i)] = ky
+            ky+=1
+        for i in range(S.numyr):
+            row[index_Fcg(i)] = ky
+            ky+=1
         print(row)
     # check to see if the ordinary tax brackets are filled in properly
     print()
@@ -553,10 +563,18 @@ def consistancy_check(res):
         print("Index Error: Expect index_s(S.numyr -1)+1 to equal index_D(0)")
         print("\ts(S.numyr-1):", index_s(S.numyr-1))
         print("\tD(S.numyr-1):", index_D(0))
-    if nvars-1 != index_D(S.numyr-1):
-        print("Index Error: Expect (nvars -1) to equal D(S.numyr-1)")
+    if index_D(S.numyr-1)+1 != index_Ft(0): # has years+1
+        print("Index Error: Expect index_D(S.numyr -1)+1 to equal index_Ft(0)")
+        print("\ts(S.numyr-1):", index_D(S.numyr-1))
+        print("\tD(S.numyr-1):", index_Ft(0))
+    if index_Ft(S.numyr-1)+1 != index_Fcg(0): # has years+1
+        print("Index Error: Expect index_Ft(S.numyr -1)+1 to equal index_Fcg(0)")
+        print("\ts(S.numyr-1):", index_Ft(S.numyr-1))
+        print("\tD(S.numyr-1):", index_Fcg(0))
+    if nvars-1 != index_Fcg(S.numyr-1):
+        print("Index Error: Expect (nvars -1) to equal Fcg(S.numyr-1)")
         print("\tvnars -1:", nvars-1)
-        print("\tD(S.numyr-1):", index_D(S.numyr-1))
+        print("\tFcg(S.numyr-1):", index_Fcg(S.numyr-1))
     # write a res.x vector from 1-nvars
     if args.verbosewga:
         do_write_x()
@@ -593,6 +611,13 @@ def consistancy_check(res):
         if spendable + 0.1 < res.x[index_s(year)]  or spendable -0.1 > res.x[index_s(year)]:
             print("Calc Spendable %6.2f should equal s(year:%d) %6.2f"% (spendable, year, res.x[index_s(year)]))
             print("w[%d,0]: %6.0f +w[%d,1]: %6.0f +w[%d,2]: %6.0f -D[%d]: %6.0f +o[%d]: %6.0f +SS[%d]: %6.0f -tax: %6.0f -cg_tax: %6.0f" % (year, res.x[index_w(year,0)] ,year, res.x[index_w(year,1)] ,year, res.x[index_w(year,2)] ,year, res.x[index_D(year)] ,year, S.income[year] ,year, S.SS[year] , tax ,cg_tax))
+        if True or tax + 0.1 < res.x[index_Ft(year)]  or tax -0.1 > res.x[index_Ft(year)]:
+            bt = 0
+            for k in range(len(taxtable)):
+                bt += res.x[index_x(year,k)] * taxtable[k][2]
+            print("Calc tax %6.2f should equal Ft(year:%d): %6.2f and bt[]: %6.2f" % (tax, year, res.x[index_Ft(year)], bt))
+        if cg_tax + 0.1 < res.x[index_Fcg(year)]  or cg_tax -0.1 > res.x[index_Fcg(year)]:
+            print("Calc cg_tax %6.2f should equal Fcg(year:%d): %6.2f" % (cg_tax, year, res.x[index_Fcg(year)]))
     print()
 
 def print_model_results(res):
@@ -734,6 +759,12 @@ def print_model_row(row, suppress_newline = False):
     for i in range(S.numyr):
         if row[index_D(i)] !=0:
             print("D[%d]: %6.3f " % (i, row[index_D(i)]),end=' ' )
+    for i in range(S.numyr):
+        if row[index_Ft(i)] !=0:
+            print("Ft[%d]: %6.3f " % (i, row[index_Ft(i)]),end=' ' )
+    for i in range(S.numyr):
+        if row[index_Fcg(i)] !=0:
+            print("Fct[%d]: %6.3f " % (i, row[index_Fcg(i)]),end=' ' )
     if not suppress_newline:
         print()
 
@@ -764,6 +795,14 @@ def index_s(i):
 def index_D(i):
     assert i>=0 and i < S.numyr
     return tax_bracket_year + capital_gains_bracket_year + withdrawal_accounts_year + startbalance_accounts_year + spendable_year + i
+
+def index_Ft(i):
+    assert i>=0 and i < S.numyr
+    return tax_bracket_year + capital_gains_bracket_year + withdrawal_accounts_year + startbalance_accounts_year + spendable_year + investment_deposites_year + i
+
+def index_Fcg(i):
+    assert i>=0 and i < S.numyr
+    return tax_bracket_year + capital_gains_bracket_year + withdrawal_accounts_year + startbalance_accounts_year + spendable_year + investment_deposites_year + income_tax_year + i
 
 def OrdinaryTaxable(year):
     return res.x[index_w(year,0)] + S.income[year] + SS_taxable*S.SS[year] -(stded*S.i_rate**year)
@@ -804,8 +843,10 @@ withdrawal_accounts_year = S.numyr * len(accounttable) # w[i,j]
 startbalance_accounts_year = (S.numyr+1) * len(accounttable) # b[i,j]
 spendable_year = (S.numyr) # s[i]
 investment_deposites_year = (S.numyr) # D[i]
+income_tax_year = S.numyr # Ft[i]
+cap_gains_tax_year = S.numyr # Fcg[i]
 
-nvars = tax_bracket_year + capital_gains_bracket_year + withdrawal_accounts_year + startbalance_accounts_year + spendable_year + investment_deposites_year 
+nvars = tax_bracket_year + capital_gains_bracket_year + withdrawal_accounts_year + startbalance_accounts_year + spendable_year + investment_deposites_year + income_tax_year + cap_gains_tax_year
 
 res = solve()
 consistancy_check(res)
