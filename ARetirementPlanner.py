@@ -478,7 +478,7 @@ def solve():
                                           "tol": 1.0e-7,
                                           "maxiter": 3000})
     if args.verbosewga:
-        print_model_matrix(c, A, b, res.slack)
+        print_model_matrix(c, A, b, res.slack, non_binding_only)
         print(res)
 
     if res.success == False:
@@ -487,21 +487,30 @@ def solve():
 
     return res #res.x
 
-def print_model_matrix(c, A, b, s):
-    #print("c: ", c)
-    print("c: ")
-    print_model_row(c)
-    print()
-    print("B? i: A_ub[i]: b[i]")
-    for constraint in range(len(A)):
-        #print(constraint, ":", A[constraint], b[constraint])
-        if s[constraint] >0:
-            print("  ", end='')
-        else:
-            print("B ", end='')
-        print(constraint, ": ", sep='', end='')
-        print_constraint( A[constraint], b[constraint])
-        #print()
+def print_model_matrix(c, A, b, s, non_binding_only):
+    if not non_binding_only:
+        print("c: ")
+        print_model_row(c)
+        print()
+        print("B? i: A_ub[i]: b[i]")
+        for constraint in range(len(A)):
+            #print(constraint, ":", A[constraint], b[constraint])
+            if s[constraint] >0:
+                print("  ", end='')
+            else:
+                print("B ", end='')
+            print(constraint, ": ", sep='', end='')
+            print_constraint( A[constraint], b[constraint])
+            #print()
+    else:
+        print(" i: A_ub[i]: b[i]")
+        j = 0
+        for constraint in range(len(A)):
+            if s[constraint] >0:
+                j+=1
+                print(constraint, ": ", sep='', end='')
+                print_constraint( A[constraint], b[constraint])
+        print("\n\n%d non-binding constrains printed\n" % j)
     print()
 
 def consistancy_check(res):
@@ -824,6 +833,14 @@ def IncomeSummary(year):
     spendable = res.x[index_w(year,0)] + res.x[index_w(year,1)] + res.x[index_w(year,2)] - res.x[index_D(year)] + S.income[year] + S.SS[year] - tax -cg_tax
     return T, spendable, tax, rate, cg_tax
 
+def print_base_config():
+    print()
+    print("Optimized for %s" % S.maximize)
+    print('Minium desired: ${:0,.0f}'.format(S.desired[0]))
+    #print('total pv tax on all income: ${:0,.0f} ({:.1f}%)'.format(pv_ttax, 100*ttax/tT))
+    print('Maximum desired: ${:0,.0f}'.format(S.max[0]))
+    print()
+
 # Instantiate the parser
 parser = argparse.ArgumentParser()
 parser.add_argument('-v', '--verbose', action='store_true',
@@ -834,6 +851,8 @@ parser.add_argument('-vtb', '--verbosetaxbrackets', action='store_true',
                     help="Output detailed tax bracket info from solver")
 parser.add_argument('-vw', '--verbosewga', action='store_true',
                     help="Extra wga output from solver")
+parser.add_argument('-mall', '--verbosemodelall', action='store_true',
+                    help="Extra wga output from solver")
 parser.add_argument('conffile')
 args = parser.parse_args()
 
@@ -842,6 +861,12 @@ S.load_file(args.conffile)
 accounttable = S.accounttable
 if args.verbosewga:
     print("accounttable: ", accounttable)
+
+if args.verbosemodelall:
+    non_binding_only = False
+else:
+    non_binding_only = True
+
 
 tax_bracket_year = S.numyr * len(taxtable) # x[i,k]
 capital_gains_bracket_year = S.numyr * len(capgainstable) # y[i,l]
@@ -861,3 +886,4 @@ if args.verbosetax:
     print_tax(res)
 if args.verbosetaxbrackets:
     print_tax_brackets(res)
+print_base_config()
