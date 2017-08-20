@@ -505,6 +505,10 @@ def print_model_matrix(c, A, b, s):
     print()
 
 def consistancy_check(res):
+    def check_row_consecutive(row):
+        for i in range(len(row)-1):
+            if row[i] +1 != row[i+1]:
+                print("Check_row_consecutive: failed, row[%d](%d) != row[%d](%d)" % (i, row[i], i+1, row[i+1]))
     def do_write_x():
         ky = 0
         row = [0] * nvars
@@ -536,7 +540,7 @@ def consistancy_check(res):
         for i in range(S.numyr):
             row[index_Fcg(i)] = ky
             ky+=1
-        print(row)
+        check_row_consecutive(row)
     # check to see if the ordinary tax brackets are filled in properly
     print()
     print()
@@ -613,13 +617,13 @@ def consistancy_check(res):
         if spendable + 0.1 < res.x[index_s(year)]  or spendable -0.1 > res.x[index_s(year)]:
             print("Calc Spendable %6.2f should equal s(year:%d) %6.2f"% (spendable, year, res.x[index_s(year)]))
             print("w[%d,0]: %6.0f +w[%d,1]: %6.0f +w[%d,2]: %6.0f -D[%d]: %6.0f +o[%d]: %6.0f +SS[%d]: %6.0f -tax: %6.0f -cg_tax: %6.0f" % (year, res.x[index_w(year,0)] ,year, res.x[index_w(year,1)] ,year, res.x[index_w(year,2)] ,year, res.x[index_D(year)] ,year, S.income[year] ,year, S.SS[year] , tax ,cg_tax))
-        if True or tax + 0.1 < res.x[index_Ft(year)]  or tax -0.1 > res.x[index_Ft(year)]:
-            bt = 0
-            for k in range(len(taxtable)):
-                bt += res.x[index_x(year,k)] * taxtable[k][2]
-            print("Calc tax %6.2f should equal Ft(year:%d): %6.2f and bt[]: %6.2f" % (tax, year, res.x[index_Ft(year)], bt))
-        if cg_tax + 0.1 < res.x[index_Fcg(year)]  or cg_tax -0.1 > res.x[index_Fcg(year)]:
-            print("Calc cg_tax %6.2f should equal Fcg(year:%d): %6.2f" % (cg_tax, year, res.x[index_Fcg(year)]))
+        bt = 0
+        for k in range(len(taxtable)):
+            bt += res.x[index_x(year,k)] * taxtable[k][2]
+        if tax + 0.1 < bt  or tax -0.1 > bt:
+            print("Calc tax %6.2f should equal brackettax(bt)[]: %6.2f" % (tax, bt))
+        #if cg_tax + 0.1 < res.x[index_Fcg(year)]  or cg_tax -0.1 > res.x[index_Fcg(year)]:
+        #    print("Calc cg_tax %6.2f should equal Fcg(year:%d): %6.2f" % (cg_tax, year, res.x[index_Fcg(year)]))
     print()
 
 def print_model_results(res):
