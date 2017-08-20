@@ -41,7 +41,8 @@ capgainstable = marriedjointcapitalgains
 
 stded = 12700 + 2*4050    # standard deduction + 2 personal exemptions for joint filing
 
-accounttable = [] # array of [bal, rate]
+accounttable = [] # array of [bal, rate, discount] # discount represents the value of the account balance
+    # The discount is approximently a cost of using the money in the account
 
 # Required Minimal Distributions from IRA starting with age 70
 RMD = [27.4, 26.5, 25.6, 24.7, 23.8, 22.9, 22.0, 21.2, 20.3, 19.5,  # age 70-79
@@ -175,9 +176,9 @@ class Data:
         else:
             self.aftertax['rate'] = 1 + self.aftertax['rate'] / 100 # invest rate: 6 -> 1.06
 
-        self.accounttable+=[[self.IRA['bal'], self.IRA['rate']]]
-        self.accounttable+=[[self.roth['bal'], self.roth['rate']]]
-        self.accounttable+=[[self.aftertax['bal'], self.aftertax['rate']]]
+        self.accounttable+=[[self.IRA['bal'], self.IRA['rate'], 0.85]] 
+        self.accounttable+=[[self.roth['bal'], self.roth['rate'], 1.0]]
+        self.accounttable+=[[self.aftertax['bal'], self.aftertax['rate'], 0.90]]
 
         self.parse_expenses(d)
         self.sepp_end = max(5, 59-self.retireage)     # first year you can spend IRA reserved for SEPP
@@ -231,20 +232,21 @@ def solve():
     # Add objective function (S1') becomes (R1') if PlusEstate is added
     #
     for year in range(S.numyr):
-        # Should I add a specific discount rate for pv that defaults to inflation rate? TODO
-        pv = S.i_rate**(-year) # using inflation rate as the risk free discount rate for pv
-        c[index_s(year)] = -1*pv # Any reason to make this pv?? TODO
-
+        c[index_s(year)] = -1
     #
     # Adder objective function (R1') when PlusEstate is added
     #
     if S.maximize == "PlusEstate":
         pv_n = S.i_rate**(-S.numyr)
         for j in range(len(accounttable)):
-            c[index_b(S.numyr,j)] = -1*pv_n
+            c[index_b(S.numyr,j)] = -1*accounttable[j][2] # account discount rate
         print("\nConstructing Spending + Estate Model:\n")
     else:
         print("\nConstructing Spending Model:\n")
+        startamount = accounttable[0][0] +accounttable[1][0]+accounttable[2][0]
+        balancer = 1/(startamount) 
+        for j in range(len(accounttable)):
+            c[index_b(S.numyr,j)] = -1*balancer *accounttable[j][2] # balance and discount rate
     
     #
     # Add constraint (2')
