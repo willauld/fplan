@@ -3,8 +3,6 @@
 #
 # A Retirement Planner (optimize withdrawals for most efficient use of the nest egg)
 #
-# TODO need to remove / replace all the magic numbers!!!
-#
 
 import toml
 import argparse
@@ -14,34 +12,35 @@ import re
 # 2017 table (predict it moves with inflation?)
 # only married joint at the moment
 # Table Columns:
-# [braket $ start, 
-#  bracket size, 
-#  marginal rate, 
-#  total tax from all lower brackets ] 
+# [braket $ start,
+#  bracket size,
+#  marginal rate,
+#  total tax from all lower brackets ]
 marriedjointtax = [
-            [0,      18650,   0.10, 0],
-            [18650,  57250,   0.15, 1865],
-            [75900,  77200,   0.25, 10452.5],
-            [153100, 80250,   0.28, 29752.5],
-            [233350, 183350,  0.33, 52222.5],
-            [416700, 54000,   0.35, 112728],
-            [470700, -2,      0.396, 131628]]
+    [0,      18650,   0.10, 0],
+    [18650,  57250,   0.15, 1865],
+    [75900,  77200,   0.25, 10452.5],
+    [153100, 80250,   0.28, 29752.5],
+    [233350, 183350,  0.33, 52222.5],
+    [416700, 54000,   0.35, 112728],
+    [470700, -2,      0.396, 131628]]
 
 # Table Columns:
-# [braket $ start, 
-#  bracket size, 
-#  marginal rate ] 
+# [braket $ start,
+#  bracket size,
+#  marginal rate ]
 marriedjointcapitalgains = [
-            [0,      75900,   0.0],
-            [75900,  394800,  0.15],
-            [470700, -3,      0.20]]
+    [0,      75900,   0.0],
+    [75900,  394800,  0.15],
+    [470700, -3,      0.20]]
 
 taxtable = marriedjointtax
-capgainstable = marriedjointcapitalgains 
+capgainstable = marriedjointcapitalgains
 
 stded = 12700 + 2*4050    # standard deduction + 2 personal exemptions for joint filing
 
-accounttable = [] # array of [bal, rate, discount] # discount represents the value of the account balance
+accounttable = [] # array of [bal, rate, discount]
+    # discount represents the value of the account balance (after a sort of tax)
     # The discount is approximently a cost of using the money in the account
 
 # Required Minimal Distributions from IRA starting with age 70
@@ -121,7 +120,7 @@ class Data:
         
         self.maximize = d.get('maximize') # what to maximize for 
         if not 'maximize' in d:
-            self.maximize = "RagsdaleOriginal"
+            self.maximize = "Spending"
 
         self.i_rate = 1 + d.get('inflation', 0) / 100       # inflation rate: 2.5 -> 1.025
         self.r_rate = 1 + d.get('returns', 6) / 100         # invest rate: 6 -> 1.06
@@ -446,7 +445,7 @@ def solve():
         A+=[row]
         b+=[0]
 
-    # Constraint for (14a') (New not in Ragsdale paper)
+    # Constraint for (14a')
     #   Set the begining b[1,j] balances
     for j in range(len(accounttable)):
         row = [0] * nvars
@@ -455,7 +454,7 @@ def solve():
         b+=[accounttable[j][0]]
 
     #
-    # Constraint for (14b') (New not in Ragsdale paper)
+    # Constraint for (14b')
     #   Set the begining b[1,j] balances
     for j in range(len(accounttable)):
         row = [0] * nvars
@@ -666,7 +665,7 @@ def print_model_results(res):
               #T/1000.0, tax/1000.0, rate*100, 
               res.x[index_s(year)]/1000.0, (tax+cg_tax)/1000.0, S.desired[year]/1000.0))
         twithd += res.x[index_w(year,0)] + res.x[index_w(year,1)] +res.x[index_w(year,2)]
-        ttax += tax # TODO does this include cap gains???
+        ttax += tax + cg_tax # includes both ordinary income and cap gains tax
         tT += T
         pv_twithd += (res.x[index_w(year,0)] + res.x[index_w(year,1)] )* discountR
         pv_ttax += tax *discountR
@@ -833,12 +832,13 @@ def IncomeSummary(year):
     spendable = res.x[index_w(year,0)] + res.x[index_w(year,1)] + res.x[index_w(year,2)] - res.x[index_D(year)] + S.income[year] + S.SS[year] - tax -cg_tax
     return T, spendable, tax, rate, cg_tax
 
-def print_base_config():
+def print_base_config(res):
     print()
     print("Optimized for %s" % S.maximize)
     print('Minium desired: ${:0,.0f}'.format(S.desired[0]))
     #print('total pv tax on all income: ${:0,.0f} ({:.1f}%)'.format(pv_ttax, 100*ttax/tT))
     print('Maximum desired: ${:0,.0f}'.format(S.max[0]))
+    print('Projected yearly income: ${:0,.0f}'.format(res.x[index_s(0)]))
     print()
 
 # Instantiate the parser
@@ -886,4 +886,4 @@ if args.verbosetax:
     print_tax(res)
 if args.verbosetaxbrackets:
     print_tax_brackets(res)
-print_base_config()
+print_base_config(res)
