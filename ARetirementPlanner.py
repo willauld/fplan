@@ -636,17 +636,13 @@ def consistancy_check(res):
 
 def print_model_results(res):
     def printheader1():
-        print((" age" + " %7s" * 13) %
-          ("IRA", "fIRA", "RMDref", "Roth", "fRoth", "AftaTx", "fAftaTx", "tAftaTx", "o_inc", "SS", "Spndble", "TFedTax", "Desired"))
+        print((" age" + " %7s" * 12) %
+          ("IRA", "fIRA", "RMDref", "Roth", "fRoth", "AftaTx", "fAftaTx", "tAftaTx", "o_inc", "SS", "TFedTax", "Spndble"))
 
-    twithd = 0 
-    ttax = 0
-    tT = 0
-    pv_twithd = 0; pv_ttax = 0; pv_tT = 0
+    print("\nActivity Summary:\n")
     printheader1()
     for year in range(S.numyr):
         i_mul = S.i_rate ** year
-        discountR = S.i_rate**-year # use rate of inflation as discount rate
         age = year + S.retireage
         if age >= 70:
             rmd = RMD[age - 70]
@@ -656,20 +652,14 @@ def print_model_results(res):
         else:
             rmdref = 0
 
-        print(("%3d:" + " %7.0f" * 13 ) %
+        print(("%3d:" + " %7.0f" * 12 ) %
               (year+S.retireage, 
               res.x[index_b(year,0)]/1000.0, res.x[index_w(year,0)]/1000.0, rmdref/1000.0, # IRA
               res.x[index_b(year,1)]/1000.0, res.x[index_w(year,1)]/1000.0, # Roth
               res.x[index_b(year,2)]/1000.0, res.x[index_w(year,2)]/1000.0, res.x[index_D(year)]/1000.0, # AftaTax
               S.income[year]/1000.0, S.SS[year]/1000.0,
               #T/1000.0, tax/1000.0, rate*100, 
-              res.x[index_s(year)]/1000.0, (tax+cg_tax)/1000.0, S.desired[year]/1000.0))
-        twithd += res.x[index_w(year,0)] + res.x[index_w(year,1)] +res.x[index_w(year,2)]
-        ttax += tax + cg_tax # includes both ordinary income and cap gains tax
-        tT += T
-        pv_twithd += (res.x[index_w(year,0)] + res.x[index_w(year,1)] )* discountR
-        pv_ttax += tax *discountR
-        pv_tT += T*discountR
+              (tax+cg_tax)/1000.0, res.x[index_s(year)]/1000.0) )
 
     year = S.numyr
     print(("%3d:" + " %7.0f %7s %7s" + " %7.0f %7s" * 2 + " %7s" * 5) %
@@ -681,20 +671,13 @@ def print_model_results(res):
         #S.income[year]/1000.0, T/1000.0, tax/1000.0, rate*100, rmdref/1000.0, 
         #S.desired[year]/1000.0))
     printheader1()
-    # ${:0,.2f}
-    print('\ntotal withdrawals: ${:0,.0f}, total ordinary taxable income ${:,.0f}'.format(twithd, tT))
-    print('total ordinary tax on all income: ${:0,.0f} ({:.1f}%)'.format(ttax, 100*ttax/tT))
-    print('\ntotal cap gains tax ??? on all income: ${:0,.0f} ({:.1f}%)'.format(ttax, 100*ttax/tT))
-    print('total all tax ??? on all income: ${:0,.0f} ({:.1f}%)'.format(ttax, 100*ttax/tT))
-
-    print('\ntotal pv withdrawals: ${:0,.0f}, total pv income ${:0,.0f}'.format(pv_twithd, pv_tT))
-    print('total pv tax on all income: ${:0,.0f} ({:.1f}%)'.format(pv_ttax, 100*ttax/tT))
 
 def print_tax(res):
     def printheader_tax():
         print((" age" + " %7s" * 12) %
           ("fIRA", "o_inc", "TxbleSS", "deduct", "T_inc", "fedtax", "mTaxB%", "fAftaTx", "cgTax%", "cgTax", "TFedTax", "spndble" ))
-    print("\n\nOverall Tax Report:\n")
+
+    print("\nTax Summary:\n")
     printheader_tax()
     for year in range(S.numyr):
         age = year + S.retireage
@@ -726,7 +709,7 @@ def print_tax_brackets(res):
             print ("brckt%d" % k, sep='', end=' ')
         print ("brkTot", sep='')
 
-    print("\n\nOverall Tax Bracket Report:\n")
+    print("\nOverall Tax Bracket Summary:\n")
     printheader_tax_brackets()
     for year in range(S.numyr):
         age = year + S.retireage
@@ -832,14 +815,48 @@ def IncomeSummary(year):
     spendable = res.x[index_w(year,0)] + res.x[index_w(year,1)] + res.x[index_w(year,2)] - res.x[index_D(year)] + S.income[year] + S.SS[year] - tax -cg_tax
     return T, spendable, tax, rate, cg_tax
 
+def get_result_totals(res):
+    twithd = 0 
+    ttax = 0
+    tcg_tax = 0
+    tT = 0
+    tincome = 0; pv_tincome = 0
+    pv_twithd = 0; pv_ttax = 0; pv_tT = 0
+    for year in range(S.numyr):
+        i_mul = S.i_rate ** year
+        discountR = S.i_rate**-year # use rate of inflation as discount rate
+        age = year + S.retireage
+        if age >= 70:
+            rmd = RMD[age - 70]
+        T,spendable,tax,rate,cg_tax = IncomeSummary(year)
+        twithd += res.x[index_w(year,0)] + res.x[index_w(year,1)] +res.x[index_w(year,2)]
+        tincome += S.income[year] + S.SS[year] # + withdrawals
+        ttax += tax 
+        tcg_tax += cg_tax 
+        tT += T
+        pv_twithd += (res.x[index_w(year,0)] + res.x[index_w(year,1)] )* discountR
+        pv_ttax += tax *discountR
+        pv_tT += T*discountR
+    return twithd, tincome+twithd, tT, ttax, tcg_tax 
+
 def print_base_config(res):
+    totwithd, tincome, tTaxable, tincometax, tcg_tax = get_result_totals(res)
     print()
     print("Optimized for %s" % S.maximize)
     print('Minium desired: ${:0,.0f}'.format(S.desired[0]))
     #print('total pv tax on all income: ${:0,.0f} ({:.1f}%)'.format(pv_ttax, 100*ttax/tT))
     print('Maximum desired: ${:0,.0f}'.format(S.max[0]))
-    print('Projected yearly income: ${:0,.0f}'.format(res.x[index_s(0)]))
+    print('After tax yearly income: ${:0,.0f} adjusting for inflation'.format(res.x[index_s(0)]))
     print()
+    print('total withdrawals: ${:0,.0f}'.format(totwithd))
+    print('total ordinary taxable income ${:,.0f}'.format(tTaxable))
+    print('total income ${:,.0f}'.format(tincome))
+    print('total ordinary tax on all taxable income: ${:0,.0f} ({:.1f}%) of taxable income'.format(tincometax, 100*tincometax/tTaxable))
+    print('total cap gains tax: ${:0,.0f}'.format(tcg_tax))
+    print('total all tax on all income: ${:0,.0f} ({:.1f}%)'.format(tincometax+tcg_tax, 100*(tincometax+tcg_tax)/tincome))
+
+    #print('\ntotal pv withdrawals: ${:0,.0f}, total pv income ${:0,.0f}'.format(pv_twithd, pv_tT))
+    #print('total pv tax on all income: ${:0,.0f} ({:.1f}%)'.format(pv_ttax, 100*ttax/tT))
 
 # Instantiate the parser
 parser = argparse.ArgumentParser()
@@ -881,6 +898,7 @@ nvars = tax_bracket_year + capital_gains_bracket_year + withdrawal_accounts_year
 
 res = solve()
 consistancy_check(res)
+
 print_model_results(res)
 if args.verbosetax:
     print_tax(res)
