@@ -51,6 +51,7 @@ RMD = [27.4, 26.5, 25.6, 24.7, 23.8, 22.9, 22.0, 21.2, 20.3, 19.5,  # age 70-79
         3.1,  2.9,  2.6,  2.4,  2.1,  1.9,  1.9,  1.9,  1.9,  1.9]
 
 cg_tax_rate = 0.15       # capital gains tax rate, overall estimate until I get brackets working
+penalty = 0.1       # 10% early withdrawal penalty
 SS_taxable = 0.85   # maximum portion of SS that is taxable
 SS_notTaxable = 1 - SS_taxable
 
@@ -252,8 +253,13 @@ def solve():
     #
     for year in range(S.numyr):
         row = [0] * nvars
-        for j in range(len(accounttable)):
-            row[index_w(year,j)] = -1
+        for j in range(len(accounttable)-1):
+            age = year + S.retireage
+            if age < 60:
+                p = 1-penalty
+            else:
+                p = 1
+            row[index_w(year,j)] = -1*p 
         # NEXT 4 ROWS REPLACE TT1 and TT2
         for k in range(len(taxtable)): # was -1 but I think this is a bug so I removed it
             row[index_x(year,k)] = taxtable[k][2] # income tax
@@ -621,7 +627,7 @@ def consistancy_check(res):
         if res.x[index_b(year+1,2)] -( res.x[index_b(year,2)] - res.x[index_w(year,2)] + res.x[index_D(year)])*accounttable[0][1]>1:
             print("account[%d] year to year balance NOT OK years %d to %d" % (2, year, year+1))
 
-        T,spendable,tax,rate,cg_tax = IncomeSummary(year)
+        T,spendable,tax,rate,cg_tax,earlytax = IncomeSummary(year)
         if spendable + 0.1 < res.x[index_s(year)]  or spendable -0.1 > res.x[index_s(year)]:
             print("Calc Spendable %6.2f should equal s(year:%d) %6.2f"% (spendable, year, res.x[index_s(year)]))
             print("w[%d,0]: %6.0f +w[%d,1]: %6.0f +w[%d,2]: %6.0f -D[%d]: %6.0f +o[%d]: %6.0f +SS[%d]: %6.0f -tax: %6.0f -cg_tax: %6.0f" % (year, res.x[index_w(year,0)] ,year, res.x[index_w(year,1)] ,year, res.x[index_w(year,2)] ,year, res.x[index_D(year)] ,year, S.income[year] ,year, S.SS[year] , tax ,cg_tax))
@@ -646,7 +652,7 @@ def print_model_results(res):
         age = year + S.retireage
         if age >= 70:
             rmd = RMD[age - 70]
-        T,spendable,tax,rate,cg_tax = IncomeSummary(year)
+        T,spendable,tax,rate,cg_tax,earlytax = IncomeSummary(year)
         if age >= 70:
             rmdref = res.x[index_b(year,0)]/rmd 
         else:
@@ -659,7 +665,9 @@ def print_model_results(res):
               res.x[index_b(year,2)]/1000.0, res.x[index_w(year,2)]/1000.0, res.x[index_D(year)]/1000.0, # AftaTax
               S.income[year]/1000.0, S.SS[year]/1000.0,
               #T/1000.0, tax/1000.0, rate*100, 
-              (tax+cg_tax)/1000.0, res.x[index_s(year)]/1000.0) )
+              (tax+cg_tax+earlytax)/1000.0, res.x[index_s(year)]/1000.0) )
+        if earlytax:
+            print("early tax: %7.0f" % earlytax)
 
     year = S.numyr
     print(("%3d:" + " %7.0f %7s %7s" + " %7.0f %7s" * 2 + " %7s" * 5) %
@@ -674,25 +682,25 @@ def print_model_results(res):
 
 def print_tax(res):
     def printheader_tax():
-        print((" age" + " %7s" * 12) %
-          ("fIRA", "o_inc", "TxbleSS", "deduct", "T_inc", "fedtax", "mTaxB%", "fAftaTx", "cgTax%", "cgTax", "TFedTax", "spndble" ))
+        print((" age" + " %7s" * 13) %
+          ("fIRA", "o_inc", "TxbleSS", "deduct", "T_inc", "earlyP", "fedtax", "mTaxB%", "fAftaTx", "cgTax%", "cgTax", "TFedTax", "spndble" ))
 
     print("\nTax Summary:\n")
     printheader_tax()
     for year in range(S.numyr):
         age = year + S.retireage
         i_mul = S.i_rate ** year
-        T,spendable,tax,rate,cg_tax = IncomeSummary(year)
-        p = 1 - (S.aftertax['basis']/(S.aftertax['bal']*S.aftertax['rate']**year))
-        ttax = tax + cg_tax
+        T,spendable,tax,rate,cg_tax,earlytax = IncomeSummary(year)
+        f = 1 - (S.aftertax['basis']/(S.aftertax['bal']*S.aftertax['rate']**year))
+        ttax = tax + cg_tax +earlytax
         #totaftataxWith += res.x[index_w(year,2)] # AftaTax
-        print(("%3d:" + " %7.0f" * 12 ) %
+        print(("%3d:" + " %7.0f" * 13 ) %
               (year+S.retireage, 
               res.x[index_w(year,0)]/1000.0, # IRA
               S.income[year]/1000.0, SS_taxable*S.SS[year]/1000.0,
-              stded*i_mul/1000.0, T/1000.0, tax/1000.0, rate*100, 
+              stded*i_mul/1000.0, T/1000.0, earlytax/1000.0, tax/1000.0, rate*100, 
               res.x[index_w(year,2)]/1000.0, # AftaTax
-              p*100, cg_tax/1000.0,
+              f*100, cg_tax/1000.0,
               ttax/1000.0, res.x[index_s(year)]/1000.0 ))
 
     printheader_tax()
@@ -714,7 +722,7 @@ def print_tax_brackets(res):
     for year in range(S.numyr):
         age = year + S.retireage
         i_mul = S.i_rate ** year
-        T,spendable,tax,rate,cg_tax = IncomeSummary(year)
+        T,spendable,tax,rate,cg_tax,earlytax = IncomeSummary(year)
         ttax = tax + cg_tax
         print(("%3d:" + " %7.0f" * 6 ) %
               (year+S.retireage, 
@@ -807,19 +815,25 @@ def OrdinaryTaxable(year):
 def IncomeSummary(year):
     # return OrdinaryTaxable, Spendable, Tax, Rate, CG_Tax
     # Need to account for withdrawals from IRA deposited in Investment account NOT SPENDABLE
+    age = year + S.retireage
+    if age < 60:
+        earlytax = res.x[index_w(year,0)]*penalty + res.x[index_w(year,1)]*penalty
+    else:
+        earlytax = 0
     T = OrdinaryTaxable(year)
     cut, size, rate, base, brak_amount, sum_brackets = get_max_bracket(year, T, False)
     tax = brak_amount * rate + base
     p = 1 - (S.aftertax['basis']/(S.aftertax['bal']*S.aftertax['rate']**year))
     cg_tax = res.x[index_w(year,2)] *p *cg_tax_rate 
-    spendable = res.x[index_w(year,0)] + res.x[index_w(year,1)] + res.x[index_w(year,2)] - res.x[index_D(year)] + S.income[year] + S.SS[year] - tax -cg_tax
-    return T, spendable, tax, rate, cg_tax
+    spendable = res.x[index_w(year,0)] + res.x[index_w(year,1)] + res.x[index_w(year,2)] - res.x[index_D(year)] + S.income[year] + S.SS[year] - tax -cg_tax - earlytax
+    return T, spendable, tax, rate, cg_tax, earlytax
 
 def get_result_totals(res):
     twithd = 0 
     ttax = 0
     tcg_tax = 0
     tT = 0
+    tearlytax = 0
     tincome = 0; pv_tincome = 0
     pv_twithd = 0; pv_ttax = 0; pv_tT = 0
     for year in range(S.numyr):
@@ -828,19 +842,20 @@ def get_result_totals(res):
         age = year + S.retireage
         if age >= 70:
             rmd = RMD[age - 70]
-        T,spendable,tax,rate,cg_tax = IncomeSummary(year)
+        T,spendable,tax,rate,cg_tax,earlytax = IncomeSummary(year)
         twithd += res.x[index_w(year,0)] + res.x[index_w(year,1)] +res.x[index_w(year,2)]
         tincome += S.income[year] + S.SS[year] # + withdrawals
         ttax += tax 
         tcg_tax += cg_tax 
+        tearlytax += earlytax
         tT += T
         pv_twithd += (res.x[index_w(year,0)] + res.x[index_w(year,1)] )* discountR
         pv_ttax += tax *discountR
         pv_tT += T*discountR
-    return twithd, tincome+twithd, tT, ttax, tcg_tax 
+    return twithd, tincome+twithd, tT, ttax, tcg_tax, tearlytax
 
 def print_base_config(res):
-    totwithd, tincome, tTaxable, tincometax, tcg_tax = get_result_totals(res)
+    totwithd, tincome, tTaxable, tincometax, tcg_tax, tearlytax = get_result_totals(res)
     print()
     print("Optimized for %s" % S.maximize)
     print('Minium desired: ${:0,.0f}'.format(S.desired[0]))
@@ -851,9 +866,9 @@ def print_base_config(res):
     print('total withdrawals: ${:0,.0f}'.format(totwithd))
     print('total ordinary taxable income ${:,.0f}'.format(tTaxable))
     print('total income ${:,.0f}'.format(tincome))
-    print('total ordinary tax on all taxable income: ${:0,.0f} ({:.1f}%) of taxable income'.format(tincometax, 100*tincometax/tTaxable))
+    print('total ordinary tax on all taxable income: ${:0,.0f} ({:.1f}%) of taxable income'.format(tincometax+tearlytax, 100*(tincometax+tearlytax)/tTaxable))
     print('total cap gains tax: ${:0,.0f}'.format(tcg_tax))
-    print('total all tax on all income: ${:0,.0f} ({:.1f}%)'.format(tincometax+tcg_tax, 100*(tincometax+tcg_tax)/tincome))
+    print('total all tax on all income: ${:0,.0f} ({:.1f}%)'.format(tincometax+tcg_tax+tearlytax, 100*(tincometax+tcg_tax+tearlytax)/tincome))
 
     #print('\ntotal pv withdrawals: ${:0,.0f}, total pv income ${:0,.0f}'.format(pv_twithd, pv_tT))
     #print('total pv tax on all income: ${:0,.0f} ({:.1f}%)'.format(pv_ttax, 100*ttax/tT))
