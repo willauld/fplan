@@ -3,5 +3,9 @@
 scott.toml
 AWill.toml
 will.toml
+build
+dist
+__pycache__
+*.spec
 ~*
 
