@@ -8,5 +8,6 @@ dist
 __pycache__
 *.spec
 *.csv
+*.xlsx
 ~*
 

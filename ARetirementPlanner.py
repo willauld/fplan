@@ -692,12 +692,11 @@ def print_model_results(res, csvf):
         if csvf is not None:
             csvf.write(("%3d:" + ",%7.0f" * 12 ) %
               (year+S.retireage, 
-              res.x[index_b(year,0)]/1000.0, res.x[index_w(year,0)]/1000.0, rmdref/1000.0, # IRA
-              res.x[index_b(year,1)]/1000.0, res.x[index_w(year,1)]/1000.0, # Roth
-              res.x[index_b(year,2)]/1000.0, res.x[index_w(year,2)]/1000.0, res.x[index_D(year)]/1000.0, # AftaTax
-              S.income[year]/1000.0, S.SS[year]/1000.0,
-              #T/1000.0, tax/1000.0, rate*100, 
-              (tax+cg_tax+earlytax)/1000.0, res.x[index_s(year)]/1000.0) )
+              res.x[index_b(year,0)], res.x[index_w(year,0)], rmdref, # IRA
+              res.x[index_b(year,1)], res.x[index_w(year,1)], # Roth
+              res.x[index_b(year,2)], res.x[index_w(year,2)], res.x[index_D(year)], # AftaTax
+              S.income[year], S.SS[year],
+              (tax+cg_tax+earlytax), res.x[index_s(year)]) )
             csvf.write('\n')
         #if earlytax:
         #   print("early tax: %7.0f" % earlytax)
@@ -706,12 +705,10 @@ def print_model_results(res, csvf):
     if csvf is not None:
         csvf.write(("%3d:" + ",%7.0f,%7s,%7s" + ",%7.0f,%7s" * 2 + ",%7s" * 5) %
         (year+S.retireage, 
-        res.x[index_b(year,0)]/1000.0, '-', '-',  # res.x[index_w(year,0)]/1000.0, # IRA
-        res.x[index_b(year,1)]/1000.0, '-', # res.x[index_w(year,1)]/1000.0, # Roth
-        res.x[index_b(year,2)]/1000.0, '-', # res.x[index_w(year,2)]/1000.0, # AftaTax
+        res.x[index_b(year,0)], '-', '-',  # res.x[index_w(year,0)]/1000.0, # IRA
+        res.x[index_b(year,1)], '-', # res.x[index_w(year,1)]/1000.0, # Roth
+        res.x[index_b(year,2)], '-', # res.x[index_w(year,2)]/1000.0, # AftaTax
         '-', '-', '-', '-', '-'))
-        #S.income[year]/1000.0, T/1000.0, tax/1000.0, rate*100, rmdref/1000.0, 
-        #S.desired[year]/1000.0))
         csvf.write('\n')
     printheader1()
 
@@ -747,12 +744,12 @@ def print_tax(res, csvf):
         if csvf is not None:
             csvf.write(("%3d:" + ",%7.0f" * 13 ) %
               (year+S.retireage, 
-              res.x[index_w(year,0)]/1000.0, # IRA
-              S.income[year]/1000.0, SS_taxable*S.SS[year]/1000.0,
-              stded*i_mul/1000.0, T/1000.0, earlytax/1000.0, tax/1000.0, rate*100, 
-              res.x[index_w(year,2)]/1000.0, # AftaTax
-              f*100, cg_tax/1000.0,
-              ttax/1000.0, res.x[index_s(year)]/1000.0 ))
+              res.x[index_w(year,0)], # IRA
+              S.income[year], SS_taxable*S.SS[year],
+              stded*i_mul, T, earlytax, tax, rate*100, 
+              res.x[index_w(year,2)], # AftaTax
+              f*100, cg_tax,
+              ttax, res.x[index_s(year)] ))
             csvf.write("\n")
 
     printheader_tax()
@@ -1018,6 +1015,20 @@ def print_base_config(res, csvf):
     print('total ordinary tax on all taxable income: ${:0,.0f} ({:.1f}%) of taxable income'.format(tincometax+tearlytax, 100*(tincometax+tearlytax)/tTaxable))
     print('total cap gains tax: ${:0,.0f}'.format(tcg_tax))
     print('total all tax on all income: ${:0,.0f} ({:.1f}%)'.format(tincometax+tcg_tax+tearlytax, 100*(tincometax+tcg_tax+tearlytax)/tincome))
+    if csvf is not None:
+        csvf.write('\n')
+        csvf.write("Optimized for %s\n" % S.maximize)
+        csvf.write('\n')
+        csvf.write('Minium desired: ${:0.0f}\n'.format(S.desired[0]))
+        csvf.write('Maximum desired: ${:0.0f}\n'.format(S.max[0]))
+        csvf.write('After tax yearly income: ${:0.0f} adjusting for inflation\n'.format(res.x[index_s(0)]))
+        csvf.write('\n')
+        csvf.write('total withdrawals: ${:0.0f}\n'.format(totwithd))
+        csvf.write('total ordinary taxable income ${:.0f}\n'.format(tTaxable))
+        csvf.write('total income ${:.0f}\n'.format(tincome))
+        csvf.write('total ordinary tax on all taxable income: ${:0.0f} ({:.1f}%) of taxable income\n'.format(tincometax+tearlytax, 100*(tincometax+tearlytax)/tTaxable))
+        csvf.write('total cap gains tax: ${:0.0f}\n'.format(tcg_tax))
+        csvf.write('total all tax on all income: ${:0.0f} ({:.1f}%)\n'.format(tincometax+tcg_tax+tearlytax, 100*(tincometax+tcg_tax+tearlytax)/tincome))
 
     #print('\ntotal pv withdrawals: ${:0,.0f}, total pv income ${:0,.0f}'.format(pv_twithd, pv_tT))
     #print('total pv tax on all income: ${:0,.0f} ({:.1f}%)'.format(pv_ttax, 100*ttax/tT))
