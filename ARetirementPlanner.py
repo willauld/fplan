@@ -8,7 +8,6 @@ import toml
 import argparse
 import scipy.optimize
 import re
-import os
 
 # 2017 table (predict it moves with inflation?)
 # only married joint at the moment
@@ -51,7 +50,7 @@ RMD = [27.4, 26.5, 25.6, 24.7, 23.8, 22.9, 22.0, 21.2, 20.3, 19.5,  # age 70-79
         6.3,  5.9,  5.5,  5.2,  4.9,  4.5,  4.2,  3.9,  3.7,  3.4,  # age 100+
         3.1,  2.9,  2.6,  2.4,  2.1,  1.9,  1.9,  1.9,  1.9,  1.9]
 
-cg_tax_rate = 0.15       # capital gains tax rate, overall estimate until I get brackets working
+#cg_tax_rate = 0.15       # capital gains tax rate, overall estimate until I get brackets working
 penalty = 0.1       # 10% early withdrawal penalty
 SS_taxable = 0.85   # maximum portion of SS that is taxable
 SS_notTaxable = 1 - SS_taxable
@@ -104,7 +103,7 @@ class Data:
 
         def create_SS_values (amount, fraage, agestr, bucket):
             firstage = agelist(agestr)
-            #alter amount for start age vs fra (minus if before fra and + is after)
+            # alter amount for start age vs fra (minus if before fra and + is after)
             amount = startamount(amount, fraage, next(firstage))
             for age in agelist(agestr):
                 year = age - self.retireage
@@ -113,8 +112,6 @@ class Data:
                 elif year >= self.numyr:
                     break
                 else:
-                    #amount *= self.i_rate ** year
-                    #bucket[year] += amount
                     bucket[year] += amount * self.i_rate ** year
 
         self.accounttable = []
@@ -179,13 +176,14 @@ class Data:
         else:
             self.aftertax['rate'] = 1 + self.aftertax['rate'] / 100 # invest rate: 6 -> 1.06
 
+        # TODO find a good place for the following three magic numbers (0.85, 1.0, 0.90)
         self.accounttable+=[[self.IRA['bal'], self.IRA['rate'], 0.85]] 
         self.accounttable+=[[self.roth['bal'], self.roth['rate'], 1.0]]
         self.accounttable+=[[self.aftertax['bal'], self.aftertax['rate'], 0.90]]
 
         self.parse_expenses(d)
-        self.sepp_end = max(5, 59-self.retireage)     # first year you can spend IRA reserved for SEPP
-        self.sepp_ratio = 25                         # money per-year from SEPP  (bal/ratio)
+        self.sepp_end = max(5, 59-self.retireage)   # first year you can spend IRA reserved for SEPP
+        self.sepp_ratio = 25                        # money per-year from SEPP  (bal/ratio)
 
     def parse_expenses(self, S):
         """ Return array of income/expense per year """
@@ -241,13 +239,14 @@ def solve():
     #
     for year in range(S.numyr):
         for k in range(len(taxtable)):
-            # multiplies the impact how higher brackets more o[posite to optimization
+            # multiplies the impact of higher brackets opposite to optimization
+            # the intent here is to pressure higher brackets more and pack the 
+            # lower brackets
             c[index_x(year,k)] = k/10 
     #
     # Adder objective function (R1') when PlusEstate is added
     #
     if S.maximize == "PlusEstate":
-        #pv_n = S.i_rate**(-S.numyr)
         for j in range(len(accounttable)):
             c[index_b(S.numyr,j)] = -1*accounttable[j][2] # account discount rate
         print("\nConstructing Spending + Estate Model:\n")
@@ -320,20 +319,20 @@ def solve():
         A+=[row]
         b+=[0]
     #
-    # Add constrant (4') rows - TODO remove if [desired.income] is not defined in input
+    # Add constrant (4') rows - not needed if [desired.income] is not defined in input
     #
     if S.desired[0] != 0:
-        for year in range(1): #range(S.numyr):
+        for year in range(1): # Only needs setting at the beginning
             row = [0] * nvars
             row[index_s(year)] = -1
             A+=[row]
             b+=[ - S.desired[year] ]     # [- d_i]
 
     #
-    # Add constraints for (5') rows - not added is [max.income] is not defined in input
+    # Add constraints for (5') rows - not added if [max.income] is not defined in input
     #
     if S.max[0] != 0:
-        for year in range(1): #range(S.numyr):
+        for year in range(1): # Only needs to be set at the beginning
             row = [0] * nvars
             row[index_s(year)] = 1
             A+=[row]
@@ -383,7 +382,6 @@ def solve():
             row[index_x(year,k)] = 1
             A+=[row]
             b+=[(taxtable[k][1])*(S.i_rate**year)] # inflation adjusted
-    #" " "
     #
     # Add constraints for (9a')
     #
@@ -398,7 +396,6 @@ def solve():
     #
     # Add constraints for (9b')
     #
-    #"""
     for year in range(S.numyr):
         f = 1 - (S.aftertax['basis']/(S.aftertax['bal']*S.aftertax['rate']**year))
         row = [0] * nvars
@@ -407,7 +404,6 @@ def solve():
             row[index_y(year,l)] = -1
         A+=[row]
         b+=[0]
-    #"""
     #
     # Add constraints for (10')
     #
@@ -422,15 +418,11 @@ def solve():
             A+=[row]
             b+=[capgainstable[l][1]*adj_inf] # mcg[i,l] inflation adjusted
             #print_constraint( row, capgainstable[l][1]*adj_inf)
-            """ current issues:
-                income tax brackets not filling correctly
-                $ values for cap gains bracket better but not quite right
-            """
     #
     # Add constraints for (11a')
     #
     for year in range(S.numyr): 
-        for j in range(len(accounttable)-1): ### make -1 when adding 13a'
+        for j in range(len(accounttable)-1): 
             row = [0] * nvars
             row[index_b(year+1,j)] = 1 ### b[i,j] supports an extra year
             row[index_b(year,j)] = -1*accounttable[j][1]
@@ -441,7 +433,7 @@ def solve():
     # Add constraints for (11b')
     #
     for year in range(S.numyr):
-        for j in range(len(accounttable)-1): ### make -1 when adding 13b'
+        for j in range(len(accounttable)-1): 
             row = [0] * nvars
             row[index_b(year,j)] = accounttable[j][1]
             row[index_w(year,j)] = -1*accounttable[j][1]
@@ -463,7 +455,6 @@ def solve():
     #
     # Add constraints for (12b')
     #
-    # Not yet implemented
     for year in range(S.numyr):
         j = 2 # nl ==2 the investment account
         row = [0] * nvars
@@ -473,28 +464,27 @@ def solve():
         row[index_b(year+1,j)] = -1  ### b[i,j] supports an extra year
         A+=[row]
         b+=[0]
-
+    #
     # Constraint for (13a')
     #   Set the begining b[1,j] balances
+    #
     for j in range(len(accounttable)):
         row = [0] * nvars
         row[index_b(0,j)] = 1
         A+=[row]
         b+=[accounttable[j][0]]
-
     #
     # Constraint for (13b')
     #   Set the begining b[1,j] balances
+    #
     for j in range(len(accounttable)):
         row = [0] * nvars
         row[index_b(0,j)] = -1
         A+=[row]
         b+=[-1*accounttable[j][0]]
-
     #
     # Constrant for (14') is default for sycpy so no code is needed
     #
-
     if args.verbose:
         print("Num vars: ", len(c))
         print("Num contraints: ", len(b))
@@ -513,7 +503,7 @@ def solve():
         print(res)
         exit(1)
 
-    return res #res.x
+    return res
 
 def print_model_matrix(c, A, b, s, non_binding_only):
     if not non_binding_only:
@@ -522,14 +512,12 @@ def print_model_matrix(c, A, b, s, non_binding_only):
         print()
         print("B? i: A_ub[i]: b[i]")
         for constraint in range(len(A)):
-            #print(constraint, ":", A[constraint], b[constraint])
             if s[constraint] >0:
                 print("  ", end='')
             else:
                 print("B ", end='')
             print(constraint, ": ", sep='', end='')
             print_constraint( A[constraint], b[constraint])
-            #print()
     else:
         print(" i: A_ub[i]: b[i]")
         j = 0
@@ -687,7 +675,6 @@ def print_model_results(res, csvf):
               res.x[index_b(year,1)]/1000.0, res.x[index_w(year,1)]/1000.0, # Roth
               res.x[index_b(year,2)]/1000.0, res.x[index_w(year,2)]/1000.0, res.x[index_D(year)]/1000.0, # AftaTax
               S.income[year]/1000.0, S.SS[year]/1000.0,
-              #T/1000.0, tax/1000.0, rate*100, 
               (tax+cg_tax+earlytax)/1000.0, res.x[index_s(year)]/1000.0) )
         if csvf is not None:
             csvf.write(("%3d:" + ",%7.0f" * 12 ) %
@@ -698,8 +685,6 @@ def print_model_results(res, csvf):
               S.income[year], S.SS[year],
               (tax+cg_tax+earlytax), res.x[index_s(year)]) )
             csvf.write('\n')
-        #if earlytax:
-        #   print("early tax: %7.0f" % earlytax)
 
     year = S.numyr
     if csvf is not None:
@@ -732,7 +717,6 @@ def print_tax(res, csvf):
         T,spendable,tax,rate,cg_tax,earlytax = IncomeSummary(year)
         f = 1 - (S.aftertax['basis']/(S.aftertax['bal']*S.aftertax['rate']**year))
         ttax = tax + cg_tax +earlytax
-        #totaftataxWith += res.x[index_w(year,2)] # AftaTax
         print(("%3d:" + " %7.0f" * 13 ) %
               (year+S.retireage, 
               res.x[index_w(year,0)]/1000.0, # IRA
@@ -771,7 +755,7 @@ def print_tax_brackets(res, csvf):
                 (cut, size, rate, base) = taxtable[k]
                 csvf.write(",%6.0f" % (rate*100))
             csvf.write("\n")
-            csvf.write(("age" + ",%7s" * 6) % ("fIRA", "o_inc", "txblSS", "deduct", "T_inc", "fedtax"), )
+            csvf.write(("age" + ",%7s" * 6) % ("fIRA", "o_inc", "txblSS", "deduct", "T_inc", "fedtax"))
             for k in range(len(taxtable)):
                 csvf.write(",brckt%d" % k)
             csvf.write(",brkTot\n")
@@ -870,14 +854,12 @@ def print_cap_gains_brackets(res, csvf):
             print("x->y[1]: %6.0f "% (res.x[index_x(year,0)]+res.x[index_x(year,1)]),end='')
             print("x->y[2]: %6.0f "% (res.x[index_x(year,2)]+ res.x[index_x(year,3)]+ res.x[index_x(year,4)]+res.x[index_x(year,5)]),end='')
             print("x->y[3]: %6.0f"% res.x[index_x(year,6)])
+        # TODO move to consistancy_check()
         #if (capgainstable[0][1]*i_mul -(res.x[index_x(year,0)]+res.x[index_x(year,1)])) <= res.x[index_y(year,1)]:
         #    print("y[1]remain: %6.0f "% (capgainstable[0][1]*i_mul -(res.x[index_x(year,0)]+res.x[index_x(year,1)])))
         #if (capgainstable[1][1]*i_mul - (res.x[index_x(year,2)]+ res.x[index_x(year,3)]+ res.x[index_x(year,4)]+res.x[index_x(year,5)])) <= res.x[index_y(year,2)]:
         #    print("y[2]remain: %6.0f " % (capgainstable[1][1]*i_mul - (res.x[index_x(year,2)]+ res.x[index_x(year,3)]+ res.x[index_x(year,4)]+res.x[index_x(year,5)])))
     printheader_capgains_brackets()
-    #for year in range(S.numyr):
-    #    for l in range(len(capgainstable)-1):
-    #        print ("ns[%d,%d]: %6.2f" %(year,l,res.x[index_ns(year,l)]))
 
 def print_constraint(row, b):
     print_model_row(row, True)
@@ -950,6 +932,8 @@ def OrdinaryTaxable(year):
     return res.x[index_w(year,0)] + S.income[year] + SS_taxable*S.SS[year] -(stded*S.i_rate**year)
 
 def IncomeSummary(year):
+    # TODO clean up and simplify this fuction
+    #
     # return OrdinaryTaxable, Spendable, Tax, Rate, CG_Tax
     # Need to account for withdrawals from IRA deposited in Investment account NOT SPENDABLE
     age = year + S.retireage
@@ -959,18 +943,15 @@ def IncomeSummary(year):
         earlytax = 0
     T = OrdinaryTaxable(year)
     cut, size, rate, base, brak_amount, sum_brackets = get_max_bracket(year, T, False)
-    tax = brak_amount * rate + base
+    #tax = brak_amount * rate + base
     ntax = 0
     for k in range(len(taxtable)):
         ntax += res.x[index_x(year,k)]*taxtable[k][2]
-    #if tax != ntax:
-    #    print("ntax: %6.2f, tax %6.2f" % (ntax, tax))
+    tax = ntax
     p = 1 - (S.aftertax['basis']/(S.aftertax['bal']*S.aftertax['rate']**year))
-    cg_tax = res.x[index_w(year,2)] *p *cg_tax_rate 
     ncg_tax = 0
     for l in range(len(capgainstable)):
         ncg_tax += res.x[index_y(year,l)]*capgainstable[l][2]
-    #print("ncg_tax %6.2f, cg_tax %6.2f" % (ncg_tax, cg_tax))
     spendable = res.x[index_w(year,0)] + res.x[index_w(year,1)] + res.x[index_w(year,2)] - res.x[index_D(year)] + S.income[year] + S.SS[year] - tax -ncg_tax - earlytax
     return T, spendable, tax, rate, ncg_tax, earlytax
 
@@ -981,6 +962,7 @@ def get_result_totals(res):
     tT = 0
     tearlytax = 0
     tincome = 0; pv_tincome = 0
+    tspendable = 0
     pv_twithd = 0; pv_ttax = 0; pv_tT = 0
     for year in range(S.numyr):
         i_mul = S.i_rate ** year
@@ -998,23 +980,24 @@ def get_result_totals(res):
         pv_twithd += (res.x[index_w(year,0)] + res.x[index_w(year,1)] )* discountR
         pv_ttax += tax *discountR
         pv_tT += T*discountR
-    return twithd, tincome+twithd, tT, ttax, tcg_tax, tearlytax
+        tspendable += spendable
+    return twithd, tincome+twithd, tT, ttax, tcg_tax, tearlytax, tspendable
 
 def print_base_config(res, csvf):
-    totwithd, tincome, tTaxable, tincometax, tcg_tax, tearlytax = get_result_totals(res)
+    totwithd, tincome, tTaxable, tincometax, tcg_tax, tearlytax, tspendable = get_result_totals(res)
     print()
     print("Optimized for %s" % S.maximize)
     print('Minium desired: ${:0,.0f}'.format(S.desired[0]))
-    #print('total pv tax on all income: ${:0,.0f} ({:.1f}%)'.format(pv_ttax, 100*ttax/tT))
     print('Maximum desired: ${:0,.0f}'.format(S.max[0]))
     print('After tax yearly income: ${:0,.0f} adjusting for inflation'.format(res.x[index_s(0)]))
     print()
     print('total withdrawals: ${:0,.0f}'.format(totwithd))
     print('total ordinary taxable income ${:,.0f}'.format(tTaxable))
-    print('total income ${:,.0f}'.format(tincome))
     print('total ordinary tax on all taxable income: ${:0,.0f} ({:.1f}%) of taxable income'.format(tincometax+tearlytax, 100*(tincometax+tearlytax)/tTaxable))
+    print('total income (withdrawals + other) ${:,.0f}'.format(tincome))
     print('total cap gains tax: ${:0,.0f}'.format(tcg_tax))
     print('total all tax on all income: ${:0,.0f} ({:.1f}%)'.format(tincometax+tcg_tax+tearlytax, 100*(tincometax+tcg_tax+tearlytax)/tincome))
+    print("Total spendable (after tax money): ${:0,.0f}".format(tspendable))
     if csvf is not None:
         csvf.write('\n')
         csvf.write("Optimized for %s\n" % S.maximize)
@@ -1025,14 +1008,13 @@ def print_base_config(res, csvf):
         csvf.write('\n')
         csvf.write('total withdrawals: ${:0.0f}\n'.format(totwithd))
         csvf.write('total ordinary taxable income ${:.0f}\n'.format(tTaxable))
-        csvf.write('total income ${:.0f}\n'.format(tincome))
         csvf.write('total ordinary tax on all taxable income: ${:0.0f} ({:.1f}%) of taxable income\n'.format(tincometax+tearlytax, 100*(tincometax+tearlytax)/tTaxable))
+        csvf.write('total income (withdrawals + orther) ${:.0f}\n'.format(tincome))
         csvf.write('total cap gains tax: ${:0.0f}\n'.format(tcg_tax))
         csvf.write('total all tax on all income: ${:0.0f} ({:.1f}%)\n'.format(tincometax+tcg_tax+tearlytax, 100*(tincometax+tcg_tax+tearlytax)/tincome))
+        csvf.write("Total spendable (after tax money): ${:0.0f}\n".format(tspendable))
 
-    #print('\ntotal pv withdrawals: ${:0,.0f}, total pv income ${:0,.0f}'.format(pv_twithd, pv_tT))
-    #print('total pv tax on all income: ${:0,.0f} ({:.1f}%)'.format(pv_ttax, 100*ttax/tT))
-
+# Program entry point
 # Instantiate the parser
 parser = argparse.ArgumentParser()
 parser.add_argument('-v', '--verbose', action='store_true',
@@ -1050,7 +1032,6 @@ parser.add_argument('-csv', '--csv', action='store_true',
 parser.add_argument('conffile')
 args = parser.parse_args()
 
-
 if args.csv:
     csv_file = open("a.csv", 'w')
 else:
@@ -1066,7 +1047,6 @@ if args.verbosemodelall:
     non_binding_only = False
 else:
     non_binding_only = True
-
 
 tax_bracket_year = S.numyr * len(taxtable) # x[i,k]
 capital_gains_bracket_year = S.numyr * len(capgainstable) # y[i,l]
@@ -1089,5 +1069,5 @@ if args.verbosetaxbrackets:
     print_cap_gains_brackets(res, csv_file)
 print_base_config(res, csv_file)
 
-if True and csv_file is not None:
+if csv_file is not None:
     csv_file.close()
