@@ -215,7 +215,7 @@ class Data:
         do_details("max", MAX, 0)
 
         self.income = INC
-        self.expenses = EXP
+        self.expenses = EXP # WGA not currently in use
         self.taxed = TAX
         self.desired = WANT
         self.max = MAX
@@ -361,7 +361,7 @@ def solve():
             row[index_x(year,k)] = 1
         row[index_w(year,0)] = -1 # Account 0 is TDRA
         A+=[row]
-        b+=[S.income[year]+SS_taxable*S.SS[year]-stded*adj_inf]
+        b+=[S.taxed[year]+SS_taxable*S.SS[year]-stded*adj_inf]
     #
     # Add constraints for (7b')
     #
@@ -372,7 +372,7 @@ def solve():
         for k in range(len(taxtable)):
             row[index_x(year,k)] = -1
         A+=[row]
-        b+=[stded*adj_inf-S.income[year]-SS_taxable*S.SS[year]]
+        b+=[stded*adj_inf-S.taxed[year]-SS_taxable*S.SS[year]]
     #
     # Add constraints for (8')
     #
@@ -700,10 +700,10 @@ def print_model_results(res, csvf):
 def print_tax(res, csvf):
     def printheader_tax():
         print((" age" + " %7s" * 13) %
-          ("fIRA", "o_inc", "TxbleSS", "deduct", "T_inc", "earlyP", "fedtax", "mTaxB%", "fAftaTx", "cgTax%", "cgTax", "TFedTax", "spndble" ))
+          ("fIRA", "TxbleO", "TxbleSS", "deduct", "T_inc", "earlyP", "fedtax", "mTaxB%", "fAftaTx", "cgTax%", "cgTax", "TFedTax", "spndble" ))
         if csvf is not None:
             csvf.write(("age" + ",%7s" * 13) %
-            ("fIRA", "o_inc", "TxbleSS", "deduct", "T_inc", "earlyP", "fedtax", "mTaxB%", "fAftaTx", "cgTax%", "cgTax", "TFedTax", "spndble" ))
+            ("fIRA", "TxbleO", "TxbleSS", "deduct", "T_inc", "earlyP", "fedtax", "mTaxB%", "fAftaTx", "cgTax%", "cgTax", "TFedTax", "spndble" ))
             csvf.write("\n")
 
     print("\nTax Summary:\n")
@@ -720,7 +720,7 @@ def print_tax(res, csvf):
         print(("%3d:" + " %7.0f" * 13 ) %
               (year+S.retireage, 
               res.x[index_w(year,0)]/1000.0, # IRA
-              S.income[year]/1000.0, SS_taxable*S.SS[year]/1000.0,
+              S.taxed[year]/1000.0, SS_taxable*S.SS[year]/1000.0,
               stded*i_mul/1000.0, T/1000.0, earlytax/1000.0, tax/1000.0, rate*100, 
               res.x[index_w(year,2)]/1000.0, # AftaTax
               f*100, cg_tax/1000.0,
@@ -729,7 +729,7 @@ def print_tax(res, csvf):
             csvf.write(("%3d:" + ",%7.0f" * 13 ) %
               (year+S.retireage, 
               res.x[index_w(year,0)], # IRA
-              S.income[year], SS_taxable*S.SS[year],
+              S.taxed[year], SS_taxable*S.SS[year],
               stded*i_mul, T, earlytax, tax, rate*100, 
               res.x[index_w(year,2)], # AftaTax
               f*100, cg_tax,
@@ -745,7 +745,7 @@ def print_tax_brackets(res, csvf):
             (cut, size, rate, base) = taxtable[k]
             print(" %6.0f" % (rate*100), end='')
         print()
-        print((" age" + " %7s" * 6) % ("fIRA", "o_inc", "txblSS", "deduct", "T_inc", "fedtax"), end=' ')
+        print((" age" + " %7s" * 6) % ("fIRA", "TxbleO", "TxbleSS", "deduct", "T_inc", "fedtax"), end=' ')
         for k in range(len(taxtable)):
             print ("brckt%d" % k, sep='', end=' ')
         print ("brkTot", sep='')
@@ -755,7 +755,7 @@ def print_tax_brackets(res, csvf):
                 (cut, size, rate, base) = taxtable[k]
                 csvf.write(",%6.0f" % (rate*100))
             csvf.write("\n")
-            csvf.write(("age" + ",%7s" * 6) % ("fIRA", "o_inc", "txblSS", "deduct", "T_inc", "fedtax"))
+            csvf.write(("age" + ",%7s" * 6) % ("fIRA", "TxbleO", "TxbleSS", "deduct", "T_inc", "fedtax"))
             for k in range(len(taxtable)):
                 csvf.write(",brckt%d" % k)
             csvf.write(",brkTot\n")
@@ -773,14 +773,14 @@ def print_tax_brackets(res, csvf):
         print(("%3d:" + " %7.0f" * 6 ) %
               (year+S.retireage, 
               res.x[index_w(year,0)]/1000.0, # IRA
-              S.income[year]/1000.0, SS_taxable*S.SS[year]/1000.0,
+              S.taxed[year]/1000.0, SS_taxable*S.SS[year]/1000.0,
               stded*i_mul/1000.0, T/1000.0, tax/1000.0), 
               end='')
         if csvf is not None:
             csvf.write(("%3d:" + ",%7.0f" * 6 ) %
               (year+S.retireage, 
               res.x[index_w(year,0)]/1000.0, # IRA
-              S.income[year]/1000.0, SS_taxable*S.SS[year]/1000.0,
+              S.taxed[year]/1000.0, SS_taxable*S.SS[year]/1000.0,
               stded*i_mul/1000.0, T/1000.0, tax/1000.0))
         bt = 0
         for k in range(len(taxtable)):
@@ -929,7 +929,7 @@ def index_ns(i,l):
     return tax_bracket_year + capital_gains_bracket_year + withdrawal_accounts_year + startbalance_accounts_year + spendable_year + investment_deposites_year + i*(len(capgainstable)-1)+l
 
 def OrdinaryTaxable(year):
-    return res.x[index_w(year,0)] + S.income[year] + SS_taxable*S.SS[year] -(stded*S.i_rate**year)
+    return res.x[index_w(year,0)] + S.taxed[year] + SS_taxable*S.SS[year] -(stded*S.i_rate**year)
 
 def IncomeSummary(year):
     # TODO clean up and simplify this fuction
