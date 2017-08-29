@@ -687,6 +687,12 @@ def print_model_results(res, csvf):
             csvf.write('\n')
 
     year = S.numyr
+    print(("%3d:" + " %7.0f %7s %7s" + " %7.0f %7s" * 2 + " %7s" * 5) %
+        (year+S.retireage, 
+        res.x[index_b(year,0)], '-', '-',  # res.x[index_w(year,0)]/1000.0, # IRA
+        res.x[index_b(year,1)], '-', # res.x[index_w(year,1)]/1000.0, # Roth
+        res.x[index_b(year,2)], '-', # res.x[index_w(year,2)]/1000.0, # AftaTax
+        '-', '-', '-', '-', '-'))
     if csvf is not None:
         csvf.write(("%3d:" + ",%7.0f,%7s,%7s" + ",%7.0f,%7s" * 2 + ",%7s" * 5) %
         (year+S.retireage, 
