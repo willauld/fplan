@@ -185,7 +185,7 @@ class Data:
                     elif year >= self.numyr:
                         break
                     else:
-                        adj_amount = amount * self.i_rate ** (age-disperseage)
+                        adj_amount = amount * self.i_rate ** year
                         print("age %d, year %d, bucket: %6.0f += amount %6.0f" %(age, year, bucket[year], adj_amount))
                         bucket[year] += adj_amount
             if self.retirement_type == 'joint' and sections == 1:
