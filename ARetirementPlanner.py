@@ -91,33 +91,15 @@ def agelist(str):
 
 class Data:
     def load_file(self, file):
-        def startamount(amount, fra, start):
-            if start > 70:
-                start = 70
-            if start < 62:
-                start = 62
-            if start < fra:
-                return amount/(1.067**(fra-start))
-            if start >= fra:
-                return amount*(1.08**(start-fra))
-
-        def create_SS_values (amount, fraage, agestr, bucket):
-            firstage = agelist(agestr)
-            # alter amount for start age vs fra (minus if before fra and + is after)
-            amount = startamount(amount, fraage, next(firstage))
-            for age in agelist(agestr):
-                year = age - self.retireage
-                if year < 0:
-                    continue
-                elif year >= self.numyr:
-                    break
-                else:
-                    bucket[year] += amount * self.i_rate ** year
 
         self.accounttable = []
         with open(file) as conffile:
             d = toml.loads(conffile.read())
         
+        self.retirement_type = d.get('retirement_type') # what to maximize for 
+        if not 'retirement_type' in d:
+            self.retirement_type = 'joint'
+
         self.maximize = d.get('maximize') # what to maximize for 
         if not 'maximize' in d:
             self.maximize = "Spending"
@@ -135,21 +117,6 @@ class Data:
             self.workyr = 0
         self.retireage = self.startage + self.workyr
         self.numyr = self.endage - self.retireage
-
-        if 'SocialSecurity' in d:
-            self.FRA = d['SocialSecurity']['FRA']
-            self.FRAamount = d['SocialSecurity']['amount']
-            self.SSage = d['SocialSecurity']['age']
-            SS = [0] * self.numyr
-            create_SS_values (self.FRAamount, self.FRA, self.SSage, SS)
-            self.SS = SS 
-        else:
-            self.FRA = 67
-            self.FRAamount = 0.0
-            self.SSage = "67-"
-            SS = [0] * self.numyr
-            create_SS_values (self.FRAamount, self.FRA, self.SSage, SS)
-            self.SS = SS 
 
         self.IRA = d.get('IRA', {'bal':0})
         print(self.IRA)
@@ -187,6 +154,43 @@ class Data:
 
     def parse_expenses(self, S):
         """ Return array of income/expense per year """
+
+        def startamount(amount, fra, start):
+            if start > 70:
+                start = 70
+            if start < 62:
+                start = 62
+            if start < fra:
+                return amount/(1.067**(fra-start))
+            if start >= fra:
+                return amount*(1.08**(start-fra))
+
+        def do_SS_details(bucket):
+            sections = 0
+            for k,v in S.get( 'SocialSecurity' , {}).items():
+                sections += 1
+                print("key: ", k, ", value: ", v)
+                fraamount = v['amount']
+                fraage = v['FRA']
+                agestr = v['age']
+                firstage = agelist(agestr)
+                disperseage = next(firstage)
+                # alter amount for start age vs fra (minus if before fra and + is after)
+                amount = startamount(fraamount, fraage, disperseage)
+                print("FRA: %d, FRAamount: %6.0f, Age: %s, amount: %6.0f" % (fraage, fraamount, agestr, amount))
+                for age in agelist(agestr):
+                    year = age - self.retireage
+                    if year < 0:
+                        continue
+                    elif year >= self.numyr:
+                        break
+                    else:
+                        adj_amount = amount * self.i_rate ** (age-disperseage)
+                        print("age %d, year %d, bucket: %6.0f += amount %6.0f" %(age, year, bucket[year], adj_amount))
+                        bucket[year] += adj_amount
+            if self.retirement_type == 'joint' and sections == 1:
+                print("NEED TO IMPLEMENT DEFAULT SS FOR SPOUCE")
+
         def do_details(category, bucket, tax):
             for k,v in S.get(category, {}).items():
                 for age in agelist(v['age']):
@@ -208,17 +212,20 @@ class Data:
         TAX = [0] * self.numyr
         WANT = [0] * self.numyr
         MAX = [0] * self.numyr
+        SS = [0] * self.numyr
 
         do_details("expense", EXP, 0)
         do_details("income", INC, TAX)
         do_details("desired", WANT, 0)
         do_details("max", MAX, 0)
+        do_SS_details(SS)
 
         self.income = INC
         self.expenses = EXP # WGA not currently in use
         self.taxed = TAX
         self.desired = WANT
         self.max = MAX
+        self.SS = SS 
 
 # Minimize: c^T * x
 # Subject to: A_ub * x <= b_ub
