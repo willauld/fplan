@@ -5,14 +5,17 @@
 
 # most fields are options and have resonable defaults
 
+retirement_type = 'joint' # could be single, joint (married), ??? TODO
+
 returns = 6		# return rate of investments
 inflation = 2.5		# yearly inflation rate
 
 # what to optimize for?
-maximize = "PlusEstate"
+#maximize = "PlusEstate"
 
 # age range to simulate
-startage = 68   # Ragsday.py does not handle younger than age 60
+startage = 58   # Ragsday.py does not handle younger than age 60
+#startage = 68   # Ragsday.py does not handle younger than age 60
 endage = 72	# stops at 99
 
 # this section convers the working before retirement starts
@@ -21,31 +24,42 @@ endage = 72	# stops at 99
 #maxsave = 0     # and save up $60k/yr (pre-tax)
 #tax_rate = 25       # in 25% bracket while working
 
-[SocialSecurity]
-amount = 31000  # $31,000 at Full Retirement Age (FRA); Assumes inflation, 85% taxed
+[SocialSecurity.my]
+amount =  31000  # $31,000 at Full Retirement Age (FRA); Assumes inflation, 85% taxed
 FRA = 67
 age = "68-"
 
-[income.rental_midway]
+[SocialSecurity.spouce]
+amount = 21000  # -1 for default spouse amount, amount at Full Retirement Age (FRA); Assumes inflation, 85% taxed
+FRA = 67
+age = "70-"
+
+[income.mytaxfree]
+amount = 3000
+age = "67-"
+inflation = false
+tax = false          # count this as ordinary taxable income (true/false)
+
+[income.rental_1]
 amount = 36000
 age = "67-"
 inflation = true
 tax = true          # count this as income tax
 
-[income.rental_vanhousen]
+[income.rental_2]
 amount = 2400
 age = "67-"
 inflation = true
 tax = true          # count this as income tax
 
-[desired.income]
-amount = 50000    # want $120,000 per year
-age = "68-"
-inflation = true
-tax = true          # count this as income tax
+#[desired.income]
+#amount = 45000    # want $120,000 per year
+#age = "68-"
+#inflation = true
+#tax = true          # count this as income tax
 
 #[max.income]
-#amount = 100000
+#amount = 150000
 #age = "68-"
 #inflation = true
 #tax = false 

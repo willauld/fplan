@@ -148,9 +148,8 @@ class Data:
         self.accounttable+=[[self.roth['bal'], self.roth['rate'], 1.0]]
         self.accounttable+=[[self.aftertax['bal'], self.aftertax['rate'], 0.90]]
 
+        self.SSinput = [{}, {}] 
         self.parse_expenses(d)
-        self.sepp_end = max(5, 59-self.retireage)   # first year you can spend IRA reserved for SEPP
-        self.sepp_ratio = 25                        # money per-year from SEPP  (bal/ratio)
 
     def parse_expenses(self, S):
         """ Return array of income/expense per year """
@@ -167,16 +166,34 @@ class Data:
 
         def do_SS_details(bucket):
             sections = 0
+            index = 0
             for k,v in S.get( 'SocialSecurity' , {}).items():
                 sections += 1
                 print("key: ", k, ", value: ", v)
                 fraamount = v['amount']
                 fraage = v['FRA']
                 agestr = v['age']
+                if fraamount < 0 and sections == 1:
+                    self.SSinput[1] = {'key': k, 'amount': fraamount, 'fra': fraage, 'agestr': agestr}
+                else:
+                    self.SSinput[index] = {'key': k, 'amount': fraamount, 'fra': fraage, 'agestr': agestr}
+                    index += 1
+
+            for i in range(sections):
+                print("SSinput", self.SSinput)
+                agestr = self.SSinput[i]['agestr']
                 firstage = agelist(agestr)
                 disperseage = next(firstage)
-                # alter amount for start age vs fra (minus if before fra and + is after)
-                amount = startamount(fraamount, fraage, disperseage)
+                fraage = self.SSinput[i]['fra']
+                fraamount = self.SSinput[i]['amount']
+                if fraamount < 0:
+                    assert i == 1
+                    fraamount = self.SSinput[0]['amount']/2 # TODO check to verify the startamount() is correct for this case
+                    # alter amount for start age vs fra (minus if before fra and + is after)
+                    amount = startamount(fraamount, fraage, min(disperseage,fraage))
+                else:
+                    # alter amount for start age vs fra (minus if before fra and + is after)
+                    amount = startamount(fraamount, fraage, disperseage)
                 print("FRA: %d, FRAamount: %6.0f, Age: %s, amount: %6.0f" % (fraage, fraamount, agestr, amount))
                 for age in agelist(agestr):
                     year = age - self.retireage
@@ -188,8 +205,8 @@ class Data:
                         adj_amount = amount * self.i_rate ** year
                         print("age %d, year %d, bucket: %6.0f += amount %6.0f" %(age, year, bucket[year], adj_amount))
                         bucket[year] += adj_amount
-            if self.retirement_type == 'joint' and sections == 1:
-                print("NEED TO IMPLEMENT DEFAULT SS FOR SPOUCE")
+            #if self.retirement_type == 'joint' and section == 1:
+            #    print("NEED TO IMPLEMENT DEFAULT SS FOR SPOUCE")
 
         def do_details(category, bucket, tax):
             for k,v in S.get(category, {}).items():
