@@ -100,21 +100,15 @@ class Data:
 
         def get_account_info(type):
             rec = d.get(type, {'bal':0})
-            if 'bal' in rec:
+            if 'bal' in rec: # Make uniform whether a single or multiple entries
                 d[type] = {'akey': rec}
-            print("++%s: " % (type), rec)
-
             index = 0
             lis_return = []
             for k,v in d.get( type , {}).items():
-                print("+++key: ", k, ", value: ", v)
-
                 entry = {}
                 entry['acctype'] = type
                 entry['index'] = index
                 entry['estateTax'] = accountspecs[type]['tax']
-                #rec = d.get(type, {'bal':0})
-                #print("++%s: " % (type), rec)
                 entry['bal'] = v['bal']
                 if type == 'IRA' or type == 'roth':
                     if 'maxcontrib' not in v:
@@ -137,17 +131,13 @@ class Data:
                     entry['rate'] = rate
                     v['rate'] = rate
                 self.accounts[type] = v
-                print("Entry: ", entry)
                 lis_return.append(entry)
                 index += 1
-                print("lis_return: ", lis_return)
             return lis_return
-        ####### TODO Add a loop that sets an indes for IRA and ROTH if needed (may be only one) traditional
 
         self.accounttable = []
         with open(file) as conffile:
             d = toml.loads(conffile.read())
-            #print("The whole dict: ", d)
         
         self.retirement_type = d.get('retirement_type') # single, joint,...
         if not 'retirement_type' in d:
@@ -171,10 +161,10 @@ class Data:
         self.retireage = self.startage + self.workyr
         self.numyr = self.endage - self.retireage
 
-        self.accounttable += get_account_info('IRA') # if info() returns a list of dict will that work???? TODO 
+        self.accounttable += get_account_info('IRA') # returns entry for each account
         self.accounttable += get_account_info('roth') 
         self.accounttable += get_account_info('aftertax') 
-        print("++Accounttable: ", self.accounttable)
+        #print("++Accounttable: ", self.accounttable)
 
         self.SSinput = [{}, {}] 
         self.parse_expenses(d)
@@ -197,7 +187,7 @@ class Data:
             index = 0
             for k,v in S.get( 'SocialSecurity' , {}).items():
                 sections += 1
-                print("key: ", k, ", value: ", v)
+                #print("key: ", k, ", value: ", v)
                 fraamount = v['amount']
                 fraage = v['FRA']
                 agestr = v['age']
@@ -208,7 +198,7 @@ class Data:
                     index += 1
 
             for i in range(sections):
-                print("SSinput", self.SSinput)
+                #print("SSinput", self.SSinput)
                 agestr = self.SSinput[i]['agestr']
                 firstage = agelist(agestr)
                 disperseage = next(firstage)
@@ -222,7 +212,7 @@ class Data:
                 else:
                     # alter amount for start age vs fra (minus if before fra and + is after)
                     amount = startamount(fraamount, fraage, disperseage)
-                print("FRA: %d, FRAamount: %6.0f, Age: %s, amount: %6.0f" % (fraage, fraamount, agestr, amount))
+                #print("FRA: %d, FRAamount: %6.0f, Age: %s, amount: %6.0f" % (fraage, fraamount, agestr, amount))
                 for age in agelist(agestr):
                     year = age - self.retireage
                     if year < 0:
@@ -231,7 +221,7 @@ class Data:
                         break
                     else:
                         adj_amount = amount * self.i_rate ** year
-                        print("age %d, year %d, bucket: %6.0f += amount %6.0f" %(age, year, bucket[year], adj_amount))
+                        #print("age %d, year %d, bucket: %6.0f += amount %6.0f" %(age, year, bucket[year], adj_amount))
                         bucket[year] += adj_amount
 
         def do_details(category, bucket, tax):
@@ -302,7 +292,9 @@ def solve():
         print("\nConstructing Spending + Estate Model:\n")
     else:
         print("\nConstructing Spending Model:\n")
-        startamount = accounttable[0]['bal'] +accounttable[1]['bal']+accounttable[2]['bal']
+        startamount = 0
+        for j in range(len(accounttable)):
+            startamount += accounttable[j]['bal']
         balancer = 1/(startamount) 
         for j in range(len(accounttable)):
             c[index_b(S.numyr,j)] = -1*balancer *accounttable[j]['estateTax'] # balance and discount rate
@@ -330,18 +322,17 @@ def solve():
         b+=[S.income[year] + S.SS[year]]
     """
     #
-    # Add constraint (2')
+    # Add constraint (2' try)
     #
     for year in range(S.numyr):
         row = [0] * nvars
-        for j in range(len(accounttable)-1):
+        for j in range(len(accounttable)):
             age = year + S.retireage
-            if age < 60:
+            if age < 60 and accounttable[j]['acctype'] != 'aftertax':
                 p = 1-penalty
             else:
                 p = 1
             row[index_w(year,j)] = -1*p 
-        row[index_w(year,2)] = -1 
         for k in range(len(taxtable)): 
             row[index_x(year,k)] = taxtable[k][2] # income tax
         for l in range(len(capgainstable)): 
@@ -494,7 +485,7 @@ def solve():
     # Add constraints for (12a')
     #
     for year in range(S.numyr): 
-        j = 2 # nl the investment account
+        j = len(accounttable)-1 # nl the last account, the investment account
         row = [0] * nvars
         row[index_b(year+1,j)] = 1 ### b[i,j] supports an extra year
         row[index_b(year,j)] = -1*accounttable[j]['rate']
@@ -506,7 +497,7 @@ def solve():
     # Add constraints for (12b')
     #
     for year in range(S.numyr):
-        j = 2 # nl ==2 the investment account
+        j = len(accounttable)-1 # nl the last account, the investment account
         row = [0] * nvars
         row[index_b(year,j)] = accounttable[j]['rate']
         row[index_w(year,j)] = -1*accounttable[j]['rate']
@@ -580,6 +571,45 @@ def print_model_matrix(c, A, b, s, non_binding_only):
     print()
 
 def consistancy_check(res):
+    def do_check_index_sequence():
+        # index_?() functions are laid out to index a vector of variables 
+        # laid out in the order x(i,k), y(i,l), w(i,j), b(i,j), s(i), D(i), ns()
+        ky = 0
+        row = [0] * nvars
+        for i in range(S.numyr):
+            for k in range(len(taxtable)):
+                if index_x(i, k) != ky:
+                    print("index_x(%d,%d) is %d not %d as it should be" % (i,k,index_x(i,k), ky))
+                ky+=1
+        for i in range(S.numyr):
+            for l in range(len(capgainstable)):
+                if index_y(i, l) != ky:
+                    print("index_y(%d,%d) is %d not %d as it should be" % (i,l,index_y(i,l), ky))
+                ky+=1
+        for i in range(S.numyr):
+            for j in range(len(accounttable)):
+                if index_w(i, j) != ky:
+                    print("index_w(%d,%d) is %d not %d as it should be" % (i,j,index_w(i,j), ky))
+                ky+=1
+        for i in range(S.numyr+1): # b[] has an extra year
+            for j in range(len(accounttable)):
+                if index_b(i, j) != ky:
+                    print("index_b(%d,%d) is %d not %d as it should be" % (i,j, index_b(i,j), ky))
+                ky+=1
+        for i in range(S.numyr):
+            if index_s(i) != ky:
+                    print("index_s(%d) is %d not %d as it should be" % (i, index_s(i), ky))
+            ky+=1
+        for i in range(S.numyr):
+            if index_D(i) != ky:
+                    print("index_D(%d) is %d not %d as it should be" % (i,index_D(i), ky))
+            ky+=1
+        for i in range(S.numyr):
+            for l in range(len(capgainstable)):
+                if index_ns(i,l) != ky:
+                    print("index_ns(%d,%d) is %d not %d as it should be" % (i,l,index_ns(i,l), ky))
+                ky+=1
+
     def check_row_consecutive(row):
         for i in range(len(row)-1):
             if row[i] +1 != row[i+1]:
@@ -619,6 +649,9 @@ def consistancy_check(res):
     print()
     print("Consistancy Checking:")
     print()
+
+    do_check_index_sequence()
+
     #Quik check indexes:
     if index_x(0,0) != 0:
         print("Index Error: x(0,0) != 0 it is: %d" % index(0,0))
@@ -646,7 +679,7 @@ def consistancy_check(res):
         print("Index Error: Expect index_D(S.numyr -1)+1 to equal index_ns(0,0)")
         print("\tD(S.numyr-1):", index_D(S.numyr-1))
         print("\tns(0,0):", index_ns(0,0))
-    if nvars-1 != index_ns(S.numyr-1, len(capgainstable)-2):
+    if nvars-1 != index_ns(S.numyr-1, len(capgainstable)-1):
         print("Index Error: Expect (nvars -1) to equal ns(S.numyr-1,len(capgainstable)-1)")
         print("\tvnars -1:", nvars-1)
         print("\tns(S.numyr-1,len(capgainstable)-1):", index_ns(S.numyr-1, len(capgainstable)-1))
@@ -982,8 +1015,8 @@ def index_D(i):
 
 def index_ns(i,l):
     assert i>=0 and i < S.numyr
-    assert l>=0 and l < len(capgainstable)-1
-    return tax_bracket_year + capital_gains_bracket_year + withdrawal_accounts_year + startbalance_accounts_year + spendable_year + investment_deposites_year + i*(len(capgainstable)-1)+l
+    assert l>=0 and l < len(capgainstable)
+    return tax_bracket_year + capital_gains_bracket_year + withdrawal_accounts_year + startbalance_accounts_year + spendable_year + investment_deposites_year + i*(len(capgainstable))+l
 
 def OrdinaryTaxable(year):
     return res.x[index_w(year,0)] + S.taxed[year] + SS_taxable*S.SS[year] -(stded*S.i_rate**year)
@@ -1110,9 +1143,11 @@ withdrawal_accounts_year = S.numyr * len(accounttable) # w[i,j]
 startbalance_accounts_year = (S.numyr+1) * len(accounttable) # b[i,j]
 spendable_year = (S.numyr) # s[i]
 investment_deposites_year = (S.numyr) # D[i]
-negitive_slack = S.numyr * (len(capgainstable)-1) # n[i,l]
+negitive_slack = S.numyr * (len(capgainstable)) # n[i,l]
 
 nvars = tax_bracket_year + capital_gains_bracket_year + withdrawal_accounts_year + startbalance_accounts_year + spendable_year + investment_deposites_year + negitive_slack
+
+print("len(accounttable): ", len(accounttable)) # TODO remove me
 
 res = solve()
 consistancy_check(res)
