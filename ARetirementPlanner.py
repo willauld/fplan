@@ -99,42 +99,55 @@ class Data:
         self.accounts = {}
 
         def get_account_info(type):
-            index = 0
-            #for k,v in S.get( 'SocialSecurity' , {}).items():
-            entry = {}
-            entry['acctype'] = type
-            entry['index'] = index
-            entry['estateTax'] = accountspecs[type]['tax']
             rec = d.get(type, {'bal':0})
+            if 'bal' in rec:
+                d[type] = {'akey': rec}
             print("++%s: " % (type), rec)
-            entry['bal'] = rec['bal']
-            if type == 'IRA' or type == 'roth':
-                if 'maxcontrib' not in rec:
-                    mxcontrib = accountspecs[type]['maxcontrib']
-                    entry['maxcontrib'] = mxcontrib
-                    rec['maxcontrib'] = mxcontrib
+
+            index = 0
+            lis_return = []
+            for k,v in d.get( type , {}).items():
+                print("+++key: ", k, ", value: ", v)
+
+                entry = {}
+                entry['acctype'] = type
+                entry['index'] = index
+                entry['estateTax'] = accountspecs[type]['tax']
+                #rec = d.get(type, {'bal':0})
+                #print("++%s: " % (type), rec)
+                entry['bal'] = v['bal']
+                if type == 'IRA' or type == 'roth':
+                    if 'maxcontrib' not in v:
+                        mxcontrib = accountspecs[type]['maxcontrib']
+                        entry['maxcontrib'] = mxcontrib
+                        v['maxcontrib'] = mxcontrib
+                    else:
+                        entry['maxcontrib'] = v['maxcontrib']
+                else: # type == 'aftertax'
+                    if 'basis' not in v:
+                        entry['basis'] = 0
+                        v['basis'] = 0
+                    else:
+                        entry['basis'] = v['basis']
+                if 'rate' not in v:
+                    entry['rate'] = self.r_rate 
+                    v['rate'] = self.r_rate 
                 else:
-                    entry['maxcontrib'] = rec['maxcontrib']
-            else: # type == 'aftertax'
-                if 'basis' not in rec:
-                    entry['basis'] = 0
-                    rec['basis'] = 0
-                else:
-                    entry['basis'] = rec['basis']
-            if 'rate' not in rec:
-                entry['rate'] = self.r_rate 
-                rec['rate'] = self.r_rate 
-            else:
-                rate = 1 + rec['rate'] / 100  # invest rate: 6 -> 1.06
-                entry['rate'] = rate
-                rec['rate'] = rate
-            self.accounts[type] = rec
-            return entry
-        ####### Add a loop that sets an indes for IRA and ROTH if needed (may be only one) traditional
+                    rate = 1 + v['rate'] / 100  # invest rate: 6 -> 1.06
+                    entry['rate'] = rate
+                    v['rate'] = rate
+                self.accounts[type] = v
+                print("Entry: ", entry)
+                lis_return.append(entry)
+                index += 1
+                print("lis_return: ", lis_return)
+            return lis_return
+        ####### TODO Add a loop that sets an indes for IRA and ROTH if needed (may be only one) traditional
 
         self.accounttable = []
         with open(file) as conffile:
             d = toml.loads(conffile.read())
+            #print("The whole dict: ", d)
         
         self.retirement_type = d.get('retirement_type') # single, joint,...
         if not 'retirement_type' in d:
@@ -158,9 +171,9 @@ class Data:
         self.retireage = self.startage + self.workyr
         self.numyr = self.endage - self.retireage
 
-        self.accounttable+=[ get_account_info('IRA') ] # if info() returns a list of dict will that work???? TODO 
-        self.accounttable+=[ get_account_info('roth') ]
-        self.accounttable+=[ get_account_info('aftertax') ]
+        self.accounttable += get_account_info('IRA') # if info() returns a list of dict will that work???? TODO 
+        self.accounttable += get_account_info('roth') 
+        self.accounttable += get_account_info('aftertax') 
         print("++Accounttable: ", self.accounttable)
 
         self.SSinput = [{}, {}] 
