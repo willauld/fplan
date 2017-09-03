@@ -44,7 +44,7 @@ accountspecs = {'IRA': {'tax': 0.85, 'maxcontrib': 18000+5500*2},
                 'roth':{'tax': 1.0, 'maxcontrib': 5500*2},
                 'aftertax': {'tax': 0.9, 'basis': 0}}
 
-accounttable = [] # array of [bal, rate, discount]
+accounttable = [] # array of [bal, rate, discount] # TODO update this comment
     # discount represents the value of the account balance (after a sort of tax)
     # The discount is approximently a cost of using the money in the account
 
@@ -97,44 +97,40 @@ def agelist(str):
 class Data:
     def load_file(self, file):
         self.accounts = {}
+
         def get_account_info(type):
             index = 0
-            maxcontrib = 0
-            basis = 0
-            estateTax = accountspecs[type]['tax']
-            if type == 'IRA' or type == 'roth':
-                mxcontrib = accountspecs[type]['maxcontrib']
-            else: # investment/savings account
-                basis = accountspecs[type]['basis']
+            #for k,v in S.get( 'SocialSecurity' , {}).items():
+            entry = {}
+            entry['acctype'] = type
+            entry['index'] = index
+            entry['estateTax'] = accountspecs[type]['tax']
             rec = d.get(type, {'bal':0})
             print("++%s: " % (type), rec)
+            entry['bal'] = rec['bal']
             if type == 'IRA' or type == 'roth':
                 if 'maxcontrib' not in rec:
-                    print("maxcontrib not in rec")
-                    maxcontrib = mxcontrib
+                    mxcontrib = accountspecs[type]['maxcontrib']
+                    entry['maxcontrib'] = mxcontrib
                     rec['maxcontrib'] = mxcontrib
                 else:
-                    maxcontrib = rec['maxcontrib']
+                    entry['maxcontrib'] = rec['maxcontrib']
             else: # type == 'aftertax'
                 if 'basis' not in rec:
-                    basis = 0
+                    entry['basis'] = 0
                     rec['basis'] = 0
                 else:
-                    basis = rec['basis']
+                    entry['basis'] = rec['basis']
             if 'rate' not in rec:
-                print("rate not in rec")
-                rate = self.r_rate 
-                rec['rate'] = rate
+                entry['rate'] = self.r_rate 
+                rec['rate'] = self.r_rate 
             else:
-                print("rate IS in rec")
                 rate = 1 + rec['rate'] / 100  # invest rate: 6 -> 1.06
+                entry['rate'] = rate
                 rec['rate'] = rate
             self.accounts[type] = rec
-            ####
-            #### I'm thinking I should return a dictionary rather than list here TODO
-            ####
-            return [rec['bal'], rate, estateTax, type, index, basis, maxcontrib]
-        ###### Add a loop that sets an indes for IRA and ROTH if needed (may be only one) traditional
+            return entry
+        ####### Add a loop that sets an indes for IRA and ROTH if needed (may be only one) traditional
 
         self.accounttable = []
         with open(file) as conffile:
@@ -162,38 +158,7 @@ class Data:
         self.retireage = self.startage + self.workyr
         self.numyr = self.endage - self.retireage
 
-        #self.IRA = d.get('IRA', {'bal':0})
-        #print("IRA: ", self.IRA)
-        #if 'maxcontrib' not in self.IRA:
-        #    self.IRA['maxcontrib'] = 18000 + 5500*2 # magic number move to better place TODO
-        #if 'rate' not in self.IRA:
-        #    self.IRA['rate'] = self.r_rate 
-        #else:
-        #    self.IRA['rate'] = 1 + self.IRA['rate'] / 100  # invest rate: 6 -> 1.06
-
-        #self.roth = d.get('roth', {'bal': 0})
-        #print("Roth: ", self.roth)
-        #if 'maxcontrib' not in self.roth:
-        #    self.roth['maxcontrib'] = 5500*2 # magic number fix TODO
-        #if 'rate' not in self.roth:
-        #    self.roth['rate'] = self.r_rate 
-        #else:
-        #    self.roth['rate'] = 1 + self.roth['rate'] / 100 # invest rate: 6 -> 1.06
-
-        #self.aftertax = d.get('aftertax', {'bal': 0})
-        #if 'basis' not in self.aftertax:
-        #    self.aftertax['basis'] = 0
-        #if 'rate' not in self.aftertax:
-        #    self.aftertax['rate'] = self.r_rate 
-        #else:
-        #    self.aftertax['rate'] = 1 + self.aftertax['rate'] / 100 # invest rate: 6 -> 1.06
-
-        # TODO find a good place for the following three magic numbers (0.85, 1.0, 0.90)
-        
-        #self.accounttable+=[[self.IRA['bal'], self.IRA['rate'], 0.85]] 
-        #self.accounttable+=[[self.roth['bal'], self.roth['rate'], 1.0]]
-        #self.accounttable+=[[self.aftertax['bal'], self.aftertax['rate'], 0.90]]
-        self.accounttable+=[ get_account_info('IRA') ]  
+        self.accounttable+=[ get_account_info('IRA') ] # if info() returns a list of dict will that work???? TODO 
         self.accounttable+=[ get_account_info('roth') ]
         self.accounttable+=[ get_account_info('aftertax') ]
         print("++Accounttable: ", self.accounttable)
@@ -255,8 +220,6 @@ class Data:
                         adj_amount = amount * self.i_rate ** year
                         print("age %d, year %d, bucket: %6.0f += amount %6.0f" %(age, year, bucket[year], adj_amount))
                         bucket[year] += adj_amount
-            #if self.retirement_type == 'joint' and section == 1:
-            #    print("NEED TO IMPLEMENT DEFAULT SS FOR SPOUCE")
 
         def do_details(category, bucket, tax):
             for k,v in S.get(category, {}).items():
@@ -322,14 +285,14 @@ def solve():
     #
     if S.maximize == "PlusEstate":
         for j in range(len(accounttable)):
-            c[index_b(S.numyr,j)] = -1*accounttable[j][2] # account discount rate
+            c[index_b(S.numyr,j)] = -1*accounttable[j]['estateTax'] # account discount rate
         print("\nConstructing Spending + Estate Model:\n")
     else:
         print("\nConstructing Spending Model:\n")
-        startamount = accounttable[0][0] +accounttable[1][0]+accounttable[2][0]
+        startamount = accounttable[0]['bal'] +accounttable[1]['bal']+accounttable[2]['bal']
         balancer = 1/(startamount) 
         for j in range(len(accounttable)):
-            c[index_b(S.numyr,j)] = -1*balancer *accounttable[j][2] # balance and discount rate
+            c[index_b(S.numyr,j)] = -1*balancer *accounttable[j]['estateTax'] # balance and discount rate
     
     """
     #
@@ -472,7 +435,6 @@ def solve():
     #
     for year in range(S.numyr):
         f = 1 - (S.accounts['aftertax']['basis']/(S.accounts['aftertax']['bal']*S.accounts['aftertax']['rate']**year))
-        #f = 1 - (S.aftertax['basis']/(S.aftertax['bal']*S.aftertax['rate']**year))
         row = [0] * nvars
         row[index_w(year,2)] = f # Account 2 is investment / stocks
         for l in range(len(capgainstable)):
@@ -500,8 +462,8 @@ def solve():
         for j in range(len(accounttable)-1): 
             row = [0] * nvars
             row[index_b(year+1,j)] = 1 ### b[i,j] supports an extra year
-            row[index_b(year,j)] = -1*accounttable[j][1]
-            row[index_w(year,j)] = accounttable[j][1]
+            row[index_b(year,j)] = -1*accounttable[j]['rate']
+            row[index_w(year,j)] = accounttable[j]['rate']
             A+=[row]
             b+=[0]
     #
@@ -510,8 +472,8 @@ def solve():
     for year in range(S.numyr):
         for j in range(len(accounttable)-1): 
             row = [0] * nvars
-            row[index_b(year,j)] = accounttable[j][1]
-            row[index_w(year,j)] = -1*accounttable[j][1]
+            row[index_b(year,j)] = accounttable[j]['rate']
+            row[index_w(year,j)] = -1*accounttable[j]['rate']
             row[index_b(year+1,j)] = -1  ### b[i,j] supports an extra year
             A+=[row]
             b+=[0]
@@ -522,9 +484,9 @@ def solve():
         j = 2 # nl the investment account
         row = [0] * nvars
         row[index_b(year+1,j)] = 1 ### b[i,j] supports an extra year
-        row[index_b(year,j)] = -1*accounttable[j][1]
-        row[index_w(year,j)] = accounttable[j][1]
-        row[index_D(year)] = -1*accounttable[j][1]
+        row[index_b(year,j)] = -1*accounttable[j]['rate']
+        row[index_w(year,j)] = accounttable[j]['rate']
+        row[index_D(year)] = -1*accounttable[j]['rate']
         A+=[row]
         b+=[0]
     #
@@ -533,9 +495,9 @@ def solve():
     for year in range(S.numyr):
         j = 2 # nl ==2 the investment account
         row = [0] * nvars
-        row[index_b(year,j)] = accounttable[j][1]
-        row[index_w(year,j)] = -1*accounttable[j][1]
-        row[index_D(year)] = accounttable[j][1]
+        row[index_b(year,j)] = accounttable[j]['rate']
+        row[index_w(year,j)] = -1*accounttable[j]['rate']
+        row[index_D(year)] = accounttable[j]['rate']
         row[index_b(year+1,j)] = -1  ### b[i,j] supports an extra year
         A+=[row]
         b+=[0]
@@ -547,7 +509,7 @@ def solve():
         row = [0] * nvars
         row[index_b(0,j)] = 1
         A+=[row]
-        b+=[accounttable[j][0]]
+        b+=[accounttable[j]['bal']]
     #
     # Constraint for (13b')
     #   Set the begining b[1,j] balances
@@ -556,7 +518,7 @@ def solve():
         row = [0] * nvars
         row[index_b(0,j)] = -1
         A+=[row]
-        b+=[-1*accounttable[j][0]]
+        b+=[-1*accounttable[j]['bal']]
     #
     # Constrant for (14') is default for sycpy so no code is needed
     #
@@ -702,9 +664,9 @@ def consistancy_check(res):
             print("Error: Expected Taxable Ordinary income %6.2f doesn't match bracket sum %6.2f" % (TaxableOrdinary,s))
 
         for j in range(len(accounttable)-1):
-            if res.x[index_b(year+1,j)] -( res.x[index_b(year,j)] - res.x[index_w(year,j)])*accounttable[0][1]>1:
+            if res.x[index_b(year+1,j)] -( res.x[index_b(year,j)] - res.x[index_w(year,j)])*accounttable[0]['rate']>1:
                 print("account[%d] year to year balance NOT OK years %d to %d" % (j, year, year+1))
-        if res.x[index_b(year+1,2)] -( res.x[index_b(year,2)] - res.x[index_w(year,2)] + res.x[index_D(year)])*accounttable[0][1]>1:
+        if res.x[index_b(year+1,2)] -( res.x[index_b(year,2)] - res.x[index_w(year,2)] + res.x[index_D(year)])*accounttable[0]['rate']>1:
             print("account[%d] year to year balance NOT OK years %d to %d" % (2, year, year+1))
 
         T,spendable,tax,rate,cg_tax,earlytax = IncomeSummary(year)
@@ -906,7 +868,6 @@ def print_cap_gains_brackets(res, csvf):
         age = year + S.retireage
         i_mul = S.i_rate ** year
         f = 1 - (S.accounts['aftertax']['basis']/(S.accounts['aftertax']['bal']*S.accounts['aftertax']['rate']**year))
-        #f = 1 - (S.aftertax['basis']/(S.aftertax['bal']*S.aftertax['rate']**year))
         T,spendable,tax,rate,cg_tax,earlytax = IncomeSummary(year)
         ttax = tax + cg_tax
         print(("%3d:" + " %7.0f" * 5 ) %
@@ -1031,7 +992,6 @@ def IncomeSummary(year):
     for k in range(len(taxtable)):
         ntax += res.x[index_x(year,k)]*taxtable[k][2]
     tax = ntax
-    #p = 1 - (S.aftertax['basis']/(S.aftertax['bal']*S.aftertax['rate']**year))
     ncg_tax = 0
     for l in range(len(capgainstable)):
         ncg_tax += res.x[index_y(year,l)]*capgainstable[l][2]
