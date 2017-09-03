@@ -39,6 +39,11 @@ capgainstable = marriedjointcapitalgains
 
 stded = 12700 + 2*4050    # standard deduction + 2 personal exemptions for joint filing
 
+# Account specs contains some initial information 
+accountspecs = {'IRA': {'tax': 0.85, 'maxcontrib': 18000+5500*2},
+                'roth':{'tax': 1.0, 'maxcontrib': 5500*2},
+                'aftertax': {'tax': 0.9, 'basis': 0}}
+
 accounttable = [] # array of [bal, rate, discount]
     # discount represents the value of the account balance (after a sort of tax)
     # The discount is approximently a cost of using the money in the account
@@ -91,16 +96,55 @@ def agelist(str):
 
 class Data:
     def load_file(self, file):
+        self.accounts = {}
+        def get_account_info(type):
+            index = 0
+            maxcontrib = 0
+            basis = 0
+            estateTax = accountspecs[type]['tax']
+            if type == 'IRA' or type == 'roth':
+                mxcontrib = accountspecs[type]['maxcontrib']
+            else: # investment/savings account
+                basis = accountspecs[type]['basis']
+            rec = d.get(type, {'bal':0})
+            print("++%s: " % (type), rec)
+            if type == 'IRA' or type == 'roth':
+                if 'maxcontrib' not in rec:
+                    print("maxcontrib not in rec")
+                    maxcontrib = mxcontrib
+                    rec['maxcontrib'] = mxcontrib
+                else:
+                    maxcontrib = rec['maxcontrib']
+            else: # type == 'aftertax'
+                if 'basis' not in rec:
+                    basis = 0
+                    rec['basis'] = 0
+                else:
+                    basis = rec['basis']
+            if 'rate' not in rec:
+                print("rate not in rec")
+                rate = self.r_rate 
+                rec['rate'] = rate
+            else:
+                print("rate IS in rec")
+                rate = 1 + rec['rate'] / 100  # invest rate: 6 -> 1.06
+                rec['rate'] = rate
+            self.accounts[type] = rec
+            ####
+            #### I'm thinking I should return a dictionary rather than list here TODO
+            ####
+            return [rec['bal'], rate, estateTax, type, index, basis, maxcontrib]
+        ###### Add a loop that sets an indes for IRA and ROTH if needed (may be only one) traditional
 
         self.accounttable = []
         with open(file) as conffile:
             d = toml.loads(conffile.read())
         
-        self.retirement_type = d.get('retirement_type') # what to maximize for 
+        self.retirement_type = d.get('retirement_type') # single, joint,...
         if not 'retirement_type' in d:
             self.retirement_type = 'joint'
 
-        self.maximize = d.get('maximize') # what to maximize for 
+        self.maximize = d.get('maximize') # what to maximize for: Spending or PlusEstate 
         if not 'maximize' in d:
             self.maximize = "Spending"
 
@@ -118,35 +162,41 @@ class Data:
         self.retireage = self.startage + self.workyr
         self.numyr = self.endage - self.retireage
 
-        self.IRA = d.get('IRA', {'bal':0})
-        print(self.IRA)
-        if 'maxcontrib' not in self.IRA:
-            self.IRA['maxcontrib'] = 18000 + 5500*2 # magic number move to better place TODO
-        if 'rate' not in self.IRA:
-            self.IRA['rate'] = self.r_rate 
-        else:
-            self.IRA['rate'] = 1 + self.IRA['rate'] / 100  # invest rate: 6 -> 1.06
+        #self.IRA = d.get('IRA', {'bal':0})
+        #print("IRA: ", self.IRA)
+        #if 'maxcontrib' not in self.IRA:
+        #    self.IRA['maxcontrib'] = 18000 + 5500*2 # magic number move to better place TODO
+        #if 'rate' not in self.IRA:
+        #    self.IRA['rate'] = self.r_rate 
+        #else:
+        #    self.IRA['rate'] = 1 + self.IRA['rate'] / 100  # invest rate: 6 -> 1.06
 
-        self.roth = d.get('roth', {'bal': 0});
-        if 'maxcontrib' not in self.roth:
-            self.roth['maxcontrib'] = 5500*2 # magic number fix TODO
-        if 'rate' not in self.roth:
-            self.roth['rate'] = self.r_rate 
-        else:
-            self.roth['rate'] = 1 + self.roth['rate'] / 100 # invest rate: 6 -> 1.06
+        #self.roth = d.get('roth', {'bal': 0})
+        #print("Roth: ", self.roth)
+        #if 'maxcontrib' not in self.roth:
+        #    self.roth['maxcontrib'] = 5500*2 # magic number fix TODO
+        #if 'rate' not in self.roth:
+        #    self.roth['rate'] = self.r_rate 
+        #else:
+        #    self.roth['rate'] = 1 + self.roth['rate'] / 100 # invest rate: 6 -> 1.06
 
-        self.aftertax = d.get('aftertax', {'bal': 0})
-        if 'basis' not in self.aftertax:
-            self.aftertax['basis'] = 0
-        if 'rate' not in self.aftertax:
-            self.aftertax['rate'] = self.r_rate 
-        else:
-            self.aftertax['rate'] = 1 + self.aftertax['rate'] / 100 # invest rate: 6 -> 1.06
+        #self.aftertax = d.get('aftertax', {'bal': 0})
+        #if 'basis' not in self.aftertax:
+        #    self.aftertax['basis'] = 0
+        #if 'rate' not in self.aftertax:
+        #    self.aftertax['rate'] = self.r_rate 
+        #else:
+        #    self.aftertax['rate'] = 1 + self.aftertax['rate'] / 100 # invest rate: 6 -> 1.06
 
         # TODO find a good place for the following three magic numbers (0.85, 1.0, 0.90)
-        self.accounttable+=[[self.IRA['bal'], self.IRA['rate'], 0.85]] 
-        self.accounttable+=[[self.roth['bal'], self.roth['rate'], 1.0]]
-        self.accounttable+=[[self.aftertax['bal'], self.aftertax['rate'], 0.90]]
+        
+        #self.accounttable+=[[self.IRA['bal'], self.IRA['rate'], 0.85]] 
+        #self.accounttable+=[[self.roth['bal'], self.roth['rate'], 1.0]]
+        #self.accounttable+=[[self.aftertax['bal'], self.aftertax['rate'], 0.90]]
+        self.accounttable+=[ get_account_info('IRA') ]  
+        self.accounttable+=[ get_account_info('roth') ]
+        self.accounttable+=[ get_account_info('aftertax') ]
+        print("++Accounttable: ", self.accounttable)
 
         self.SSinput = [{}, {}] 
         self.parse_expenses(d)
@@ -410,7 +460,7 @@ def solve():
     # Add constraints for (9a')
     #
     for year in range(S.numyr):
-        f = 1 - (S.aftertax['basis']/(S.aftertax['bal']*S.aftertax['rate']**year))
+        f = 1 - (S.accounts['aftertax']['basis']/(S.accounts['aftertax']['bal']*S.accounts['aftertax']['rate']**year))
         row = [0] * nvars
         for l in range(len(capgainstable)):
             row[index_y(year,l)] = 1
@@ -421,7 +471,8 @@ def solve():
     # Add constraints for (9b')
     #
     for year in range(S.numyr):
-        f = 1 - (S.aftertax['basis']/(S.aftertax['bal']*S.aftertax['rate']**year))
+        f = 1 - (S.accounts['aftertax']['basis']/(S.accounts['aftertax']['bal']*S.accounts['aftertax']['rate']**year))
+        #f = 1 - (S.aftertax['basis']/(S.aftertax['bal']*S.aftertax['rate']**year))
         row = [0] * nvars
         row[index_w(year,2)] = f # Account 2 is investment / stocks
         for l in range(len(capgainstable)):
@@ -745,7 +796,8 @@ def print_tax(res, csvf):
         age = year + S.retireage
         i_mul = S.i_rate ** year
         T,spendable,tax,rate,cg_tax,earlytax = IncomeSummary(year)
-        f = 1 - (S.aftertax['basis']/(S.aftertax['bal']*S.aftertax['rate']**year))
+        f = 1 - (S.accounts['aftertax']['basis']/(S.accounts['aftertax']['bal']*S.accounts['aftertax']['rate']**year))
+        #f = 1 - (S.aftertax['basis']/(S.aftertax['bal']*S.aftertax['rate']**year))
         ttax = tax + cg_tax +earlytax
         print(("%3d:" + " %7.0f" * 13 ) %
               (year+S.retireage, 
@@ -853,7 +905,8 @@ def print_cap_gains_brackets(res, csvf):
     for year in range(S.numyr):
         age = year + S.retireage
         i_mul = S.i_rate ** year
-        f = 1 - (S.aftertax['basis']/(S.aftertax['bal']*S.aftertax['rate']**year))
+        f = 1 - (S.accounts['aftertax']['basis']/(S.accounts['aftertax']['bal']*S.accounts['aftertax']['rate']**year))
+        #f = 1 - (S.aftertax['basis']/(S.aftertax['bal']*S.aftertax['rate']**year))
         T,spendable,tax,rate,cg_tax,earlytax = IncomeSummary(year)
         ttax = tax + cg_tax
         print(("%3d:" + " %7.0f" * 5 ) %
@@ -978,7 +1031,7 @@ def IncomeSummary(year):
     for k in range(len(taxtable)):
         ntax += res.x[index_x(year,k)]*taxtable[k][2]
     tax = ntax
-    p = 1 - (S.aftertax['basis']/(S.aftertax['bal']*S.aftertax['rate']**year))
+    #p = 1 - (S.aftertax['basis']/(S.aftertax['bal']*S.aftertax['rate']**year))
     ncg_tax = 0
     for l in range(len(capgainstable)):
         ncg_tax += res.x[index_y(year,l)]*capgainstable[l][2]
