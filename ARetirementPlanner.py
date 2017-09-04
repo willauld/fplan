@@ -400,7 +400,9 @@ def solve():
         row = [0] * nvars
         for k in range(len(taxtable)):
             row[index_x(year,k)] = 1
-        row[index_w(year,0)] = -1 # Account 0 is TDRA
+        for j in range(len(accounttable)):
+            if accounttable[j]['acctype'] == 'IRA':
+                row[index_w(year,j)] = -1 # Account 0 is TDRA
         A+=[row]
         b+=[S.taxed[year]+SS_taxable*S.SS[year]-stded*adj_inf]
     #
@@ -409,7 +411,9 @@ def solve():
     for year in range(S.numyr):
         adj_inf = S.i_rate**year
         row = [0] * nvars
-        row[index_w(year,0)] = 1 # Account 0 is TDRA
+        for j in range(len(accounttable)):
+            if accounttable[j]['acctype'] == 'IRA':
+                row[index_w(year,j)] = 1 # Account 0 is TDRA
         for k in range(len(taxtable)):
             row[index_x(year,k)] = -1
         A+=[row]
@@ -431,7 +435,8 @@ def solve():
         row = [0] * nvars
         for l in range(len(capgainstable)):
             row[index_y(year,l)] = 1
-        row[index_w(year,2)] = -1*f # Account 2 is investment / stocks
+        j = len(accounttable)-1
+        row[index_w(year,j)] = -1*f # last Account is investment / stocks
         A+=[row]
         b+=[0]
     #
@@ -440,7 +445,8 @@ def solve():
     for year in range(S.numyr):
         f = 1 - (S.accounts['aftertax']['basis']/(S.accounts['aftertax']['bal']*S.accounts['aftertax']['rate']**year))
         row = [0] * nvars
-        row[index_w(year,2)] = f # Account 2 is investment / stocks
+        j = len(accounttable)-1
+        row[index_w(year,j)] = f # last Account is investment / stocks
         for l in range(len(capgainstable)):
             row[index_y(year,l)] = -1
         A+=[row]
@@ -670,7 +676,7 @@ def consistancy_check(res):
         #TaxableOrdinary = res.x[index_w(year,0)] + S.income[year] -stded*i_mul
         TaxableOrdinary = OrdinaryTaxable(year)
         if (TaxableOrdinary + 0.1 < s) or (TaxableOrdinary - 0.1 > s):
-            print("Error: Expected Taxable Ordinary income %6.2f doesn't match bracket sum %6.2f" % (TaxableOrdinary,s))
+            print("Error: Expected (age:%d) Taxable Ordinary income %6.2f doesn't match bracket sum %6.2f" % ( year + S.retireage, TaxableOrdinary,s))
 
         for j in range(len(accounttable)-1):
             if res.x[index_b(year+1,j)] -( res.x[index_b(year,j)] - res.x[index_w(year,j)])*accounttable[0]['rate']>1:
@@ -870,21 +876,24 @@ def print_tax(res, csvf):
         f = 1 - (S.accounts['aftertax']['basis']/(S.accounts['aftertax']['bal']*S.accounts['aftertax']['rate']**year))
         #f = 1 - (S.aftertax['basis']/(S.aftertax['bal']*S.aftertax['rate']**year))
         ttax = tax + cg_tax +earlytax
+        withdrawal = {'IRA': 0, 'roth': 0, 'aftertax': 0}
+        for j in range(len(accounttable)):
+            withdrawal[accounttable[j]['acctype']] += res.x[index_w(year,j)]
         print(("%3d:" + " %7.0f" * 13 ) %
               (year+S.retireage, 
-              res.x[index_w(year,0)]/1000.0, # IRA
+                withdrawal['IRA']/1000.0, # sum IRA
               S.taxed[year]/1000.0, SS_taxable*S.SS[year]/1000.0,
               stded*i_mul/1000.0, T/1000.0, earlytax/1000.0, tax/1000.0, rate*100, 
-              res.x[index_w(year,2)]/1000.0, # AftaTax
+                withdrawal['aftertax']/1000.0, # sum Aftertax
               f*100, cg_tax/1000.0,
               ttax/1000.0, res.x[index_s(year)]/1000.0 ))
         if csvf is not None:
             csvf.write(("%3d:" + ",%7.0f" * 13 ) %
               (year+S.retireage, 
-              res.x[index_w(year,0)], # IRA
+                withdrawal['IRA'], # sum IRA
               S.taxed[year], SS_taxable*S.SS[year],
               stded*i_mul, T, earlytax, tax, rate*100, 
-              res.x[index_w(year,2)], # AftaTax
+                withdrawal['aftertax'], # sum Aftertax
               f*100, cg_tax,
               ttax, res.x[index_s(year)] ))
             csvf.write("\n")
@@ -958,7 +967,7 @@ def print_cap_gains_brackets(res, csvf):
             print ("brckt%d" % l, sep='', end=' ')
         print ("brkTot", sep='')
         if csvf is not None:
-            csvf.write(",,,,,,%s" % "Marginal Rate(%):")
+            csvf.write(",,,,,%s" % "Marginal Rate(%):")
             for l in range(len(capgainstable)):
                 (cut, size, rate) = capgainstable[l]
                 csvf.write(",%6.0f" % (rate*100))
@@ -1083,7 +1092,11 @@ def index_ns(i,l):
     return tax_bracket_year + capital_gains_bracket_year + withdrawal_accounts_year + startbalance_accounts_year + spendable_year + investment_deposites_year + i*(len(capgainstable))+l
 
 def OrdinaryTaxable(year):
-    return res.x[index_w(year,0)] + S.taxed[year] + SS_taxable*S.SS[year] -(stded*S.i_rate**year)
+    withdrawals = 0 
+    for j in range(len(accounttable)):
+        if accounttable[j]['acctype'] == 'IRA':
+            withdrawals += res.x[index_w(year,j)]
+    return withdrawals + S.taxed[year] + SS_taxable*S.SS[year] -(stded*S.i_rate**year)
 
 def IncomeSummary(year):
     # TODO clean up and simplify this fuction
