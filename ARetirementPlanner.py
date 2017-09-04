@@ -610,40 +610,6 @@ def consistancy_check(res):
                     print("index_ns(%d,%d) is %d not %d as it should be" % (i,l,index_ns(i,l), ky))
                 ky+=1
 
-    def check_row_consecutive(row):
-        for i in range(len(row)-1):
-            if row[i] +1 != row[i+1]:
-                print("Check_row_consecutive: failed, row[%d](%d) != row[%d](%d)" % (i, row[i], i+1, row[i+1]))
-    def do_write_x():
-        ky = 0
-        row = [0] * nvars
-        for i in range(S.numyr):
-            for k in range(len(taxtable)):
-                row[index_x(i, k)] = ky
-                ky+=1
-        for i in range(S.numyr):
-            for l in range(len(capgainstable)):
-                row[index_y(i, l)] = ky
-                ky+=1
-        for i in range(S.numyr):
-            for j in range(len(accounttable)):
-                row[index_w(i, j)] = ky
-                ky+=1
-        for i in range(S.numyr+1): # b[] has an extra year
-            for j in range(len(accounttable)):
-                row[index_b(i, j)] = ky
-                ky+=1
-        for i in range(S.numyr):
-            row[index_s(i)] = ky
-            ky+=1
-        for i in range(S.numyr):
-            row[index_D(i)] = ky
-            ky+=1
-        for i in range(S.numyr):
-            for l in range(len(capgainstable)):
-                row[index_ns(i,l)] = ky
-                ky+=1
-        check_row_consecutive(row)
     # check to see if the ordinary tax brackets are filled in properly
     print()
     print()
@@ -683,9 +649,6 @@ def consistancy_check(res):
         print("Index Error: Expect (nvars -1) to equal ns(S.numyr-1,len(capgainstable)-1)")
         print("\tvnars -1:", nvars-1)
         print("\tns(S.numyr-1,len(capgainstable)-1):", index_ns(S.numyr-1, len(capgainstable)-1))
-    # write a res.x vector from 1-nvars
-    if args.verbosewga:
-        do_write_x()
 
     for year in range(S.numyr):
         s = 0
@@ -744,46 +707,146 @@ def print_model_results(res, csvf):
     for year in range(S.numyr):
         i_mul = S.i_rate ** year
         age = year + S.retireage
-        if age >= 70:
-            rmd = RMD[age - 70]
         T,spendable,tax,rate,cg_tax,earlytax = IncomeSummary(year)
         if age >= 70:
+            rmd = RMD[age - 70]
             rmdref = res.x[index_b(year,0)]/rmd 
         else:
             rmdref = 0
 
+        balance = {'IRA': 0, 'roth': 0, 'aftertax': 0}
+        withdrawal = {'IRA': 0, 'roth': 0, 'aftertax': 0}
+        for j in range(len(accounttable)):
+            balance[accounttable[j]['acctype']] += res.x[index_b(year,j)]
+            withdrawal[accounttable[j]['acctype']] += res.x[index_w(year,j)]
+
         print(("%3d:" + " %7.0f" * 12 ) %
               (year+S.retireage, 
-              res.x[index_b(year,0)]/1000.0, res.x[index_w(year,0)]/1000.0, rmdref/1000.0, # IRA
-              res.x[index_b(year,1)]/1000.0, res.x[index_w(year,1)]/1000.0, # Roth
-              res.x[index_b(year,2)]/1000.0, res.x[index_w(year,2)]/1000.0, res.x[index_D(year)]/1000.0, # AftaTax
+              balance['IRA']/1000.0, withdrawal['IRA']/1000.0, rmdref/1000.0, # IRA
+              balance['roth']/1000.0, withdrawal['roth']/1000.0, # Roth
+              balance['aftertax']/1000.0, withdrawal['aftertax']/1000.0, res.x[index_D(year)]/1000.0, # AftaTax
               S.income[year]/1000.0, S.SS[year]/1000.0,
               (tax+cg_tax+earlytax)/1000.0, res.x[index_s(year)]/1000.0) )
         if csvf is not None:
             csvf.write(("%3d:" + ",%7.0f" * 12 ) %
               (year+S.retireage, 
-              res.x[index_b(year,0)], res.x[index_w(year,0)], rmdref, # IRA
-              res.x[index_b(year,1)], res.x[index_w(year,1)], # Roth
-              res.x[index_b(year,2)], res.x[index_w(year,2)], res.x[index_D(year)], # AftaTax
+              balance['IRA'], withdrawal['IRA'], rmdref, # IRA
+              balance['roth'], withdrawal['roth'], # Roth
+              balance['aftertax'], withdrawal['aftertax'], res.x[index_D(year)], # AftaTax
               S.income[year], S.SS[year],
               (tax+cg_tax+earlytax), res.x[index_s(year)]) )
             csvf.write('\n')
 
     year = S.numyr
+    balance = {'IRA': 0, 'roth': 0, 'aftertax': 0}
+    for j in range(len(accounttable)):
+        balance[accounttable[j]['acctype']] += res.x[index_b(year,j)]
     print(("%3d:" + " %7.0f %7s %7s" + " %7.0f %7s" * 2 + " %7s" * 5) %
         (year+S.retireage, 
-        res.x[index_b(year,0)], '-', '-',  # res.x[index_w(year,0)]/1000.0, # IRA
-        res.x[index_b(year,1)], '-', # res.x[index_w(year,1)]/1000.0, # Roth
-        res.x[index_b(year,2)], '-', # res.x[index_w(year,2)]/1000.0, # AftaTax
+        balance['IRA']/1000.0, '-', '-',  # res.x[index_w(year,0)]/1000.0, # IRA
+        balance['roth']/1000.0, '-', # res.x[index_w(year,1)]/1000.0, # Roth
+        balance['aftertax']/1000.0, '-', # res.x[index_w(year,2)]/1000.0, # AftaTax
         '-', '-', '-', '-', '-'))
     if csvf is not None:
         csvf.write(("%3d:" + ",%7.0f,%7s,%7s" + ",%7.0f,%7s" * 2 + ",%7s" * 5) %
         (year+S.retireage, 
-        res.x[index_b(year,0)], '-', '-',  # res.x[index_w(year,0)]/1000.0, # IRA
-        res.x[index_b(year,1)], '-', # res.x[index_w(year,1)]/1000.0, # Roth
-        res.x[index_b(year,2)], '-', # res.x[index_w(year,2)]/1000.0, # AftaTax
+        balance['IRA'], '-', '-',  # res.x[index_w(year,0)]/1000.0, # IRA
+        balance['roth'], '-', # res.x[index_w(year,1)]/1000.0, # Roth
+        balance['aftertax'], '-', # res.x[index_w(year,2)]/1000.0, # AftaTax
         '-', '-', '-', '-', '-'))
         csvf.write('\n')
+    printheader1()
+
+def print_account_trans(res, csvf):
+    def printheader1():
+        print(" age", end='')
+        if accmap['IRA'] >1:
+            print((" %7s" * 6) % ("IRA1", "fIRA1", "RMDref1", "IRA2", "fIRA2", "RMDref2"), end='')
+        else:
+            print((" %7s" * 3) % ("IRA", "fIRA", "RMDref"), end='')
+        if accmap['roth'] >1:
+            print((" %7s" * 4) % ("Roth1", "fRoth1", "Roth2", "fRoth2"), end='')
+        else:
+            print((" %7s" * 2) % ("Roth", "fRoth"), end='')
+        print((" %7s" * 3) % ("AftaTx", "fAftaTx", "tAftaTx"))
+        if csvf is not None:
+            csvf.write(" age")
+            if accmap['IRA'] >1:
+                csvf.write((",%7s" * 6) % ("IRA1", "fIRA1", "RMDref1", "IRA2", "fIRA2", "RMDref2"))
+            else:
+                csvf.write((",%7s" * 3) % ("IRA", "fIRA", "RMDref"))
+            if accmap['roth'] >1:
+                csvf.write((",%7s" * 4) % ("Roth1", "fRoth1", "Roth2", "fRoth2"))
+            else:
+                csvf.write((",%7s" * 2) % ("Roth", "fRoth"))
+            csvf.write((",%7s" * 3) % ("AftaTx", "fAftaTx", "tAftaTx"))
+            csvf.write('\n')
+
+    accmap = {'IRA': 0, 'roth': 0, 'aftertax': 0}
+    for j in range(len(accounttable)):
+        accmap[accounttable[j]['acctype']] += 1
+
+    print("\nAccount Transactions Summary:\n")
+    if csvf is not None:
+        csvf.write("\nAccount Transactions Summary:\n")
+        csvf.write('\n')
+    printheader1()
+    for year in range(S.numyr):
+        age = year + S.retireage #### who's age??? NEED BOTH!!!!
+        if age >= 70:
+            rmd = RMD[age - 70]
+            rmdref0 = res.x[index_b(year,0)]/rmd 
+        else:
+            rmdref0 = 0
+        rmdref1 = rmdref0 ### TODO need to fix this
+
+        print("%3d:" % (year+S.retireage), end='')
+        if accmap['IRA'] >1:
+            print((" %7.0f" * 6) % (
+              res.x[index_b(year,0)]/1000.0, res.x[index_w(year,0)]/1000.0, rmdref0/1000.0, # IRA1
+              res.x[index_b(year,1)]/1000.0, res.x[index_w(year,1)]/1000.0, rmdref1/1000.0), # IRA2
+                end='')
+        else:
+            print((" %7.0f" * 3) % (
+              res.x[index_b(year,0)]/1000.0, res.x[index_w(year,0)]/1000.0, rmdref0/1000.0), # IRA1
+                end='')
+        index = accmap['IRA']
+        if accmap['roth'] >1:
+            print((" %7.0f" * 4) % (
+              res.x[index_b(year,index)]/1000.0, res.x[index_w(year,index)]/1000.0, # roth1
+              res.x[index_b(year,index+1)]/1000.0, res.x[index_w(year,index+1)]/1000.0), # roth2
+                end='')
+        else:
+            print((" %7.0f" * 2) % (
+              res.x[index_b(year,index)]/1000.0, res.x[index_w(year,index)]/1000.0), # roth1
+                end='')
+        #print((" %7s" * 3) % ("AftaTx", "fAftaTx", "tAftaTx"))
+        index = accmap['IRA'] + accmap['roth']
+        assert index == len(accounttable)-1
+        print((" %7.0f" * 3) % (
+            res.x[index_b(year,index)]/1000.0, res.x[index_w(year,index)]/1000.0, res.x[index_D(year)]/1000.0)) # aftertax account
+        if csvf is not None:
+            csvf.write("%3d:" % (year+S.retireage))
+            if accmap['IRA'] >1:
+                csvf.write((",%7.0f" * 6) % (
+                    res.x[index_b(year,0)], res.x[index_w(year,0)], rmdref0, # IRA1
+                    res.x[index_b(year,1)], res.x[index_w(year,1)], rmdref1)) # IRA2
+            else:
+                csvf.write((",%7.0f" * 3) % (
+                    res.x[index_b(year,0)], res.x[index_w(year,0)], rmdref0)) # IRA1
+            index = accmap['IRA']
+            if accmap['roth'] >1:
+                csvf.write((",%7.0f" * 4) % (
+                    res.x[index_b(year,index)], res.x[index_w(year,index)], # roth1
+                    res.x[index_b(year,index+1)], res.x[index_w(year,index+1)])) # roth2
+            else:
+                csvf.write((",%7.0f" * 2) % (
+                    res.x[index_b(year,index)], res.x[index_w(year,index)])) # roth1
+            index = accmap['IRA'] + accmap['roth']
+            assert index == len(accounttable)-1
+            csvf.write((",%7.0f" * 3) % (
+                res.x[index_b(year,index)], res.x[index_w(year,index)], res.x[index_D(year)])) # aftertax account
+            csvf.write('\n')
     printheader1()
 
 def print_tax(res, csvf):
@@ -869,9 +932,9 @@ def print_tax_brackets(res, csvf):
         if csvf is not None:
             csvf.write(("%3d:" + ",%7.0f" * 6 ) %
               (year+S.retireage, 
-              res.x[index_w(year,0)]/1000.0, # IRA
-              S.taxed[year]/1000.0, SS_taxable*S.SS[year]/1000.0,
-              stded*i_mul/1000.0, T/1000.0, tax/1000.0))
+              res.x[index_w(year,0)], # IRA
+              S.taxed[year], SS_taxable*S.SS[year],
+              stded*i_mul, T, tax))
         bt = 0
         for k in range(len(taxtable)):
             print(" %6.0f" % res.x[index_x(year,k)], end='')
@@ -916,18 +979,19 @@ def print_cap_gains_brackets(res, csvf):
         f = 1 - (S.accounts['aftertax']['basis']/(S.accounts['aftertax']['bal']*S.accounts['aftertax']['rate']**year))
         T,spendable,tax,rate,cg_tax,earlytax = IncomeSummary(year)
         ttax = tax + cg_tax
+        j = len(accounttable)-1 # Aftertax / investment account always the last entry
         print(("%3d:" + " %7.0f" * 5 ) %
               (year+S.retireage, 
-              res.x[index_w(year,2)]/1000.0, # Aftertax / investment account
-              f*100, (f*res.x[index_w(year,2)])/1000.0, # non-basis fraction / cg taxable $ 
+              res.x[index_w(year,j)]/1000.0, # Aftertax / investment account
+              f*100, (f*res.x[index_w(year,j)])/1000.0, # non-basis fraction / cg taxable $ 
               T/1000.0, cg_tax/1000.0), 
               end='')
         if csvf is not None:
             csvf.write(("%3d:" + ",%7.0f" * 5 ) %
               (year+S.retireage, 
-              res.x[index_w(year,2)]/1000.0, # Aftertax / investment account
-              f*100, (f*res.x[index_w(year,2)])/1000.0, # non-basis fraction / cg taxable $ 
-              T/1000.0, cg_tax/1000.0))
+              res.x[index_w(year,j)], # Aftertax / investment account
+              f*100, (f*res.x[index_w(year,j)]), # non-basis fraction / cg taxable $ 
+              T, cg_tax))
         bt = 0
         bttax = 0
         for l in range(len(capgainstable)):
@@ -1041,7 +1105,10 @@ def IncomeSummary(year):
     ncg_tax = 0
     for l in range(len(capgainstable)):
         ncg_tax += res.x[index_y(year,l)]*capgainstable[l][2]
-    spendable = res.x[index_w(year,0)] + res.x[index_w(year,1)] + res.x[index_w(year,2)] - res.x[index_D(year)] + S.income[year] + S.SS[year] - tax -ncg_tax - earlytax
+    tot_withdrawals = 0
+    for j in range(len(accounttable)):
+        tot_withdrawals += res.x[index_w(year,j)] 
+    spendable = tot_withdrawals - res.x[index_D(year)] + S.income[year] + S.SS[year] - tax -ncg_tax - earlytax
     return T, spendable, tax, rate, ncg_tax, earlytax
 
 def get_result_totals(res):
@@ -1060,15 +1127,15 @@ def get_result_totals(res):
         if age >= 70:
             rmd = RMD[age - 70]
         T,spendable,tax,rate,cg_tax,earlytax = IncomeSummary(year)
-        twithd += res.x[index_w(year,0)] + res.x[index_w(year,1)] +res.x[index_w(year,2)]
+        tot_withdrawals = 0
+        for j in range(len(accounttable)):
+            tot_withdrawals += res.x[index_w(year,j)] 
+        twithd += tot_withdrawals 
         tincome += S.income[year] + S.SS[year] # + withdrawals
         ttax += tax 
         tcg_tax += cg_tax 
         tearlytax += earlytax
         tT += T
-        pv_twithd += (res.x[index_w(year,0)] + res.x[index_w(year,1)] )* discountR
-        pv_ttax += tax *discountR
-        pv_tT += T*discountR
         tspendable += spendable
     return twithd, tincome+twithd, tT, ttax, tcg_tax, tearlytax, tspendable
 
@@ -1152,6 +1219,7 @@ print("len(accounttable): ", len(accounttable)) # TODO remove me
 res = solve()
 consistancy_check(res)
 
+print_account_trans(res, csv_file)
 print_model_results(res, csv_file)
 if args.verbosetax:
     print_tax(res, csv_file)
