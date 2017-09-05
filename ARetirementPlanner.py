@@ -110,6 +110,7 @@ class Data:
                 entry['index'] = index
                 entry['estateTax'] = accountspecs[type]['tax']
                 entry['bal'] = v['bal']
+                entry['mykey'] = k
                 if type == 'IRA' or type == 'roth':
                     if 'maxcontrib' not in v:
                         mxcontrib = accountspecs[type]['maxcontrib']
@@ -117,7 +118,8 @@ class Data:
                         v['maxcontrib'] = mxcontrib
                     else:
                         entry['maxcontrib'] = v['maxcontrib']
-                else: # type == 'aftertax'
+                else:  
+                    assert type == 'aftertax'
                     if 'basis' not in v:
                         entry['basis'] = 0
                         v['basis'] = 0
@@ -130,37 +132,58 @@ class Data:
                     rate = 1 + v['rate'] / 100  # invest rate: 6 -> 1.06
                     entry['rate'] = rate
                     v['rate'] = rate
-                self.accounts[type] = v
+                self.accounts[type] = v # I think only for 'aftertax' basis calc TODO
                 lis_return.append(entry)
                 index += 1
+            return lis_return
+
+        def get_retiree_info():
+            type = 'iam'
+            rec = d.get(type, None)
+            if 'age' in rec: # Make uniform whether a single or multiple entries
+                d[type] = {type: rec}
+            indx = 0
+            lis_return = []
+            yearstoretire = [0,0]
+            yearsthrough = [0,0]
+            for k,v in d.get( type , {}).items():
+                entry = {}
+                entry['index'] = indx
+                entry['age'] = v['age']
+                entry['retire'] = v['retire']
+                if entry['retire'] < entry['age']:
+                    entry['retire'] = entry['age']
+                entry['through'] = v['through']
+                entry['mykey'] = k
+                yearstoretire[indx]=entry['retire']-entry['age']
+                yearsthrough[indx]=entry['through']-entry['retire']
+                lis_return.append(entry)
+                indx += 1
+            delta = lis_return[0]['age'] - lis_return[1]['age']
+            start = min(yearstoretire[0], yearstoretire[1])
+            end = max(yearsthrough[0], yearsthrough[1])
+            retire = min(lis_return[0]['retire'], lis_return[1]['retire'])
+            through = max(lis_return[0]['through'], lis_return[1]['through'])
             return lis_return
 
         self.accounttable = []
         with open(file) as conffile:
             d = toml.loads(conffile.read())
         
-        self.retirement_type = d.get('retirement_type') # single, joint,...
-        if not 'retirement_type' in d:
-            self.retirement_type = 'joint'
-
-        self.maximize = d.get('maximize') # what to maximize for: Spending or PlusEstate 
-        if not 'maximize' in d:
-            self.maximize = "Spending"
+        self.retirement_type = d.get('retirement_type', 'joint') # single, joint,...
+        self.maximize = d.get('maximize',"Spending") # what to maximize for: Spending or PlusEstate 
 
         self.i_rate = 1 + d.get('inflation', 0) / 100       # inflation rate: 2.5 -> 1.025
         self.r_rate = 1 + d.get('returns', 6) / 100         # invest rate: 6 -> 1.06
 
-        self.startage = d['startage']
-        self.endage = d.get('endage', max(96, self.startage+5))
-        if 'prep' in d:
-            self.workyr = d['prep']['workyears']
-            self.maxsave = d['prep']['maxsave']
-            self.worktax = 1 + d['prep'].get('tax_rate', 25)/100
-        else:
-            self.workyr = 0
-        self.retireage = self.startage + self.workyr
-        self.numyr = self.endage - self.retireage
+        startage = d['startage']
+        endage = d.get('endage', max(96, startage+5))
+        self.retireage = startage 
+        self.numyr = endage - self.retireage
 
+        self.retiree = get_retiree_info() # returns entry for each retiree
+        print("\nself.retiree: ", self.retiree, "\n\n")
+        
         self.accounttable += get_account_info('IRA') # returns entry for each account
         self.accounttable += get_account_info('roth') 
         self.accounttable += get_account_info('aftertax') 
@@ -168,6 +191,8 @@ class Data:
 
         self.SSinput = [{}, {}] 
         self.parse_expenses(d)
+
+        print("input dictionary(processed): ", d)
 
     def parse_expenses(self, S):
         """ Return array of income/expense per year """
