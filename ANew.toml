@@ -5,12 +5,12 @@
 
 # most fields are options and have resonable defaults
 
-retirement_type = 'joint' # could be single, joint (married), ??? TODO
+#retirement_type = 'joint' # could be single, joint (married), ??? TODO
 
 returns = 6		# return rate of investments
-inflation = 2.5		# yearly inflation rate
+inflation = 2.5	# yearly inflation rate
 
-# what to optimize for?
+# what to optimize for? 'Spending' or spending 'PlusEstate'
 #maximize = "PlusEstate"
 
 # age range to simulate
@@ -18,18 +18,22 @@ startage = 58   # Ragsday.py does not handle younger than age 60
 #startage = 68   # Ragsday.py does not handle younger than age 60
 endage = 72	# stops at 99
 
-# this section convers the working before retirement starts
-#[prep]
-#workyears = 2      # we retire at startage + 10
-#maxsave = 0     # and save up $60k/yr (pre-tax)
-#tax_rate = 25       # in 25% bracket while working
+[iam.spouse]
+age = 54
+retire = 60
+through = 75 # needs documenting: assumes on death all accounts go to survivor
 
-[SocialSecurity.my]
+[iam.me] # iam (for each) is required in some joint cases (".xxx" use to match accounts IRA/roth)
+age = 56
+retire = 58
+through = 72
+
+[SocialSecurity.me]
 amount =  31000  # $31,000 at Full Retirement Age (FRA); Assumes inflation, 85% taxed
 FRA = 67
 age = "68-"
 
-[SocialSecurity.spouce]
+[SocialSecurity.spouse]
 amount = 21000  # -1 for default spouse amount, amount at Full Retirement Age (FRA); Assumes inflation, 85% taxed
 FRA = 67
 age = "70-"
@@ -71,20 +75,20 @@ tax = true          # count this as income tax
 
 # after tax savings accounts
 [aftertax]
-bal =   700000
-basis = 400000		# for capital gains tax
+bal =   700_000
+basis = 400_000		# for capital gains tax
 
 # pre-tax IRA accounts
-[IRA]
-bal = 2000000
+[IRA.me]
+#[IRA]
+bal = 2_000_000
 #rate = 7.25
 maxcontrib = 00
 
+[IRA.spouse]
+bal = 200_000
+
 # roth IRA accounts
-# in the future this will include the ability to separate contributions
-# from the account value and include the dates of the recent contributions.
-# Right now it is all a single contribution at the start of file plan
-# because the author just did a rollover. ;-)
-[roth]
-bal = 100000
+[roth.spouse]
+bal = 100_000
 maxcontrib = 000

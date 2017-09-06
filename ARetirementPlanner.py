@@ -95,6 +95,27 @@ def agelist(str):
             raise Exception("Bad age " + str)
 
 class Data:
+    def rmd_needed(self,year,retireekey):
+        rmd = 0
+        #print("RMD_NEEDED: year: %d, retireekey: %s" % (year, retireekey))
+        for v in self.retiree:
+            #print("    retiree: ", v)
+            if v['mykey'] == retireekey:
+                age = v['ageAtStart']+year
+                if age >= 70: # IRA retirement: minimum distribution starting age 70.5 
+                    rmd = RMD[age - 70]
+                    #print("rmd: %d, age: %d, retiree: %s" % (rmd, age, retireekey))
+        return rmd
+
+    def apply_early_penalty(self,year,retireekey):
+        response = False
+        for v in self.retiree:
+            if v['mykey'] == retireekey:
+                age = v['ageAtStart']+year
+                if age < 60: # IRA retirement account require penalty if withdrawn before age 59.5
+                    response = True
+        return response
+
     def load_file(self, file):
         self.accounts = {}
 
@@ -156,15 +177,19 @@ class Data:
                 entry['through'] = v['through']
                 entry['mykey'] = k
                 yearstoretire[indx]=entry['retire']-entry['age']
-                yearsthrough[indx]=entry['through']-entry['retire']
+                yearsthrough[indx]=entry['through']-entry['age']+1
                 lis_return.append(entry)
                 indx += 1
             delta = lis_return[0]['age'] - lis_return[1]['age']
-            start = min(yearstoretire[0], yearstoretire[1])
-            end = max(yearsthrough[0], yearsthrough[1])
-            retire = min(lis_return[0]['retire'], lis_return[1]['retire'])
-            through = max(lis_return[0]['through'], lis_return[1]['through'])
-            return lis_return
+            start = min(yearstoretire[0], yearstoretire[1]) + lis_return[0]['age']
+            lis_return[0]['ageAtStart'] = start
+            if indx > 1:
+                lis_return[1]['ageAtStart'] = start - delta
+            print("START AGE: %d" % lis_return[0]['ageAtStart'])
+            print("START AGE: %d" % lis_return[1]['ageAtStart'])
+            end = max(yearsthrough[0], yearsthrough[1])+lis_return[0]['age']
+            print("delta: %d, start: %d, end: %d, numyr: %d" %(delta, start, end, end-start))
+            return lis_return, start, end-start 
 
         self.accounttable = []
         with open(file) as conffile:
@@ -176,18 +201,19 @@ class Data:
         self.i_rate = 1 + d.get('inflation', 0) / 100       # inflation rate: 2.5 -> 1.025
         self.r_rate = 1 + d.get('returns', 6) / 100         # invest rate: 6 -> 1.06
 
-        startage = d['startage']
-        endage = d.get('endage', max(96, startage+5))
-        self.retireage = startage 
-        self.numyr = endage - self.retireage
+        #startage = d['startage']
+        #endage = d.get('endage', max(96, startage+5))
+        #self.retireage = startage 
+        #self.numyr = endage - self.retireage
 
-        self.retiree = get_retiree_info() # returns entry for each retiree
+        self.retiree, self.startage, self.numyr = get_retiree_info() # returns entry for each retiree
+        self.retireage = self.startage 
         print("\nself.retiree: ", self.retiree, "\n\n")
         
         self.accounttable += get_account_info('IRA') # returns entry for each account
         self.accounttable += get_account_info('roth') 
         self.accounttable += get_account_info('aftertax') 
-        #print("++Accounttable: ", self.accounttable)
+        print("++Accounttable: ", self.accounttable)
 
         self.SSinput = [{}, {}] 
         self.parse_expenses(d)
@@ -216,7 +242,7 @@ class Data:
                 fraamount = v['amount']
                 fraage = v['FRA']
                 agestr = v['age']
-                if fraamount < 0 and sections == 1:
+                if fraamount < 0 and sections == 1: # default spousal support in second slot
                     self.SSinput[1] = {'key': k, 'amount': fraamount, 'fra': fraage, 'agestr': agestr}
                 else:
                     self.SSinput[index] = {'key': k, 'amount': fraamount, 'fra': fraage, 'agestr': agestr}
@@ -239,7 +265,7 @@ class Data:
                     amount = startamount(fraamount, fraage, disperseage)
                 #print("FRA: %d, FRAamount: %6.0f, Age: %s, amount: %6.0f" % (fraage, fraamount, agestr, amount))
                 for age in agelist(agestr):
-                    year = age - self.retireage
+                    year = age - self.startage
                     if year < 0:
                         continue
                     elif year >= self.numyr:
@@ -252,7 +278,7 @@ class Data:
         def do_details(category, bucket, tax):
             for k,v in S.get(category, {}).items():
                 for age in agelist(v['age']):
-                    year = age - self.retireage
+                    year = age - self.startage
                     if year < 0:
                         continue
                     elif year >= self.numyr:
@@ -324,39 +350,16 @@ def solve():
         for j in range(len(accounttable)):
             c[index_b(S.numyr,j)] = -1*balancer *accounttable[j]['estateTax'] # balance and discount rate
     
-    """
-    #
-    # Add constraint (2' as imp)
-    #
-    for year in range(S.numyr):
-        row = [0] * nvars
-        for j in range(len(accounttable)-1):
-            age = year + S.retireage
-            if age < 60:
-                p = 1-penalty
-            else:
-                p = 1
-            row[index_w(year,j)] = -1*p 
-        for k in range(len(taxtable)): 
-            row[index_x(year,k)] = taxtable[k][2] # income tax
-        f = 1 - (S.aftertax['basis']/(S.aftertax['bal']*S.aftertax['rate']**year))
-        row[index_w(year,2)] = cg_tax_rate*f-1 #  cap gains tax #over writes the -1 above
-        row[index_D(year)] = 1
-        row[index_s(year)] = 1
-        A+=[row]
-        b+=[S.income[year] + S.SS[year]]
-    """
     #
     # Add constraint (2' try)
     #
     for year in range(S.numyr):
         row = [0] * nvars
         for j in range(len(accounttable)):
-            age = year + S.retireage
-            if age < 60 and accounttable[j]['acctype'] != 'aftertax':
-                p = 1-penalty
-            else:
-                p = 1
+            p = 1
+            if accounttable[j]['acctype'] != 'aftertax':
+                if S.apply_early_penalty(year,accounttable[j]['mykey']):
+                    p = 1-penalty
             row[index_w(year,j)] = -1*p 
         for k in range(len(taxtable)): 
             row[index_x(year,k)] = taxtable[k][2] # income tax
@@ -408,14 +411,15 @@ def solve():
     # Add constaints for (6') rows
     #
     for year in range(S.numyr):
-        age = year + S.retireage
-        if age >= 70:
-            row = [0] * nvars
-            rmd = RMD[age - 70]
-            row[index_b(year,0)] = 1/rmd #Account 0 is TDRA
-            row[index_w(year,0)] = -1
-            A+=[row]
-            b+=[0]
+        for j in range(2): # at most the first two accounts are type IRA w/ RMD requirement
+            if accounttable[j]['acctype'] == 'IRA':
+                rmd = S.rmd_needed(year,accounttable[j]['mykey'])
+                if rmd > 0:
+                    row = [0] * nvars
+                    row[index_b(year,j)] = 1/rmd 
+                    row[index_w(year,j)] = -1
+                    A+=[row]
+                    b+=[0]
 
     #
     # Add constraints for (7a')
@@ -701,7 +705,8 @@ def consistancy_check(res):
         #TaxableOrdinary = res.x[index_w(year,0)] + S.income[year] -stded*i_mul
         TaxableOrdinary = OrdinaryTaxable(year)
         if (TaxableOrdinary + 0.1 < s) or (TaxableOrdinary - 0.1 > s):
-            print("Error: Expected (age:%d) Taxable Ordinary income %6.2f doesn't match bracket sum %6.2f" % ( year + S.retireage, TaxableOrdinary,s))
+            print("Error: Expected (age:%d) Taxable Ordinary income %6.2f doesn't match bracket sum %6.2f" % 
+                (year + S.startage, TaxableOrdinary,s))
 
         for j in range(len(accounttable)-1):
             if res.x[index_b(year+1,j)] -( res.x[index_b(year,j)] - res.x[index_w(year,j)])*accounttable[0]['rate']>1:
@@ -737,13 +742,15 @@ def print_model_results(res, csvf):
     printheader1()
     for year in range(S.numyr):
         i_mul = S.i_rate ** year
-        age = year + S.retireage
+        age = year + S.startage
         T,spendable,tax,rate,cg_tax,earlytax = IncomeSummary(year)
-        if age >= 70:
-            rmd = RMD[age - 70]
-            rmdref = res.x[index_b(year,0)]/rmd 
-        else:
-            rmdref = 0
+
+        rmdref = 0
+        for j in range(2): # at most the first two accounts are type IRA w/ RMD requirement
+            if accounttable[j]['acctype'] == 'IRA':
+                rmd = S.rmd_needed(year,accounttable[j]['mykey'])
+                if rmd > 0:
+                    rmdref += res.x[index_b(year,j)]/rmd 
 
         balance = {'IRA': 0, 'roth': 0, 'aftertax': 0}
         withdrawal = {'IRA': 0, 'roth': 0, 'aftertax': 0}
@@ -752,7 +759,7 @@ def print_model_results(res, csvf):
             withdrawal[accounttable[j]['acctype']] += res.x[index_w(year,j)]
 
         print(("%3d:" + " %7.0f" * 12 ) %
-              (year+S.retireage, 
+              (year+S.startage, 
               balance['IRA']/1000.0, withdrawal['IRA']/1000.0, rmdref/1000.0, # IRA
               balance['roth']/1000.0, withdrawal['roth']/1000.0, # Roth
               balance['aftertax']/1000.0, withdrawal['aftertax']/1000.0, res.x[index_D(year)]/1000.0, # AftaTax
@@ -760,7 +767,7 @@ def print_model_results(res, csvf):
               (tax+cg_tax+earlytax)/1000.0, res.x[index_s(year)]/1000.0) )
         if csvf is not None:
             csvf.write(("%3d:" + ",%7.0f" * 12 ) %
-              (year+S.retireage, 
+              (year+S.startage, 
               balance['IRA'], withdrawal['IRA'], rmdref, # IRA
               balance['roth'], withdrawal['roth'], # Roth
               balance['aftertax'], withdrawal['aftertax'], res.x[index_D(year)], # AftaTax
@@ -773,14 +780,14 @@ def print_model_results(res, csvf):
     for j in range(len(accounttable)):
         balance[accounttable[j]['acctype']] += res.x[index_b(year,j)]
     print(("%3d:" + " %7.0f %7s %7s" + " %7.0f %7s" * 2 + " %7s" * 5) %
-        (year+S.retireage, 
+        (year+S.startage, 
         balance['IRA']/1000.0, '-', '-',  # res.x[index_w(year,0)]/1000.0, # IRA
         balance['roth']/1000.0, '-', # res.x[index_w(year,1)]/1000.0, # Roth
         balance['aftertax']/1000.0, '-', # res.x[index_w(year,2)]/1000.0, # AftaTax
         '-', '-', '-', '-', '-'))
     if csvf is not None:
         csvf.write(("%3d:" + ",%7.0f,%7s,%7s" + ",%7.0f,%7s" * 2 + ",%7s" * 5) %
-        (year+S.retireage, 
+        (year+S.startage, 
         balance['IRA'], '-', '-',  # res.x[index_w(year,0)]/1000.0, # IRA
         balance['roth'], '-', # res.x[index_w(year,1)]/1000.0, # Roth
         balance['aftertax'], '-', # res.x[index_w(year,2)]/1000.0, # AftaTax
@@ -823,19 +830,19 @@ def print_account_trans(res, csvf):
         csvf.write('\n')
     printheader1()
     for year in range(S.numyr):
-        age = year + S.retireage #### who's age??? NEED BOTH!!!!
-        if age >= 70:
-            rmd = RMD[age - 70]
-            rmdref0 = res.x[index_b(year,0)]/rmd 
-        else:
-            rmdref0 = 0
-        rmdref1 = rmdref0 ### TODO need to fix this
+        #age = year + S.startage #### who's age??? NEED BOTH!!!!
+        rmdref = [0,0]
+        for j in range(2): # at most the first two accounts are type IRA w/ RMD requirement
+            if accounttable[j]['acctype'] == 'IRA':
+                rmd = S.rmd_needed(year,accounttable[j]['mykey'])
+                if rmd > 0:
+                    rmdref[j] = res.x[index_b(year,j)]/rmd 
 
-        print("%3d:" % (year+S.retireage), end='')
+        print("%3d:" % (year+S.startage), end='')
         if accmap['IRA'] >1:
             print((" %7.0f" * 6) % (
-              res.x[index_b(year,0)]/1000.0, res.x[index_w(year,0)]/1000.0, rmdref0/1000.0, # IRA1
-              res.x[index_b(year,1)]/1000.0, res.x[index_w(year,1)]/1000.0, rmdref1/1000.0), # IRA2
+              res.x[index_b(year,0)]/1000.0, res.x[index_w(year,0)]/1000.0, rmdref[0]/1000.0, # IRA1
+              res.x[index_b(year,1)]/1000.0, res.x[index_w(year,1)]/1000.0, rmdref[1]/1000.0), # IRA2
                 end='')
         else:
             print((" %7.0f" * 3) % (
@@ -857,11 +864,11 @@ def print_account_trans(res, csvf):
         print((" %7.0f" * 3) % (
             res.x[index_b(year,index)]/1000.0, res.x[index_w(year,index)]/1000.0, res.x[index_D(year)]/1000.0)) # aftertax account
         if csvf is not None:
-            csvf.write("%3d:" % (year+S.retireage))
+            csvf.write("%3d:" % (year+S.startage))
             if accmap['IRA'] >1:
                 csvf.write((",%7.0f" * 6) % (
-                    res.x[index_b(year,0)], res.x[index_w(year,0)], rmdref0, # IRA1
-                    res.x[index_b(year,1)], res.x[index_w(year,1)], rmdref1)) # IRA2
+                    res.x[index_b(year,0)], res.x[index_w(year,0)], rmdref[0], # IRA1
+                    res.x[index_b(year,1)], res.x[index_w(year,1)], rmdref[1])) # IRA2
             else:
                 csvf.write((",%7.0f" * 3) % (
                     res.x[index_b(year,0)], res.x[index_w(year,0)], rmdref0)) # IRA1
@@ -895,7 +902,7 @@ def print_tax(res, csvf):
         csvf.write("\n")
     printheader_tax()
     for year in range(S.numyr):
-        age = year + S.retireage
+        age = year + S.startage
         i_mul = S.i_rate ** year
         T,spendable,tax,rate,cg_tax,earlytax = IncomeSummary(year)
         f = 1 - (S.accounts['aftertax']['basis']/(S.accounts['aftertax']['bal']*S.accounts['aftertax']['rate']**year))
@@ -905,7 +912,7 @@ def print_tax(res, csvf):
         for j in range(len(accounttable)):
             withdrawal[accounttable[j]['acctype']] += res.x[index_w(year,j)]
         print(("%3d:" + " %7.0f" * 13 ) %
-              (year+S.retireage, 
+              (year+S.startage, 
                 withdrawal['IRA']/1000.0, # sum IRA
               S.taxed[year]/1000.0, SS_taxable*S.SS[year]/1000.0,
               stded*i_mul/1000.0, T/1000.0, earlytax/1000.0, tax/1000.0, rate*100, 
@@ -914,7 +921,7 @@ def print_tax(res, csvf):
               ttax/1000.0, res.x[index_s(year)]/1000.0 ))
         if csvf is not None:
             csvf.write(("%3d:" + ",%7.0f" * 13 ) %
-              (year+S.retireage, 
+              (year+S.startage, 
                 withdrawal['IRA'], # sum IRA
               S.taxed[year], SS_taxable*S.SS[year],
               stded*i_mul, T, earlytax, tax, rate*100, 
@@ -953,19 +960,19 @@ def print_tax_brackets(res, csvf):
         csvf.write("\n")
     printheader_tax_brackets()
     for year in range(S.numyr):
-        age = year + S.retireage
+        age = year + S.startage
         i_mul = S.i_rate ** year
         T,spendable,tax,rate,cg_tax,earlytax = IncomeSummary(year)
         ttax = tax + cg_tax
         print(("%3d:" + " %7.0f" * 6 ) %
-              (year+S.retireage, 
+              (year+S.startage, 
               res.x[index_w(year,0)]/1000.0, # IRA
               S.taxed[year]/1000.0, SS_taxable*S.SS[year]/1000.0,
               stded*i_mul/1000.0, T/1000.0, tax/1000.0), 
               end='')
         if csvf is not None:
             csvf.write(("%3d:" + ",%7.0f" * 6 ) %
-              (year+S.retireage, 
+              (year+S.startage, 
               res.x[index_w(year,0)], # IRA
               S.taxed[year], SS_taxable*S.SS[year],
               stded*i_mul, T, tax))
@@ -1008,21 +1015,21 @@ def print_cap_gains_brackets(res, csvf):
         csvf.write ("\n")
     printheader_capgains_brackets()
     for year in range(S.numyr):
-        age = year + S.retireage
+        age = year + S.startage
         i_mul = S.i_rate ** year
         f = 1 - (S.accounts['aftertax']['basis']/(S.accounts['aftertax']['bal']*S.accounts['aftertax']['rate']**year))
         T,spendable,tax,rate,cg_tax,earlytax = IncomeSummary(year)
         ttax = tax + cg_tax
         j = len(accounttable)-1 # Aftertax / investment account always the last entry
         print(("%3d:" + " %7.0f" * 5 ) %
-              (year+S.retireage, 
+              (year+S.startage, 
               res.x[index_w(year,j)]/1000.0, # Aftertax / investment account
               f*100, (f*res.x[index_w(year,j)])/1000.0, # non-basis fraction / cg taxable $ 
               T/1000.0, cg_tax/1000.0), 
               end='')
         if csvf is not None:
             csvf.write(("%3d:" + ",%7.0f" * 5 ) %
-              (year+S.retireage, 
+              (year+S.startage, 
               res.x[index_w(year,j)], # Aftertax / investment account
               f*100, (f*res.x[index_w(year,j)]), # non-basis fraction / cg taxable $ 
               T, cg_tax))
@@ -1128,11 +1135,12 @@ def IncomeSummary(year):
     #
     # return OrdinaryTaxable, Spendable, Tax, Rate, CG_Tax
     # Need to account for withdrawals from IRA deposited in Investment account NOT SPENDABLE
-    age = year + S.retireage
-    if age < 60:
-        earlytax = res.x[index_w(year,0)]*penalty + res.x[index_w(year,1)]*penalty
-    else:
-        earlytax = 0
+    age = year + S.startage
+    earlytax = 0
+    for j in range(len(accounttable)):
+        if accounttable[j]['acctype'] != 'aftertax':
+            if S.apply_early_penalty(year,accounttable[j]['mykey']):
+                earlytax += res.x[index_w(year,j)]*penalty
     T = OrdinaryTaxable(year)
     cut, size, rate, base, brak_amount, sum_brackets = get_max_bracket(year, T, False)
     #tax = brak_amount * rate + base
@@ -1161,9 +1169,9 @@ def get_result_totals(res):
     for year in range(S.numyr):
         i_mul = S.i_rate ** year
         discountR = S.i_rate**-year # use rate of inflation as discount rate
-        age = year + S.retireage
-        if age >= 70:
-            rmd = RMD[age - 70]
+        #age = year + S.startage
+        #if age >= 70:
+        #    rmd = RMD[age - 70]
         T,spendable,tax,rate,cg_tax,earlytax = IncomeSummary(year)
         tot_withdrawals = 0
         for j in range(len(accounttable)):
