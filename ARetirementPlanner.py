@@ -95,34 +95,58 @@ def agelist(str):
             raise Exception("Bad age " + str)
 
 class Data:
-    def rmd_needed(self,year,retireekey):
-        rmd = 0
-        #print("RMD_NEEDED: year: %d, retireekey: %s" % (year, retireekey))
+    def check_record(self, dict, type, fields):
+        ##
+        ## This routine looks a the categories and they labeled components (keys) to 
+        ## ensure a uniform structure for later processing
+        ##
+        rec = dict.get(type,{}) 
+        temp = {}
+        numNotIn = 0
+        numIn = 0
+        for f in rec:
+            if f not in fields:
+                numNotIn += 1
+                #print("\nWarning: field(%s) does not match record(%s) fields, fixing up."%(f,type))
+                temp = {f: rec[f]}
+            else:
+                numIn += 1
+        if numIn > 0: # and numNotIn > 0:
+            for f in temp:
+                del rec[f]
+            dict[type] = {'nokey': rec} # add the 'nokey' key for the record without a key value
+            for f in temp:
+                dict[type][f] = temp[f]
+
+    def match_retiree(self, retireekey):
         for v in self.retiree:
             #print("    retiree: ", v)
             if v['mykey'] == retireekey:
-                age = v['ageAtStart']+year
-                if age >= 70: # IRA retirement: minimum distribution starting age 70.5 
-                    rmd = RMD[age - 70]
-                    #print("rmd: %d, age: %d, retiree: %s" % (rmd, age, retireekey))
+                return v
+        return None
+        
+    def rmd_needed(self,year,retireekey):
+        rmd = 0
+        #print("RMD_NEEDED: year: %d, retireekey: %s" % (year, retireekey))
+        v = self.match_retiree(retireekey)
+        age = v['ageAtStart']+year
+        if age >= 70: # IRA retirement: minimum distribution starting age 70.5 
+            rmd = RMD[age - 70]
+            #print("rmd: %d, age: %d, retiree: %s" % (rmd, age, retireekey))
         return rmd
 
     def apply_early_penalty(self,year,retireekey):
         response = False
-        for v in self.retiree:
-            if v['mykey'] == retireekey:
-                age = v['ageAtStart']+year
-                if age < 60: # IRA retirement account require penalty if withdrawn before age 59.5
-                    response = True
+        v = self.match_retiree(retireekey)
+        age = v['ageAtStart']+year
+        if age < 60: # IRA retirement account require penalty if withdrawn before age 59.5
+            response = True
         return response
 
     def load_file(self, file):
         self.accounts = {}
 
         def get_account_info(type):
-            rec = d.get(type, {'bal':0})
-            if 'bal' in rec: # Make uniform whether a single or multiple entries
-                d[type] = {'akey': rec}
             index = 0
             lis_return = []
             for k,v in d.get( type , {}).items():
@@ -133,6 +157,10 @@ class Data:
                 entry['bal'] = v['bal']
                 entry['mykey'] = k
                 if type == 'IRA' or type == 'roth':
+                    r = self.match_retiree(k)
+                    if r is None:
+                        print("Error: Account must match a retiree\n\t[%s.%s] should match [iam.%s] but there is no [iam.%s]\n"%(type,k,k,k))
+                        exit(1)
                     if 'maxcontrib' not in v:
                         mxcontrib = accountspecs[type]['maxcontrib']
                         entry['maxcontrib'] = mxcontrib
@@ -160,15 +188,13 @@ class Data:
 
         def get_retiree_info():
             type = 'iam'
-            rec = d.get(type, None)
-            if 'age' in rec: # Make uniform whether a single or multiple entries
-                d[type] = {type: rec}
             indx = 0
             lis_return = []
             yearstoretire = [0,0]
             yearsthrough = [0,0]
             for k,v in d.get( type , {}).items():
                 entry = {}
+                entry['primary'] = v.get('primary', False) 
                 entry['index'] = indx
                 entry['age'] = v['age']
                 entry['retire'] = v['retire']
@@ -180,21 +206,51 @@ class Data:
                 yearsthrough[indx]=entry['through']-entry['age']+1
                 lis_return.append(entry)
                 indx += 1
-            delta = lis_return[0]['age'] - lis_return[1]['age']
-            start = min(yearstoretire[0], yearstoretire[1]) + lis_return[0]['age']
+            delta = 0
+            start = entry['retire']
             lis_return[0]['ageAtStart'] = start
+            end = yearsthrough[0]+lis_return[0]['age']
+            primaryIndx = 0
+            secondaryIndx = 1
             if indx > 1:
-                lis_return[1]['ageAtStart'] = start - delta
-            print("START AGE: %d" % lis_return[0]['ageAtStart'])
-            print("START AGE: %d" % lis_return[1]['ageAtStart'])
-            end = max(yearsthrough[0], yearsthrough[1])+lis_return[0]['age']
-            print("delta: %d, start: %d, end: %d, numyr: %d" %(delta, start, end, end-start))
-            return lis_return, start, end-start 
+                if lis_return[0]['primary'] == lis_return[1]['primary']:
+                    print("Error: one of two retirees must be primary (i.e., primary = true):")
+                    print("    [iam.%s] primary == %s" % (lis_return[0]['mykey'], lis_return[0]['primary']))
+                    print("    [iam.%s] primary == %s" % (lis_return[1]['mykey'], lis_return[1]['primary']))
+                    exit(1)
+                if lis_return[1]['primary'] == True:
+                    primaryIndx = 1
+                    secondaryIndx = 0
+                delta = lis_return[primaryIndx]['age'] - lis_return[secondaryIndx]['age']
+                start = min(yearstoretire[0], yearstoretire[1]) + lis_return[primaryIndx]['age']
+                lis_return[primaryIndx]['ageAtStart'] = start
+                lis_return[secondaryIndx]['ageAtStart'] = start - delta
+                end = max(yearsthrough[0], yearsthrough[1])+lis_return[primaryIndx]['age']
+            #print("delta: %d, start: %d, end: %d, numyr: %d" %(delta, start, end, end-start))
+            return lis_return, start, end-start, lis_return[primaryIndx]['mykey']
 
         self.accounttable = []
         with open(file) as conffile:
             d = toml.loads(conffile.read())
+        #print("\n\nun tarnished dict: ", d)
+        #for f in d:
+        #    print("\ndict[%s] = " % (f),d[f])
+        #print()
         
+        self.check_record( d, 'iam', ('age', 'retire', 'through', 'primary'))
+        self.check_record( d, 'SocialSecurity', ('FRA', 'age', 'amount'))
+        self.check_record( d, 'IRA', ('bal', 'rate', 'maxcontrib'))
+        self.check_record( d, 'roth', ('bal', 'rate', 'maxcontrib'))
+        self.check_record( d, 'aftertax', ('bal', 'rate', 'basis'))
+        self.check_record( d, 'expense', ('amount', 'age', 'inflation', 'tax'))
+        self.check_record( d, 'income', ('amount', 'age', 'inflation', 'tax'))
+        self.check_record( d, 'desired', ('amount', 'age', 'inflation', 'tax'))
+        self.check_record( d, 'max', ('amount', 'age', 'inflation', 'tax'))
+        #print("\n\ntarnished dict: ", d)
+        #for f in d:
+        #    print("\ndict[%s] = " % (f),d[f])
+        #print()
+        #exit(0)
         self.retirement_type = d.get('retirement_type', 'joint') # single, joint,...
         self.maximize = d.get('maximize',"Spending") # what to maximize for: Spending or PlusEstate 
 
@@ -205,20 +261,22 @@ class Data:
         #endage = d.get('endage', max(96, startage+5))
         #self.retireage = startage 
         #self.numyr = endage - self.retireage
+        #print("input dictionary(processed): ", d)
 
-        self.retiree, self.startage, self.numyr = get_retiree_info() # returns entry for each retiree
-        self.retireage = self.startage 
+        self.retiree, self.startage, self.numyr, self.who = get_retiree_info() # returns entry for each retiree
+        #self.retireage = self.startage 
         print("\nself.retiree: ", self.retiree, "\n\n")
         
+        #print("input dictionary(processed): ", d)
         self.accounttable += get_account_info('IRA') # returns entry for each account
         self.accounttable += get_account_info('roth') 
         self.accounttable += get_account_info('aftertax') 
-        print("++Accounttable: ", self.accounttable)
+        #print("++Accounttable: ", self.accounttable)
 
         self.SSinput = [{}, {}] 
         self.parse_expenses(d)
 
-        print("input dictionary(processed): ", d)
+        #print("input dictionary(processed): ", d)
 
     def parse_expenses(self, S):
         """ Return array of income/expense per year """
@@ -236,16 +294,22 @@ class Data:
         def do_SS_details(bucket):
             sections = 0
             index = 0
-            for k,v in S.get( 'SocialSecurity' , {}).items():
+            type = 'SocialSecurity'
+            for k,v in S.get( type , {}).items():
                 sections += 1
-                #print("key: ", k, ", value: ", v)
+                ### TODO add check that [soscial_security.xxx] matches an [iam.xxx]
+                r = self.match_retiree(k)
+                if r is None:
+                    print("Error: [%s.%s] must match a retiree\n\t[%s.%s] should match [iam.%s] but there is no [iam.%s]\n"%(type,k,type,k,k,k))
+                    exit(1)
                 fraamount = v['amount']
                 fraage = v['FRA']
                 agestr = v['age']
+                dt = {'key': k, 'amount': fraamount, 'fra': fraage, 'agestr': agestr, 'ageAtStart': r['ageAtStart']}
                 if fraamount < 0 and sections == 1: # default spousal support in second slot
-                    self.SSinput[1] = {'key': k, 'amount': fraamount, 'fra': fraage, 'agestr': agestr}
+                    self.SSinput[1] = dt
                 else:
-                    self.SSinput[index] = {'key': k, 'amount': fraamount, 'fra': fraage, 'agestr': agestr}
+                    self.SSinput[index] = dt
                     index += 1
 
             for i in range(sections):
@@ -255,6 +319,7 @@ class Data:
                 disperseage = next(firstage)
                 fraage = self.SSinput[i]['fra']
                 fraamount = self.SSinput[i]['amount']
+                ageAtStart = self.SSinput[i]['ageAtStart']
                 if fraamount < 0:
                     assert i == 1
                     fraamount = self.SSinput[0]['amount']/2 # TODO check to verify the startamount() is correct for this case
@@ -265,7 +330,7 @@ class Data:
                     amount = startamount(fraamount, fraage, disperseage)
                 #print("FRA: %d, FRAamount: %6.0f, Age: %s, amount: %6.0f" % (fraage, fraamount, agestr, amount))
                 for age in agelist(agestr):
-                    year = age - self.startage
+                    year = age - ageAtStart #self.startage
                     if year < 0:
                         continue
                     elif year >= self.numyr:
@@ -276,8 +341,11 @@ class Data:
                         bucket[year] += adj_amount
 
         def do_details(category, bucket, tax):
+            #print("CAT: %s" % category)
             for k,v in S.get(category, {}).items():
+                #print("K = %s, v = " % k,v)
                 for age in agelist(v['age']):
+                    #print("age %d, startage %d, year %d" % (age, self.startage, age-self.startage))
                     year = age - self.startage
                     if year < 0:
                         continue
@@ -285,9 +353,12 @@ class Data:
                         break
                     else:
                         amount = v['amount']
+                        #print("amount %6.0f, " % (amount), end='')
                         if v.get('inflation'):
                             amount *= self.i_rate ** year
+                        #print("inf amount %6.0f, year %d, curbucket %6.0f" % (amount , year, bucket[year]), end='')
                         bucket[year] += amount
+                        #print("newbucket %6.0f" % (bucket[year]))
                         if tax != 0 and v.get('tax'):
                             tax[year] += amount
 
@@ -411,7 +482,7 @@ def solve():
     # Add constaints for (6') rows
     #
     for year in range(S.numyr):
-        for j in range(2): # at most the first two accounts are type IRA w/ RMD requirement
+        for j in range(min(2,len(accounttable))): # at most the first two accounts are type IRA w/ RMD requirement
             if accounttable[j]['acctype'] == 'IRA':
                 rmd = S.rmd_needed(year,accounttable[j]['mykey'])
                 if rmd > 0:
@@ -460,7 +531,9 @@ def solve():
     # Add constraints for (9a')
     #
     for year in range(S.numyr):
-        f = 1 - (S.accounts['aftertax']['basis']/(S.accounts['aftertax']['bal']*S.accounts['aftertax']['rate']**year))
+        f = 1
+        if 'aftertax' in S.accounts:
+            f = 1 - (S.accounts['aftertax']['basis']/(S.accounts['aftertax']['bal']*S.accounts['aftertax']['rate']**year))
         row = [0] * nvars
         for l in range(len(capgainstable)):
             row[index_y(year,l)] = 1
@@ -472,7 +545,9 @@ def solve():
     # Add constraints for (9b')
     #
     for year in range(S.numyr):
-        f = 1 - (S.accounts['aftertax']['basis']/(S.accounts['aftertax']['bal']*S.accounts['aftertax']['rate']**year))
+        f = 1
+        if 'aftertax' in S.accounts:
+            f = 1 - (S.accounts['aftertax']['basis']/(S.accounts['aftertax']['bal']*S.accounts['aftertax']['rate']**year))
         row = [0] * nvars
         j = len(accounttable)-1
         row[index_w(year,j)] = f # last Account is investment / stocks
@@ -709,9 +784,13 @@ def consistancy_check(res):
                 (year + S.startage, TaxableOrdinary,s))
 
         for j in range(len(accounttable)-1):
-            if res.x[index_b(year+1,j)] -( res.x[index_b(year,j)] - res.x[index_w(year,j)])*accounttable[0]['rate']>1:
+            a = res.x[index_b(year+1,j)] -( res.x[index_b(year,j)] - res.x[index_w(year,j)])*accounttable[0]['rate']
+            if a > 1:
                 print("account[%d] year to year balance NOT OK years %d to %d" % (j, year, year+1))
-        if res.x[index_b(year+1,2)] -( res.x[index_b(year,2)] - res.x[index_w(year,2)] + res.x[index_D(year)])*accounttable[0]['rate']>1:
+                print("difference is", a)
+
+        last = len(accounttable)-1
+        if res.x[index_b(year+1,last)] -( res.x[index_b(year,last)] - res.x[index_w(year,last)] + res.x[index_D(year)])*accounttable[0]['rate']>1:
             print("account[%d] year to year balance NOT OK years %d to %d" % (2, year, year+1))
 
         T,spendable,tax,rate,cg_tax,earlytax = IncomeSummary(year)
@@ -729,6 +808,7 @@ def consistancy_check(res):
 
 def print_model_results(res, csvf):
     def printheader1():
+        print("%s" % S.who)
         print((" age" + " %7s" * 12) %
           ("IRA", "fIRA", "RMDref", "Roth", "fRoth", "AftaTx", "fAftaTx", "tAftaTx", "o_inc", "SS", "TFedTax", "Spndble"))
         if csvf is not None:
@@ -796,39 +876,44 @@ def print_model_results(res, csvf):
     printheader1()
 
 def print_account_trans(res, csvf):
-    def printheader1():
+    def print_acc_header1():
+        print("%s" % S.who)
         print(" age", end='')
         if accmap['IRA'] >1:
             print((" %7s" * 6) % ("IRA1", "fIRA1", "RMDref1", "IRA2", "fIRA2", "RMDref2"), end='')
-        else:
+        elif accmap['IRA'] == 1:
             print((" %7s" * 3) % ("IRA", "fIRA", "RMDref"), end='')
         if accmap['roth'] >1:
             print((" %7s" * 4) % ("Roth1", "fRoth1", "Roth2", "fRoth2"), end='')
-        else:
+        elif accmap['roth'] == 1:
             print((" %7s" * 2) % ("Roth", "fRoth"), end='')
-        print((" %7s" * 3) % ("AftaTx", "fAftaTx", "tAftaTx"))
+        if accmap['IRA']+accmap['roth'] == len(accounttable)-1:
+            print((" %7s" * 3) % ("AftaTx", "fAftaTx", "tAftaTx"), end='')
+        print()
         if csvf is not None:
             csvf.write(" age")
             if accmap['IRA'] >1:
                 csvf.write((",%7s" * 6) % ("IRA1", "fIRA1", "RMDref1", "IRA2", "fIRA2", "RMDref2"))
-            else:
+            elif accmap['IRA'] == 1:
                 csvf.write((",%7s" * 3) % ("IRA", "fIRA", "RMDref"))
             if accmap['roth'] >1:
                 csvf.write((",%7s" * 4) % ("Roth1", "fRoth1", "Roth2", "fRoth2"))
-            else:
+            elif accmap['roth'] == 1:
                 csvf.write((",%7s" * 2) % ("Roth", "fRoth"))
-            csvf.write((",%7s" * 3) % ("AftaTx", "fAftaTx", "tAftaTx"))
+            if accmap['IRA']+accmap['roth'] == len(accounttable)-1:
+                csvf.write((",%7s" * 3) % ("AftaTx", "fAftaTx", "tAftaTx"))
             csvf.write('\n')
 
     accmap = {'IRA': 0, 'roth': 0, 'aftertax': 0}
     for j in range(len(accounttable)):
         accmap[accounttable[j]['acctype']] += 1
+    print("Account Map ", accmap)
 
     print("\nAccount Transactions Summary:\n")
     if csvf is not None:
         csvf.write("\nAccount Transactions Summary:\n")
         csvf.write('\n')
-    printheader1()
+    print_acc_header1()
     for year in range(S.numyr):
         #age = year + S.startage #### who's age??? NEED BOTH!!!!
         rmdref = [0,0]
@@ -844,9 +929,9 @@ def print_account_trans(res, csvf):
               res.x[index_b(year,0)]/1000.0, res.x[index_w(year,0)]/1000.0, rmdref[0]/1000.0, # IRA1
               res.x[index_b(year,1)]/1000.0, res.x[index_w(year,1)]/1000.0, rmdref[1]/1000.0), # IRA2
                 end='')
-        else:
+        elif accmap['IRA'] == 1:
             print((" %7.0f" * 3) % (
-              res.x[index_b(year,0)]/1000.0, res.x[index_w(year,0)]/1000.0, rmdref0/1000.0), # IRA1
+              res.x[index_b(year,0)]/1000.0, res.x[index_w(year,0)]/1000.0, rmdref[0]/1000.0), # IRA1
                 end='')
         index = accmap['IRA']
         if accmap['roth'] >1:
@@ -854,41 +939,45 @@ def print_account_trans(res, csvf):
               res.x[index_b(year,index)]/1000.0, res.x[index_w(year,index)]/1000.0, # roth1
               res.x[index_b(year,index+1)]/1000.0, res.x[index_w(year,index+1)]/1000.0), # roth2
                 end='')
-        else:
+        elif accmap['roth'] == 1:
             print((" %7.0f" * 2) % (
               res.x[index_b(year,index)]/1000.0, res.x[index_w(year,index)]/1000.0), # roth1
                 end='')
         #print((" %7s" * 3) % ("AftaTx", "fAftaTx", "tAftaTx"))
         index = accmap['IRA'] + accmap['roth']
-        assert index == len(accounttable)-1
-        print((" %7.0f" * 3) % (
-            res.x[index_b(year,index)]/1000.0, res.x[index_w(year,index)]/1000.0, res.x[index_D(year)]/1000.0)) # aftertax account
+        #assert index == len(accounttable)-1
+        if index == len(accounttable)-1:
+            print((" %7.0f" * 3) % (
+                res.x[index_b(year,index)]/1000.0, res.x[index_w(year,index)]/1000.0, res.x[index_D(year)]/1000.0), end='') # aftertax account
+        print()
         if csvf is not None:
             csvf.write("%3d:" % (year+S.startage))
             if accmap['IRA'] >1:
                 csvf.write((",%7.0f" * 6) % (
                     res.x[index_b(year,0)], res.x[index_w(year,0)], rmdref[0], # IRA1
                     res.x[index_b(year,1)], res.x[index_w(year,1)], rmdref[1])) # IRA2
-            else:
+            elif accmap['IRA'] == 1:
                 csvf.write((",%7.0f" * 3) % (
-                    res.x[index_b(year,0)], res.x[index_w(year,0)], rmdref0)) # IRA1
+                    res.x[index_b(year,0)], res.x[index_w(year,0)], rmdref[0])) # IRA1
             index = accmap['IRA']
             if accmap['roth'] >1:
                 csvf.write((",%7.0f" * 4) % (
                     res.x[index_b(year,index)], res.x[index_w(year,index)], # roth1
                     res.x[index_b(year,index+1)], res.x[index_w(year,index+1)])) # roth2
-            else:
+            elif accmap['roth'] == 1:
                 csvf.write((",%7.0f" * 2) % (
                     res.x[index_b(year,index)], res.x[index_w(year,index)])) # roth1
             index = accmap['IRA'] + accmap['roth']
-            assert index == len(accounttable)-1
-            csvf.write((",%7.0f" * 3) % (
-                res.x[index_b(year,index)], res.x[index_w(year,index)], res.x[index_D(year)])) # aftertax account
+            #assert index == len(accounttable)-1
+            if index == len(accounttable)-1:
+                csvf.write((",%7.0f" * 3) % (
+                    res.x[index_b(year,index)], res.x[index_w(year,index)], res.x[index_D(year)])) # aftertax account
             csvf.write('\n')
-    printheader1()
+    print_acc_header1()
 
 def print_tax(res, csvf):
     def printheader_tax():
+        print("%s"%S.who)
         print((" age" + " %7s" * 13) %
           ("fIRA", "TxbleO", "TxbleSS", "deduct", "T_inc", "earlyP", "fedtax", "mTaxB%", "fAftaTx", "cgTax%", "cgTax", "TFedTax", "spndble" ))
         if csvf is not None:
@@ -905,7 +994,9 @@ def print_tax(res, csvf):
         age = year + S.startage
         i_mul = S.i_rate ** year
         T,spendable,tax,rate,cg_tax,earlytax = IncomeSummary(year)
-        f = 1 - (S.accounts['aftertax']['basis']/(S.accounts['aftertax']['bal']*S.accounts['aftertax']['rate']**year))
+        f = 1
+        if 'aftertax' in S.accounts:
+            f = 1 - (S.accounts['aftertax']['basis']/(S.accounts['aftertax']['bal']*S.accounts['aftertax']['rate']**year))
         #f = 1 - (S.aftertax['basis']/(S.aftertax['bal']*S.aftertax['rate']**year))
         ttax = tax + cg_tax +earlytax
         withdrawal = {'IRA': 0, 'roth': 0, 'aftertax': 0}
@@ -939,6 +1030,7 @@ def print_tax_brackets(res, csvf):
             (cut, size, rate, base) = taxtable[k]
             print(" %6.0f" % (rate*100), end='')
         print()
+        print("%s"%S.who)
         print((" age" + " %7s" * 6) % ("fIRA", "TxbleO", "TxbleSS", "deduct", "T_inc", "fedtax"), end=' ')
         for k in range(len(taxtable)):
             print ("brckt%d" % k, sep='', end=' ')
@@ -994,6 +1086,7 @@ def print_cap_gains_brackets(res, csvf):
             (cut, size, rate) = capgainstable[l]
             print(" %6.0f" % (rate*100), end='')
         print()
+        print("%s"%S.who)
         print((" age" + " %7s" * 5) % ("fAftaTx","cgTax%", "cgTaxbl", "T_inc", "cgTax"), end=' ')
         for l in range(len(capgainstable)):
             print ("brckt%d" % l, sep='', end=' ')
@@ -1017,7 +1110,9 @@ def print_cap_gains_brackets(res, csvf):
     for year in range(S.numyr):
         age = year + S.startage
         i_mul = S.i_rate ** year
-        f = 1 - (S.accounts['aftertax']['basis']/(S.accounts['aftertax']['bal']*S.accounts['aftertax']['rate']**year))
+        f = 1
+        if 'aftertax' in S.accounts:
+            f = 1 - (S.accounts['aftertax']['basis']/(S.accounts['aftertax']['bal']*S.accounts['aftertax']['rate']**year))
         T,spendable,tax,rate,cg_tax,earlytax = IncomeSummary(year)
         ttax = tax + cg_tax
         j = len(accounttable)-1 # Aftertax / investment account always the last entry
@@ -1260,7 +1355,7 @@ negitive_slack = S.numyr * (len(capgainstable)) # n[i,l]
 
 nvars = tax_bracket_year + capital_gains_bracket_year + withdrawal_accounts_year + startbalance_accounts_year + spendable_year + investment_deposites_year + negitive_slack
 
-print("len(accounttable): ", len(accounttable)) # TODO remove me
+#print("len(accounttable): ", len(accounttable)) # TODO remove me
 
 res = solve()
 consistancy_check(res)

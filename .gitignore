@@ -9,5 +9,6 @@ __pycache__
 *.spec
 *.csv
 *.xlsx
+testfiles
 ~*
 
