@@ -258,15 +258,8 @@ class Data:
         self.i_rate = 1 + d.get('inflation', 0) / 100       # inflation rate: 2.5 -> 1.025
         self.r_rate = 1 + d.get('returns', 6) / 100         # invest rate: 6 -> 1.06
 
-        #startage = d['startage']
-        #endage = d.get('endage', max(96, startage+5))
-        #self.retireage = startage 
-        #self.numyr = endage - self.retireage
-        #print("input dictionary(processed): ", d)
-
         self.retiree, self.startage, self.numyr, self.who = get_retiree_info() # returns entry for each retiree
-        #self.retireage = self.startage 
-        print("\nself.retiree: ", self.retiree, "\n\n")
+        #print("\nself.retiree: ", self.retiree, "\n\n")
         
         #print("input dictionary(processed): ", d)
         self.accounttable += get_account_info('IRA') # returns entry for each account
@@ -435,9 +428,10 @@ def solve():
             row[index_w(year,j)] = -1*p 
         for k in range(len(taxtable)): 
             row[index_x(year,k)] = taxtable[k][2] # income tax
-        for l in range(len(capgainstable)): 
-            row[index_y(year,l)] = capgainstable[l][2] # cap gains tax
-        row[index_D(year)] = 1
+        if 'aftertax' in S.accounts:
+            for l in range(len(capgainstable)): 
+                row[index_y(year,l)] = capgainstable[l][2] # cap gains tax
+            row[index_D(year)] = 1
         row[index_s(year)] = 1
         A+=[row]
         b+=[S.income[year] + S.SS[year]]
@@ -699,11 +693,12 @@ def consistancy_check(res):
                 if index_x(i, k) != ky:
                     print("index_x(%d,%d) is %d not %d as it should be" % (i,k,index_x(i,k), ky))
                 ky+=1
-        for i in range(S.numyr):
-            for l in range(len(capgainstable)):
-                if index_y(i, l) != ky:
-                    print("index_y(%d,%d) is %d not %d as it should be" % (i,l,index_y(i,l), ky))
-                ky+=1
+        if 'aftertax' in S.accounttable:
+            for i in range(S.numyr):
+                for l in range(len(capgainstable)):
+                    if index_y(i, l) != ky:
+                        print("index_y(%d,%d) is %d not %d as it should be" % (i,l,index_y(i,l), ky))
+                    ky+=1
         for i in range(S.numyr):
             for j in range(len(accounttable)):
                 if index_w(i, j) != ky:
@@ -718,14 +713,10 @@ def consistancy_check(res):
             if index_s(i) != ky:
                     print("index_s(%d) is %d not %d as it should be" % (i, index_s(i), ky))
             ky+=1
-        for i in range(S.numyr):
-            if index_D(i) != ky:
+        if 'aftertax' in S.accounttable:
+            for i in range(S.numyr):
+                if index_D(i) != ky:
                     print("index_D(%d) is %d not %d as it should be" % (i,index_D(i), ky))
-            ky+=1
-        for i in range(S.numyr):
-            for l in range(len(capgainstable)):
-                if index_ns(i,l) != ky:
-                    print("index_ns(%d,%d) is %d not %d as it should be" % (i,l,index_ns(i,l), ky))
                 ky+=1
 
     # check to see if the ordinary tax brackets are filled in properly
@@ -736,44 +727,12 @@ def consistancy_check(res):
 
     do_check_index_sequence()
 
-    #Quik check indexes:
-    if index_x(0,0) != 0:
-        print("Index Error: x(0,0) != 0 it is: %d" % index(0,0))
-    if index_x(S.numyr-1,len(taxtable)-1)+1 != index_y(0,0):
-        print("Index Error: index_x(S.numyr, len(taxtable)-1)+1 != index_y(0,0)")
-        print("\tx():", index_x(S.numyr-1,len(taxtable)-1))
-        print("\ty():", index_y(0,0))
-    if index_y(S.numyr-1,len(capgainstable)-1)+1 != index_w(0,0):
-        print("Index Error: index_y(S.numyr-1, len(capgainstable)-1)+1 != index_w(0,0)")
-        print("\ty():", index_y(S.numyr-1,len(capgainstable)-1))
-        print("\tw():", index_w(0,0))
-    if index_w(S.numyr-1,len(accounttable)-1)+1 != index_b(0,0):
-        print("Index Error: index_w(S.numyr-1, len(accounttable)-1)+1 != index_b(0,0)")
-        print("\tw():", index_w(S.numyr-1,len(accounttable)-1))
-        print("\tb():", index_b(0,0))
-    if index_b(S.numyr,len(accounttable)-1)+1 != index_s(0): # has years+1
-        print("Index Error: index_b(S.numyr-1, len(accounttable)-1)+1 != index_s(0)")
-        print("\tb():", index_b(S.numyr-1,len(accounttable)-1))
-        print("\ts():", index_s(0))
-    if index_s(S.numyr-1)+1 != index_D(0): # has years+1
-        print("Index Error: Expect index_s(S.numyr -1)+1 to equal index_D(0)")
-        print("\ts(S.numyr-1):", index_s(S.numyr-1))
-        print("\tD(S.numyr-1):", index_D(0))
-    if index_D(S.numyr-1)+1 != index_ns(0,0): # has years+1
-        print("Index Error: Expect index_D(S.numyr -1)+1 to equal index_ns(0,0)")
-        print("\tD(S.numyr-1):", index_D(S.numyr-1))
-        print("\tns(0,0):", index_ns(0,0))
-    if nvars-1 != index_ns(S.numyr-1, len(capgainstable)-1):
-        print("Index Error: Expect (nvars -1) to equal ns(S.numyr-1,len(capgainstable)-1)")
-        print("\tvnars -1:", nvars-1)
-        print("\tns(S.numyr-1,len(capgainstable)-1):", index_ns(S.numyr-1, len(capgainstable)-1))
-
     for year in range(S.numyr):
         s = 0
         fz = False
         fnf = False
         i_mul = S.i_rate ** year
-        for k in range(len(taxtable)):
+        for k in range(len(taxtable)): ### TODO add a similar packing check for y[i,k]
             cut, size, rate, base = taxtable[k]
             size *= i_mul
             s += res.x[index_x(year,k)] 
@@ -798,7 +757,10 @@ def consistancy_check(res):
                 print("difference is", a)
 
         last = len(accounttable)-1
-        if res.x[index_b(year+1,last)] -( res.x[index_b(year,last)] - res.x[index_w(year,last)] + res.x[index_D(year)])*accounttable[0]['rate']>1:
+        D = 0
+        if 'aftertax' in S.accounttable:
+            D = res.x[index_D(year)]
+        if res.x[index_b(year+1,last)] -( res.x[index_b(year,last)] - res.x[index_w(year,last)] + D)*accounttable[0]['rate']>1:
             print("account[%d] year to year balance NOT OK years %d to %d" % (2, year, year+1))
 
         T,spendable,tax,rate,cg_tax,earlytax = IncomeSummary(year)
@@ -850,12 +812,15 @@ def print_model_results(res, csvf): # TODO remove csvf from this function and ot
         for j in range(len(accounttable)):
             balance[accounttable[j]['acctype']] += res.x[index_b(year,j)]
             withdrawal[accounttable[j]['acctype']] += res.x[index_w(year,j)]
+        D = 0
+        if 'aftertax' in S.accounttable:
+            D = res.x[index_D(year)]/1000.0
 
         output(("%3d:" + "@%7.0f" * 12 ) %
               (year+S.startage, 
               balance['IRA']/1000.0, withdrawal['IRA']/1000.0, rmdref/1000.0, # IRA
               balance['roth']/1000.0, withdrawal['roth']/1000.0, # Roth
-              balance['aftertax']/1000.0, withdrawal['aftertax']/1000.0, res.x[index_D(year)]/1000.0, # AftaTax
+              balance['aftertax']/1000.0, withdrawal['aftertax']/1000.0, D, # AftaTax
               S.income[year]/1000.0, S.SS[year]/1000.0,
               (tax+cg_tax+earlytax)/1000.0, res.x[index_s(year)]/1000.0) )
         output("\n")
@@ -1016,7 +981,7 @@ def print_cap_gains_brackets(res, csvf):
         att = 0
         if 'aftertax' in S.accounts:
             f = 1 - (S.accounts['aftertax']['basis']/(S.accounts['aftertax']['bal']*S.accounts['aftertax']['rate']**year))
-            j = len(accounttable)-1 # Aftertax / investment account always the last entry #### NOOOO, if no aftertax then this is NOT TRUE #### FIXME
+            j = len(accounttable)-1 # Aftertax / investment account always the last entry when present
             atw = res.x[index_w(year,j)]/1000.0 # Aftertax / investment account
             att = (f*res.x[index_w(year,j)])/1000.0 # non-basis fraction / cg taxable $ 
         T,spendable,tax,rate,cg_tax,earlytax = IncomeSummary(year)
@@ -1029,9 +994,12 @@ def print_cap_gains_brackets(res, csvf):
         bt = 0
         bttax = 0
         for l in range(len(capgainstable)):
-            output("@%6.0f" % res.x[index_y(year,l)])
-            bt += res.x[index_y(year,l)]
-            bttax += res.x[index_y(year,l)] * capgainstable[l][2]
+            ty = 0
+            if 'aftertax' in S.accounts:
+                ty = res.x[index_y(year,l)]
+            output("@%6.0f" % ty)
+            bt += ty
+            bttax += ty * capgainstable[l][2]
         output("@%6.0f\n" % bt)
         if args.verbosewga:
             print(" cg bracket ttax %6.0f " % bttax, end='')
@@ -1072,10 +1040,6 @@ def print_model_row(row, suppress_newline = False):
     for i in range(S.numyr):
         if row[index_D(i)] !=0:
             print("D[%d]: %6.3f " % (i, row[index_D(i)]),end=' ' )
-    for i in range(S.numyr):
-        for l in range(len(capgainstable)-1):
-            if row[index_ns(i,l)] !=0:
-                print("ns[%d,%d]: %6.3f " % (i,l, row[index_ns(i,l)]),end=' ' )
     if not suppress_newline:
         print()
 
@@ -1085,6 +1049,7 @@ def index_x(i, k):
     return i*len(taxtable)+k
 
 def index_y(i,l):
+    assert 'aftertax' in S.accounts
     assert i>=0 and i < S.numyr
     assert l>=0 and l < len(capgainstable)
     return tax_bracket_year + i*len(capgainstable)+l
@@ -1104,13 +1069,9 @@ def index_s(i):
     return tax_bracket_year + capital_gains_bracket_year + withdrawal_accounts_year + startbalance_accounts_year + i
 
 def index_D(i):
+    assert 'aftertax' in S.accounts
     assert i>=0 and i < S.numyr
     return tax_bracket_year + capital_gains_bracket_year + withdrawal_accounts_year + startbalance_accounts_year + spendable_year + i
-
-def index_ns(i,l):
-    assert i>=0 and i < S.numyr
-    assert l>=0 and l < len(capgainstable)
-    return tax_bracket_year + capital_gains_bracket_year + withdrawal_accounts_year + startbalance_accounts_year + spendable_year + investment_deposites_year + i*(len(capgainstable))+l
 
 def OrdinaryTaxable(year):
     withdrawals = 0 
@@ -1137,13 +1098,16 @@ def IncomeSummary(year):
     for k in range(len(taxtable)):
         ntax += res.x[index_x(year,k)]*taxtable[k][2]
     tax = ntax
+    D = 0
     ncg_tax = 0
-    for l in range(len(capgainstable)):
-        ncg_tax += res.x[index_y(year,l)]*capgainstable[l][2]
+    if 'aftertax' in S.accounttable:
+        D =  res.x[index_D(year)]
+        for l in range(len(capgainstable)):
+            ncg_tax += res.x[index_y(year,l)]*capgainstable[l][2]
     tot_withdrawals = 0
     for j in range(len(accounttable)):
         tot_withdrawals += res.x[index_w(year,j)] 
-    spendable = tot_withdrawals - res.x[index_D(year)] + S.income[year] + S.SS[year] - tax -ncg_tax - earlytax
+    spendable = tot_withdrawals - D + S.income[year] + S.SS[year] - tax -ncg_tax - earlytax
     return T, spendable, tax, rate, ncg_tax, earlytax
 
 def get_result_totals(res):
@@ -1225,16 +1189,17 @@ else:
     non_binding_only = True
 
 tax_bracket_year = S.numyr * len(taxtable) # x[i,k]
-capital_gains_bracket_year = S.numyr * len(capgainstable) # y[i,l]
+capital_gains_bracket_year = 0 # no y[i,l] if no aftertax account
+if 'aftertax' in S.accounts:
+    capital_gains_bracket_year = S.numyr * len(capgainstable) # y[i,l]
 withdrawal_accounts_year = S.numyr * len(accounttable) # w[i,j]
 startbalance_accounts_year = (S.numyr+1) * len(accounttable) # b[i,j]
 spendable_year = (S.numyr) # s[i]
-investment_deposites_year = (S.numyr) # D[i]
-negitive_slack = S.numyr * (len(capgainstable)) # n[i,l]
+investment_deposites_year = 0 # no D[i] if no aftertax account
+if 'aftertax' in S.accounts:
+    investment_deposites_year = (S.numyr) # D[i]
 
-nvars = tax_bracket_year + capital_gains_bracket_year + withdrawal_accounts_year + startbalance_accounts_year + spendable_year + investment_deposites_year + negitive_slack
-
-#print("len(accounttable): ", len(accounttable)) # TODO remove me
+nvars = tax_bracket_year + capital_gains_bracket_year + withdrawal_accounts_year + startbalance_accounts_year + spendable_year + investment_deposites_year
 
 res = solve()
 consistancy_check(res)
