@@ -924,18 +924,12 @@ def print_account_trans(res, csvf):
 
 def print_tax(res, csvf):
     def printheader_tax():
-        print("%s"%S.who)
-        print((" age" + " %7s" * 13) %
+        output("%s\n"%S.who)
+        output((" age" + "@%7s" * 13) %
           ("fIRA", "TxbleO", "TxbleSS", "deduct", "T_inc", "earlyP", "fedtax", "mTaxB%", "fAftaTx", "cgTax%", "cgTax", "TFedTax", "spndble" ))
-        if csvf is not None:
-            csvf.write(("age" + ",%7s" * 13) %
-            ("fIRA", "TxbleO", "TxbleSS", "deduct", "T_inc", "earlyP", "fedtax", "mTaxB%", "fAftaTx", "cgTax%", "cgTax", "TFedTax", "spndble" ))
-            csvf.write("\n")
+        output("\n")
 
-    print("\nTax Summary:\n")
-    if csvf is not None:
-        csvf.write("\nTax Summary:\n")
-        csvf.write("\n")
+    output("\nTax Summary:\n\n")
     printheader_tax()
     for year in range(S.numyr):
         age = year + S.startage
@@ -949,7 +943,7 @@ def print_tax(res, csvf):
         withdrawal = {'IRA': 0, 'roth': 0, 'aftertax': 0}
         for j in range(len(accounttable)):
             withdrawal[accounttable[j]['acctype']] += res.x[index_w(year,j)]
-        print(("%3d:" + " %7.0f" * 13 ) %
+        output(("%3d:" + "@%7.0f" * 13 ) %
               (year+S.startage, 
                 withdrawal['IRA']/1000.0, # sum IRA
               S.taxed[year]/1000.0, SS_taxable*S.SS[year]/1000.0,
@@ -957,102 +951,55 @@ def print_tax(res, csvf):
                 withdrawal['aftertax']/1000.0, # sum Aftertax
               f*100, cg_tax/1000.0,
               ttax/1000.0, res.x[index_s(year)]/1000.0 ))
-        if csvf is not None:
-            csvf.write(("%3d:" + ",%7.0f" * 13 ) %
-              (year+S.startage, 
-                withdrawal['IRA'], # sum IRA
-              S.taxed[year], SS_taxable*S.SS[year],
-              stded*i_mul, T, earlytax, tax, rate*100, 
-                withdrawal['aftertax'], # sum Aftertax
-              f*100, cg_tax,
-              ttax, res.x[index_s(year)] ))
-            csvf.write("\n")
-
+        output("\n")
     printheader_tax()
 
 def print_tax_brackets(res, csvf):
     def printheader_tax_brackets():
-        print("%52s" % "Marginal Rate(%):", end='')
+        output("@@@@@@%46s" % "Marginal Rate(%):")
         for k in range(len(taxtable)):
             (cut, size, rate, base) = taxtable[k]
-            print(" %6.0f" % (rate*100), end='')
-        print()
-        print("%s"%S.who)
-        print((" age" + " %7s" * 6) % ("fIRA", "TxbleO", "TxbleSS", "deduct", "T_inc", "fedtax"), end=' ')
+            output("@%6.0f" % (rate*100))
+        output("\n")
+        output("%s\n"%S.who)
+        output((" age" + "@%7s" * 6) % ("fIRA", "TxbleO", "TxbleSS", "deduct", "T_inc", "fedtax"))
         for k in range(len(taxtable)):
-            print ("brckt%d" % k, sep='', end=' ')
-        print ("brkTot", sep='')
-        if csvf is not None:
-            csvf.write(",,,,,,%s" % "Marginal Rate(%):")
-            for k in range(len(taxtable)):
-                (cut, size, rate, base) = taxtable[k]
-                csvf.write(",%6.0f" % (rate*100))
-            csvf.write("\n")
-            csvf.write(("age" + ",%7s" * 6) % ("fIRA", "TxbleO", "TxbleSS", "deduct", "T_inc", "fedtax"))
-            for k in range(len(taxtable)):
-                csvf.write(",brckt%d" % k)
-            csvf.write(",brkTot\n")
+            output("@brckt%d" % k)
+        output("@brkTot\n")
 
-    print("\nOverall Tax Bracket Summary:\n")
-    if csvf is not None:
-        csvf.write("\nOverall Tax Bracket Summary:\n")
-        csvf.write("\n")
+    output("\nOverall Tax Bracket Summary:\n")
     printheader_tax_brackets()
     for year in range(S.numyr):
         age = year + S.startage
         i_mul = S.i_rate ** year
         T,spendable,tax,rate,cg_tax,earlytax = IncomeSummary(year)
         ttax = tax + cg_tax
-        print(("%3d:" + " %7.0f" * 6 ) %
+        output(("%3d:" + "@%7.0f" * 6 ) %
               (year+S.startage, 
               res.x[index_w(year,0)]/1000.0, # IRA
               S.taxed[year]/1000.0, SS_taxable*S.SS[year]/1000.0,
-              stded*i_mul/1000.0, T/1000.0, tax/1000.0), 
-              end='')
-        if csvf is not None:
-            csvf.write(("%3d:" + ",%7.0f" * 6 ) %
-              (year+S.startage, 
-              res.x[index_w(year,0)], # IRA
-              S.taxed[year], SS_taxable*S.SS[year],
-              stded*i_mul, T, tax))
+              stded*i_mul/1000.0, T/1000.0, tax/1000.0) )
         bt = 0
         for k in range(len(taxtable)):
-            print(" %6.0f" % res.x[index_x(year,k)], end='')
-            if csvf is not None:
-                csvf.write(",%6.0f" % res.x[index_x(year,k)])
+            output("@%6.0f" % res.x[index_x(year,k)])
             bt += res.x[index_x(year,k)]
-        print(" %6.0f" % bt)
-        if csvf is not None:
-            csvf.write(",%6.0f\n" % bt)
+        output("@%6.0f\n" % bt)
     printheader_tax_brackets()
 
 def print_cap_gains_brackets(res, csvf):
     def printheader_capgains_brackets():
-        print("%44s" % "Marginal Rate(%):", end='')
+        output("@@@@@%39s" % "Marginal Rate(%):")
         for l in range(len(capgainstable)):
             (cut, size, rate) = capgainstable[l]
-            print(" %6.0f" % (rate*100), end='')
-        print()
-        print("%s"%S.who)
-        print((" age" + " %7s" * 5) % ("fAftaTx","cgTax%", "cgTaxbl", "T_inc", "cgTax"), end=' ')
+            output("@%6.0f" % (rate*100))
+        output("\n")
+        output("%s\n"%S.who)
+        output((" age" + "@%7s" * 5) % ("fAftaTx","cgTax%", "cgTaxbl", "T_inc", "cgTax"))
         for l in range(len(capgainstable)):
-            print ("brckt%d" % l, sep='', end=' ')
-        print ("brkTot", sep='')
-        if csvf is not None:
-            csvf.write(",,,,,%s" % "Marginal Rate(%):")
-            for l in range(len(capgainstable)):
-                (cut, size, rate) = capgainstable[l]
-                csvf.write(",%6.0f" % (rate*100))
-            csvf.write("\n")
-            csvf.write(("age" + ",%7s" * 5) % ("fAftaTx","cgTax%", "cgTaxbl", "T_inc", "cgTax"))
-            for l in range(len(capgainstable)):
-                csvf.write (",brckt%d" % l)
-            csvf.write (",brkTot\n")
+            output ("@brckt%d" % l)
+        output ("@brkTot\n")
 
-    print("\nOverall Capital Gains Bracket Summary:\n")
-    if csvf is not None:
-        csvf.write("\nOverall Capital Gains Bracket Summary:\n")
-        csvf.write ("\n")
+    output("\nOverall Capital Gains Bracket Summary:\n")
     printheader_capgains_brackets()
     for year in range(S.numyr):
         age = year + S.startage
@@ -1062,30 +1009,19 @@ def print_cap_gains_brackets(res, csvf):
             f = 1 - (S.accounts['aftertax']['basis']/(S.accounts['aftertax']['bal']*S.accounts['aftertax']['rate']**year))
         T,spendable,tax,rate,cg_tax,earlytax = IncomeSummary(year)
         ttax = tax + cg_tax
-        j = len(accounttable)-1 # Aftertax / investment account always the last entry
-        print(("%3d:" + " %7.0f" * 5 ) %
+        j = len(accounttable)-1 # Aftertax / investment account always the last entry #### NOOOO, if no aftertax then this is NOT TRUE #### FIXME
+        output(("%3d:" + "@%7.0f" * 5 ) %
               (year+S.startage, 
               res.x[index_w(year,j)]/1000.0, # Aftertax / investment account
               f*100, (f*res.x[index_w(year,j)])/1000.0, # non-basis fraction / cg taxable $ 
-              T/1000.0, cg_tax/1000.0), 
-              end='')
-        if csvf is not None:
-            csvf.write(("%3d:" + ",%7.0f" * 5 ) %
-              (year+S.startage, 
-              res.x[index_w(year,j)], # Aftertax / investment account
-              f*100, (f*res.x[index_w(year,j)]), # non-basis fraction / cg taxable $ 
-              T, cg_tax))
+              T/1000.0, cg_tax/1000.0))
         bt = 0
         bttax = 0
         for l in range(len(capgainstable)):
-            print(" %6.0f" % res.x[index_y(year,l)], end='')
-            if csvf is not None:
-                csvf.write(",%6.0f" % res.x[index_y(year,l)])
+            output("@%6.0f" % res.x[index_y(year,l)])
             bt += res.x[index_y(year,l)]
             bttax += res.x[index_y(year,l)] * capgainstable[l][2]
-        print(" %6.0f" % bt)
-        if csvf is not None:
-            csvf.write(",%6.0f\n" % bt)
+        output("@%6.0f\n" % bt)
         if args.verbosewga:
             print(" cg bracket ttax %6.0f " % bttax, end='')
             print("x->y[1]: %6.0f "% (res.x[index_x(year,0)]+res.x[index_x(year,1)]),end='')
@@ -1229,34 +1165,19 @@ def get_result_totals(res):
 
 def print_base_config(res, csvf):
     totwithd, tincome, tTaxable, tincometax, tcg_tax, tearlytax, tspendable = get_result_totals(res)
-    print()
-    print("Optimized for %s" % S.maximize)
-    print('Minium desired: ${:0,.0f}'.format(S.desired[0]))
-    print('Maximum desired: ${:0,.0f}'.format(S.max[0]))
-    print('After tax yearly income: ${:0,.0f} adjusting for inflation'.format(res.x[index_s(0)]))
-    print()
-    print('total withdrawals: ${:0,.0f}'.format(totwithd))
-    print('total ordinary taxable income ${:,.0f}'.format(tTaxable))
-    print('total ordinary tax on all taxable income: ${:0,.0f} ({:.1f}%) of taxable income'.format(tincometax+tearlytax, 100*(tincometax+tearlytax)/tTaxable))
-    print('total income (withdrawals + other) ${:,.0f}'.format(tincome))
-    print('total cap gains tax: ${:0,.0f}'.format(tcg_tax))
-    print('total all tax on all income: ${:0,.0f} ({:.1f}%)'.format(tincometax+tcg_tax+tearlytax, 100*(tincometax+tcg_tax+tearlytax)/tincome))
-    print("Total spendable (after tax money): ${:0,.0f}".format(tspendable))
-    if csvf is not None:
-        csvf.write('\n')
-        csvf.write("Optimized for %s\n" % S.maximize)
-        csvf.write('\n')
-        csvf.write('Minium desired: ${:0.0f}\n'.format(S.desired[0]))
-        csvf.write('Maximum desired: ${:0.0f}\n'.format(S.max[0]))
-        csvf.write('After tax yearly income: ${:0.0f} adjusting for inflation\n'.format(res.x[index_s(0)]))
-        csvf.write('\n')
-        csvf.write('total withdrawals: ${:0.0f}\n'.format(totwithd))
-        csvf.write('total ordinary taxable income ${:.0f}\n'.format(tTaxable))
-        csvf.write('total ordinary tax on all taxable income: ${:0.0f} ({:.1f}%) of taxable income\n'.format(tincometax+tearlytax, 100*(tincometax+tearlytax)/tTaxable))
-        csvf.write('total income (withdrawals + orther) ${:.0f}\n'.format(tincome))
-        csvf.write('total cap gains tax: ${:0.0f}\n'.format(tcg_tax))
-        csvf.write('total all tax on all income: ${:0.0f} ({:.1f}%)\n'.format(tincometax+tcg_tax+tearlytax, 100*(tincometax+tcg_tax+tearlytax)/tincome))
-        csvf.write("Total spendable (after tax money): ${:0.0f}\n".format(tspendable))
+    output("\n")
+    output("Optimized for %s\n" % S.maximize)
+    output('Minium desired: ${:0_.0f}\n'.format(S.desired[0]))
+    output('Maximum desired: ${:0_.0f}\n'.format(S.max[0]))
+    output('After tax yearly income: ${:0_.0f} adjusting for inflation\n'.format(res.x[index_s(0)]))
+    output("\n")
+    output('total withdrawals: ${:0_.0f}\n'.format(totwithd))
+    output('total ordinary taxable income ${:_.0f}\n'.format(tTaxable))
+    output('total ordinary tax on all taxable income: ${:0_.0f} ({:.1f}%) of taxable income\n'.format(tincometax+tearlytax, 100*(tincometax+tearlytax)/tTaxable))
+    output('total income (withdrawals + other) ${:_.0f}\n'.format(tincome))
+    output('total cap gains tax: ${:0_.0f}\n'.format(tcg_tax))
+    output('total all tax on all income: ${:0_.0f} ({:.1f}%)\n'.format(tincometax+tcg_tax+tearlytax, 100*(tincometax+tcg_tax+tearlytax)/tincome))
+    output("Total spendable (after tax money): ${:0_.0f}\n".format(tspendable))
 
 # Program entry point
 # Instantiate the parser
@@ -1270,9 +1191,9 @@ parser.add_argument('-vtb', '--verbosetaxbrackets', action='store_true',
 parser.add_argument('-vw', '--verbosewga', action='store_true',
                     help="Extra wga output from solver")
 parser.add_argument('-mall', '--verbosemodelall', action='store_true',
-                    help="Extra wga output from solver")
+                    help="Combined with -vw will output the entire LP model")
 parser.add_argument('-csv', '--csv', action='store_true',
-                    help="Additionally write the output from to a cvs file")
+                    help="Additionally write the output from to a csv file")
 parser.add_argument('conffile')
 args = parser.parse_args()
 
