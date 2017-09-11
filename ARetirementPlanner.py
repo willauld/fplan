@@ -531,50 +531,52 @@ def solve():
     #
     # Add constraints for (9a')
     #
-    for year in range(S.numyr):
-        f = 1
-        if 'aftertax' in S.accounts:
+    if 'aftertax' in S.accounts:
+        for year in range(S.numyr):
             f = 1 - (S.accounts['aftertax']['basis']/(S.accounts['aftertax']['bal']*S.accounts['aftertax']['rate']**year))
-        row = [0] * nvars
-        for l in range(len(capgainstable)):
-            row[index_y(year,l)] = 1
-        j = len(accounttable)-1
-        row[index_w(year,j)] = -1*f # last Account is investment / stocks
-        A+=[row]
-        b+=[0]
+            row = [0] * nvars
+            for l in range(len(capgainstable)):
+                row[index_y(year,l)] = 1
+            j = len(accounttable)-1
+            row[index_w(year,j)] = -1*f # last Account is investment / stocks
+            A+=[row]
+            b+=[0]
     #
     # Add constraints for (9b')
     #
-    for year in range(S.numyr):
-        f = 1
-        if 'aftertax' in S.accounts:
+    if 'aftertax' in S.accounts:
+        for year in range(S.numyr):
             f = 1 - (S.accounts['aftertax']['basis']/(S.accounts['aftertax']['bal']*S.accounts['aftertax']['rate']**year))
-        row = [0] * nvars
-        j = len(accounttable)-1
-        row[index_w(year,j)] = f # last Account is investment / stocks
-        for l in range(len(capgainstable)):
-            row[index_y(year,l)] = -1
-        A+=[row]
-        b+=[0]
+            row = [0] * nvars
+            j = len(accounttable)-1
+            row[index_w(year,j)] = f # last Account is investment / stocks
+            for l in range(len(capgainstable)):
+                row[index_y(year,l)] = -1
+            A+=[row]
+            b+=[0]
     #
     # Add constraints for (10')
     #
-    for year in range(S.numyr):
-        adj_inf = S.i_rate**year
-        for l in range(len(capgainstable)-1):
-            row = [0] * nvars
-            row[index_y(year,l)] = 1
-            for k in range(len(taxtable)-1):
-                if taxtable[k][0] >= capgainstable[l][0] and taxtable[k][0] < capgainstable[l+1][0]:
-                    row[index_x(year,k)] = 1
-            A+=[row]
-            b+=[capgainstable[l][1]*adj_inf] # mcg[i,l] inflation adjusted
-            #print_constraint( row, capgainstable[l][1]*adj_inf)
+    if 'aftertax' in S.accounts:
+        for year in range(S.numyr):
+            adj_inf = S.i_rate**year
+            for l in range(len(capgainstable)-1):
+                row = [0] * nvars
+                row[index_y(year,l)] = 1
+                for k in range(len(taxtable)-1):
+                    if taxtable[k][0] >= capgainstable[l][0] and taxtable[k][0] < capgainstable[l+1][0]:
+                        row[index_x(year,k)] = 1
+                A+=[row]
+                b+=[capgainstable[l][1]*adj_inf] # mcg[i,l] inflation adjusted
+                #print_constraint( row, capgainstable[l][1]*adj_inf)
     #
     # Add constraints for (11a')
     #
+    aftertax = 0
+    if 'aftertax' in S.accounts:
+        aftertax = 1
     for year in range(S.numyr): 
-        for j in range(len(accounttable)-1): 
+        for j in range(len(accounttable)-aftertax): # for all accounts except aftertax
             row = [0] * nvars
             row[index_b(year+1,j)] = 1 ### b[i,j] supports an extra year
             row[index_b(year,j)] = -1*accounttable[j]['rate']
@@ -584,8 +586,11 @@ def solve():
     #
     # Add constraints for (11b')
     #
+    aftertax = 0
+    if 'aftertax' in S.accounts:
+        aftertax = 1
     for year in range(S.numyr):
-        for j in range(len(accounttable)-1): 
+        for j in range(len(accounttable)-aftertax): # for all accounts except aftertax
             row = [0] * nvars
             row[index_b(year,j)] = accounttable[j]['rate']
             row[index_w(year,j)] = -1*accounttable[j]['rate']
@@ -595,27 +600,29 @@ def solve():
     #
     # Add constraints for (12a')
     #
-    for year in range(S.numyr): 
-        j = len(accounttable)-1 # nl the last account, the investment account
-        row = [0] * nvars
-        row[index_b(year+1,j)] = 1 ### b[i,j] supports an extra year
-        row[index_b(year,j)] = -1*accounttable[j]['rate']
-        row[index_w(year,j)] = accounttable[j]['rate']
-        row[index_D(year)] = -1*accounttable[j]['rate']
-        A+=[row]
-        b+=[0]
+    if 'aftertax' in S.accounts:
+        for year in range(S.numyr): 
+            j = len(accounttable)-1 # nl the last account, the investment account
+            row = [0] * nvars
+            row[index_b(year+1,j)] = 1 ### b[i,j] supports an extra year
+            row[index_b(year,j)] = -1*accounttable[j]['rate']
+            row[index_w(year,j)] = accounttable[j]['rate']
+            row[index_D(year)] = -1*accounttable[j]['rate']
+            A+=[row]
+            b+=[0]
     #
     # Add constraints for (12b')
     #
-    for year in range(S.numyr):
-        j = len(accounttable)-1 # nl the last account, the investment account
-        row = [0] * nvars
-        row[index_b(year,j)] = accounttable[j]['rate']
-        row[index_w(year,j)] = -1*accounttable[j]['rate']
-        row[index_D(year)] = accounttable[j]['rate']
-        row[index_b(year+1,j)] = -1  ### b[i,j] supports an extra year
-        A+=[row]
-        b+=[0]
+    if 'aftertax' in S.accounts:
+        for year in range(S.numyr):
+            j = len(accounttable)-1 # nl the last account, the investment account
+            row = [0] * nvars
+            row[index_b(year,j)] = accounttable[j]['rate']
+            row[index_w(year,j)] = -1*accounttable[j]['rate']
+            row[index_D(year)] = accounttable[j]['rate']
+            row[index_b(year+1,j)] = -1  ### b[i,j] supports an extra year
+            A+=[row]
+            b+=[0]
     #
     # Constraint for (13a')
     #   Set the begining b[1,j] balances
@@ -1005,15 +1012,19 @@ def print_cap_gains_brackets(res, csvf):
         age = year + S.startage
         i_mul = S.i_rate ** year
         f = 1
+        atw = 0
+        att = 0
         if 'aftertax' in S.accounts:
             f = 1 - (S.accounts['aftertax']['basis']/(S.accounts['aftertax']['bal']*S.accounts['aftertax']['rate']**year))
+            j = len(accounttable)-1 # Aftertax / investment account always the last entry #### NOOOO, if no aftertax then this is NOT TRUE #### FIXME
+            atw = res.x[index_w(year,j)]/1000.0 # Aftertax / investment account
+            att = (f*res.x[index_w(year,j)])/1000.0 # non-basis fraction / cg taxable $ 
         T,spendable,tax,rate,cg_tax,earlytax = IncomeSummary(year)
         ttax = tax + cg_tax
-        j = len(accounttable)-1 # Aftertax / investment account always the last entry #### NOOOO, if no aftertax then this is NOT TRUE #### FIXME
         output(("%3d:" + "@%7.0f" * 5 ) %
               (year+S.startage, 
-              res.x[index_w(year,j)]/1000.0, # Aftertax / investment account
-              f*100, (f*res.x[index_w(year,j)])/1000.0, # non-basis fraction / cg taxable $ 
+              atw, # Aftertax / investment account
+              f*100, att, # non-basis fraction / cg taxable $ 
               T/1000.0, cg_tax/1000.0))
         bt = 0
         bttax = 0
