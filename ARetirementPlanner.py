@@ -8,6 +8,7 @@ import toml
 import argparse
 import scipy.optimize
 import re
+import sys
 
 # 2017 table (predict it moves with inflation?)
 # only married joint at the moment
@@ -806,19 +807,24 @@ def consistancy_check(res):
         #    print("Calc cg_tax %6.2f should equal Fcg(year:%d): %6.2f" % (cg_tax, year, res.x[index_Fcg(year)]))
     print()
 
-def print_model_results(res, csvf):
-    def printheader1():
-        print("%s" % S.who)
-        print((" age" + " %7s" * 12) %
-          ("IRA", "fIRA", "RMDref", "Roth", "fRoth", "AftaTx", "fAftaTx", "tAftaTx", "o_inc", "SS", "TFedTax", "Spndble"))
-        if csvf is not None:
-            csvf.write(("age" + ",%7s" * 12) % ("IRA", "fIRA", "RMDref", "Roth", "fRoth", "AftaTx", "fAftaTx", "tAftaTx", "o_inc", "SS", "TFedTax", "Spndble"))
-            csvf.write("\n")
+def output(string): # TODO move to a better place
+    #
+    # output writes the information first changing any '@' in the string
+    # to a space for stdout or a ',' for csv files. The later is written
+    # whenever the csvf handle is not None
+    #
+    sys.stdout.write(string.replace('@',' '))
+    if csv_file is not None:
+        csv_file.write(string.replace('@',','))
 
-    print("\nActivity Summary:\n")
-    if csvf is not None:
-        csvf.write("\nActivity Summary:\n")
-        csvf.write('\n')
+def print_model_results(res, csvf): # TODO remove csvf from this function and others
+    def printheader1():
+        output("%s\n" % S.who)
+        output((" age" + "@%7s" * 12) % ("IRA", "fIRA", "RMDref", "Roth", "fRoth", "AftaTx", "fAftaTx", "tAftaTx", "o_inc", "SS", "TFedTax", "Spndble"))
+        output("\n")
+
+    output("\nActivity Summary:\n")
+    output('\n')
     printheader1()
     for year in range(S.numyr):
         i_mul = S.i_rate ** year
@@ -826,7 +832,7 @@ def print_model_results(res, csvf):
         T,spendable,tax,rate,cg_tax,earlytax = IncomeSummary(year)
 
         rmdref = 0
-        for j in range(2): # at most the first two accounts are type IRA w/ RMD requirement
+        for j in range(min(2,len(accounttable))): # at most the first two accounts are type IRA w/ RMD requirement
             if accounttable[j]['acctype'] == 'IRA':
                 rmd = S.rmd_needed(year,accounttable[j]['mykey'])
                 if rmd > 0:
@@ -838,81 +844,50 @@ def print_model_results(res, csvf):
             balance[accounttable[j]['acctype']] += res.x[index_b(year,j)]
             withdrawal[accounttable[j]['acctype']] += res.x[index_w(year,j)]
 
-        print(("%3d:" + " %7.0f" * 12 ) %
+        output(("%3d:" + "@%7.0f" * 12 ) %
               (year+S.startage, 
               balance['IRA']/1000.0, withdrawal['IRA']/1000.0, rmdref/1000.0, # IRA
               balance['roth']/1000.0, withdrawal['roth']/1000.0, # Roth
               balance['aftertax']/1000.0, withdrawal['aftertax']/1000.0, res.x[index_D(year)]/1000.0, # AftaTax
               S.income[year]/1000.0, S.SS[year]/1000.0,
               (tax+cg_tax+earlytax)/1000.0, res.x[index_s(year)]/1000.0) )
-        if csvf is not None:
-            csvf.write(("%3d:" + ",%7.0f" * 12 ) %
-              (year+S.startage, 
-              balance['IRA'], withdrawal['IRA'], rmdref, # IRA
-              balance['roth'], withdrawal['roth'], # Roth
-              balance['aftertax'], withdrawal['aftertax'], res.x[index_D(year)], # AftaTax
-              S.income[year], S.SS[year],
-              (tax+cg_tax+earlytax), res.x[index_s(year)]) )
-            csvf.write('\n')
+        output("\n")
 
     year = S.numyr
     balance = {'IRA': 0, 'roth': 0, 'aftertax': 0}
     for j in range(len(accounttable)):
         balance[accounttable[j]['acctype']] += res.x[index_b(year,j)]
-    print(("%3d:" + " %7.0f %7s %7s" + " %7.0f %7s" * 2 + " %7s" * 5) %
+    output(("%3d:" + "@%7.0f@%7s@%7s" + "@%7.0f@%7s" * 2 + "@%7s" * 5) %
         (year+S.startage, 
         balance['IRA']/1000.0, '-', '-',  # res.x[index_w(year,0)]/1000.0, # IRA
         balance['roth']/1000.0, '-', # res.x[index_w(year,1)]/1000.0, # Roth
         balance['aftertax']/1000.0, '-', # res.x[index_w(year,2)]/1000.0, # AftaTax
         '-', '-', '-', '-', '-'))
-    if csvf is not None:
-        csvf.write(("%3d:" + ",%7.0f,%7s,%7s" + ",%7.0f,%7s" * 2 + ",%7s" * 5) %
-        (year+S.startage, 
-        balance['IRA'], '-', '-',  # res.x[index_w(year,0)]/1000.0, # IRA
-        balance['roth'], '-', # res.x[index_w(year,1)]/1000.0, # Roth
-        balance['aftertax'], '-', # res.x[index_w(year,2)]/1000.0, # AftaTax
-        '-', '-', '-', '-', '-'))
-        csvf.write('\n')
+    output("\n")
     printheader1()
 
 def print_account_trans(res, csvf):
     def print_acc_header1():
-        print("%s" % S.who)
-        print(" age", end='')
+        output("%s\n" % S.who)
+        output(" age")
         if accmap['IRA'] >1:
-            print((" %7s" * 6) % ("IRA1", "fIRA1", "RMDref1", "IRA2", "fIRA2", "RMDref2"), end='')
+            output(("@%7s" * 6) % ("IRA1", "fIRA1", "RMDref1", "IRA2", "fIRA2", "RMDref2"))
         elif accmap['IRA'] == 1:
-            print((" %7s" * 3) % ("IRA", "fIRA", "RMDref"), end='')
+            output(("@%7s" * 3) % ("IRA", "fIRA", "RMDref"))
         if accmap['roth'] >1:
-            print((" %7s" * 4) % ("Roth1", "fRoth1", "Roth2", "fRoth2"), end='')
+            output(("@%7s" * 4) % ("Roth1", "fRoth1", "Roth2", "fRoth2"))
         elif accmap['roth'] == 1:
-            print((" %7s" * 2) % ("Roth", "fRoth"), end='')
+            output(("@%7s" * 2) % ("Roth", "fRoth"))
         if accmap['IRA']+accmap['roth'] == len(accounttable)-1:
-            print((" %7s" * 3) % ("AftaTx", "fAftaTx", "tAftaTx"), end='')
-        print()
-        if csvf is not None:
-            csvf.write(" age")
-            if accmap['IRA'] >1:
-                csvf.write((",%7s" * 6) % ("IRA1", "fIRA1", "RMDref1", "IRA2", "fIRA2", "RMDref2"))
-            elif accmap['IRA'] == 1:
-                csvf.write((",%7s" * 3) % ("IRA", "fIRA", "RMDref"))
-            if accmap['roth'] >1:
-                csvf.write((",%7s" * 4) % ("Roth1", "fRoth1", "Roth2", "fRoth2"))
-            elif accmap['roth'] == 1:
-                csvf.write((",%7s" * 2) % ("Roth", "fRoth"))
-            if accmap['IRA']+accmap['roth'] == len(accounttable)-1:
-                csvf.write((",%7s" * 3) % ("AftaTx", "fAftaTx", "tAftaTx"))
-            csvf.write('\n')
+            output(("@%7s" * 3) % ("AftaTx", "fAftaTx", "tAftaTx"))
+        output("\n")
 
     accmap = {'IRA': 0, 'roth': 0, 'aftertax': 0}
     for j in range(len(accounttable)):
         accmap[accounttable[j]['acctype']] += 1
     print("Account Map ", accmap)
 
-    print("\nAccount Transactions Summary:\n")
-    if csvf is not None:
-        csvf.write("\nAccount Transactions Summary:\n")
-        csvf.write('\n')
+    output("\nAccount Transactions Summary:\n\n")
     print_acc_header1()
     for year in range(S.numyr):
         #age = year + S.startage #### who's age??? NEED BOTH!!!!
@@ -923,56 +898,28 @@ def print_account_trans(res, csvf):
                 if rmd > 0:
                     rmdref[j] = res.x[index_b(year,j)]/rmd 
 
-        print("%3d:" % (year+S.startage), end='')
+        output("%3d:" % (year+S.startage))
         if accmap['IRA'] >1:
-            print((" %7.0f" * 6) % (
+            output(("@%7.0f" * 6) % (
               res.x[index_b(year,0)]/1000.0, res.x[index_w(year,0)]/1000.0, rmdref[0]/1000.0, # IRA1
-              res.x[index_b(year,1)]/1000.0, res.x[index_w(year,1)]/1000.0, rmdref[1]/1000.0), # IRA2
-                end='')
+              res.x[index_b(year,1)]/1000.0, res.x[index_w(year,1)]/1000.0, rmdref[1]/1000.0)) # IRA2
         elif accmap['IRA'] == 1:
-            print((" %7.0f" * 3) % (
-              res.x[index_b(year,0)]/1000.0, res.x[index_w(year,0)]/1000.0, rmdref[0]/1000.0), # IRA1
-                end='')
+            output(("@%7.0f" * 3) % (
+              res.x[index_b(year,0)]/1000.0, res.x[index_w(year,0)]/1000.0, rmdref[0]/1000.0)) # IRA1
         index = accmap['IRA']
         if accmap['roth'] >1:
-            print((" %7.0f" * 4) % (
+            output(("@%7.0f" * 4) % (
               res.x[index_b(year,index)]/1000.0, res.x[index_w(year,index)]/1000.0, # roth1
-              res.x[index_b(year,index+1)]/1000.0, res.x[index_w(year,index+1)]/1000.0), # roth2
-                end='')
+              res.x[index_b(year,index+1)]/1000.0, res.x[index_w(year,index+1)]/1000.0)) # roth2
         elif accmap['roth'] == 1:
-            print((" %7.0f" * 2) % (
-              res.x[index_b(year,index)]/1000.0, res.x[index_w(year,index)]/1000.0), # roth1
-                end='')
-        #print((" %7s" * 3) % ("AftaTx", "fAftaTx", "tAftaTx"))
+            output(("@%7.0f" * 2) % (
+              res.x[index_b(year,index)]/1000.0, res.x[index_w(year,index)]/1000.0)) # roth1
         index = accmap['IRA'] + accmap['roth']
         #assert index == len(accounttable)-1
         if index == len(accounttable)-1:
-            print((" %7.0f" * 3) % (
-                res.x[index_b(year,index)]/1000.0, res.x[index_w(year,index)]/1000.0, res.x[index_D(year)]/1000.0), end='') # aftertax account
-        print()
-        if csvf is not None:
-            csvf.write("%3d:" % (year+S.startage))
-            if accmap['IRA'] >1:
-                csvf.write((",%7.0f" * 6) % (
-                    res.x[index_b(year,0)], res.x[index_w(year,0)], rmdref[0], # IRA1
-                    res.x[index_b(year,1)], res.x[index_w(year,1)], rmdref[1])) # IRA2
-            elif accmap['IRA'] == 1:
-                csvf.write((",%7.0f" * 3) % (
-                    res.x[index_b(year,0)], res.x[index_w(year,0)], rmdref[0])) # IRA1
-            index = accmap['IRA']
-            if accmap['roth'] >1:
-                csvf.write((",%7.0f" * 4) % (
-                    res.x[index_b(year,index)], res.x[index_w(year,index)], # roth1
-                    res.x[index_b(year,index+1)], res.x[index_w(year,index+1)])) # roth2
-            elif accmap['roth'] == 1:
-                csvf.write((",%7.0f" * 2) % (
-                    res.x[index_b(year,index)], res.x[index_w(year,index)])) # roth1
-            index = accmap['IRA'] + accmap['roth']
-            #assert index == len(accounttable)-1
-            if index == len(accounttable)-1:
-                csvf.write((",%7.0f" * 3) % (
-                    res.x[index_b(year,index)], res.x[index_w(year,index)], res.x[index_D(year)])) # aftertax account
-            csvf.write('\n')
+            output(("@%7.0f" * 3) % (
+                res.x[index_b(year,index)]/1000.0, res.x[index_w(year,index)]/1000.0, res.x[index_D(year)]/1000.0)) # aftertax account
+        output("\n")
     print_acc_header1()
 
 def print_tax(res, csvf):
