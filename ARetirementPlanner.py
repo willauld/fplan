@@ -182,7 +182,7 @@ class Data:
                     rate = 1 + v['rate'] / 100  # invest rate: 6 -> 1.06
                     entry['rate'] = rate
                     v['rate'] = rate
-                self.accounts[type] = v # I think only for 'aftertax' basis calc TODO
+                self.accounts[type] = v 
                 lis_return.append(entry)
                 index += 1
             return lis_return
@@ -291,7 +291,6 @@ class Data:
             type = 'SocialSecurity'
             for k,v in S.get( type , {}).items():
                 sections += 1
-                ### TODO add check that [soscial_security.xxx] matches an [iam.xxx]
                 r = self.match_retiree(k)
                 if r is None:
                     print("Error: [%s.%s] must match a retiree\n\t[%s.%s] should match [iam.%s] but there is no [iam.%s]\n"%(type,k,type,k,k,k))
@@ -316,7 +315,7 @@ class Data:
                 ageAtStart = self.SSinput[i]['ageAtStart']
                 if fraamount < 0:
                     assert i == 1
-                    fraamount = self.SSinput[0]['amount']/2 # TODO check to verify the startamount() is correct for this case
+                    fraamount = self.SSinput[0]['amount']/2 # spousal benefit is 1/2 spouses at FRA 
                     # alter amount for start age vs fra (minus if before fra and + is after)
                     amount = startamount(fraamount, fraage, min(disperseage,fraage))
                 else:
@@ -648,8 +647,9 @@ def solve():
                                           #"bland": True,
                                           "tol": 1.0e-7,
                                           "maxiter": 3000})
-    if args.verbosewga:
+    if args.verbosemodel or args.verbosemodelall:
         print_model_matrix(c, A, b, res.slack, non_binding_only)
+    if args.verbosewga:
         print(res)
 
     if res.success == False:
@@ -693,7 +693,7 @@ def consistancy_check(res):
                 if index_x(i, k) != ky:
                     print("index_x(%d,%d) is %d not %d as it should be" % (i,k,index_x(i,k), ky))
                 ky+=1
-        if 'aftertax' in S.accounttable:
+        if 'aftertax' in S.accounts:
             for i in range(S.numyr):
                 for l in range(len(capgainstable)):
                     if index_y(i, l) != ky:
@@ -713,7 +713,7 @@ def consistancy_check(res):
             if index_s(i) != ky:
                     print("index_s(%d) is %d not %d as it should be" % (i, index_s(i), ky))
             ky+=1
-        if 'aftertax' in S.accounttable:
+        if 'aftertax' in S.accounts:
             for i in range(S.numyr):
                 if index_D(i) != ky:
                     print("index_D(%d) is %d not %d as it should be" % (i,index_D(i), ky))
@@ -732,7 +732,7 @@ def consistancy_check(res):
         fz = False
         fnf = False
         i_mul = S.i_rate ** year
-        for k in range(len(taxtable)): ### TODO add a similar packing check for y[i,k]
+        for k in range(len(taxtable)): 
             cut, size, rate, base = taxtable[k]
             size *= i_mul
             s += res.x[index_x(year,k)] 
@@ -744,6 +744,26 @@ def consistancy_check(res):
                 print("Inproperly packed tax brackets in year %d bracket %d" % (year, k))
             if res.x[index_x(year,k)] == 0.0:
                 fz = True
+        if 'aftertax' in S.accounts:
+            scg = 0
+            fz = False
+            fnf = False
+            for l in range(len(capgainstable)): 
+                cut, size, rate = capgainstable[l]
+                size *= i_mul
+                bamount = res.x[index_y(year,l)] 
+                scg += bamount
+                for k in range(len(taxtable)-1):
+                    if taxtable[k][0] >= capgainstable[l][0] and taxtable[k][0] < capgainstable[l+1][0]:
+                        bamount += res.x[index_x(year,k)]
+                if fnf and bamount > 0:
+                    print("Inproper packed CG brackets in year %d, bracket %d not empty while previous bracket not full." % (year, l))
+                if bamount+1 < size:
+                    fnf = True
+                if fz and bamount > 0:
+                    print("Inproperly packed GC tax brackets in year %d bracket %d" % (year, l))
+                if bamount == 0.0:
+                    fz = True
         #TaxableOrdinary = res.x[index_w(year,0)] + S.income[year] -stded*i_mul
         TaxableOrdinary = OrdinaryTaxable(year)
         if (TaxableOrdinary + 0.1 < s) or (TaxableOrdinary - 0.1 > s):
@@ -758,7 +778,7 @@ def consistancy_check(res):
 
         last = len(accounttable)-1
         D = 0
-        if 'aftertax' in S.accounttable:
+        if 'aftertax' in S.accounts:
             D = res.x[index_D(year)]
         if res.x[index_b(year+1,last)] -( res.x[index_b(year,last)] - res.x[index_w(year,last)] + D)*accounttable[0]['rate']>1:
             print("account[%d] year to year balance NOT OK years %d to %d" % (2, year, year+1))
@@ -778,15 +798,15 @@ def consistancy_check(res):
 
 def output(string): # TODO move to a better place
     #
-    # output writes the information first changing any '@' in the string
+    # output writes the information after first changing any '@' in the string
     # to a space for stdout or a ',' for csv files. The later is written
-    # whenever the csvf handle is not None
+    # whenever the csv_file handle is not None
     #
     sys.stdout.write(string.replace('@',' '))
     if csv_file is not None:
         csv_file.write(string.replace('@',','))
 
-def print_model_results(res, csvf): # TODO remove csvf from this function and others
+def print_model_results(res): 
     def printheader1():
         output("%s\n" % S.who)
         output((" age" + "@%7s" * 12) % ("IRA", "fIRA", "RMDref", "Roth", "fRoth", "AftaTx", "fAftaTx", "tAftaTx", "o_inc", "SS", "TFedTax", "Spndble"))
@@ -813,7 +833,7 @@ def print_model_results(res, csvf): # TODO remove csvf from this function and ot
             balance[accounttable[j]['acctype']] += res.x[index_b(year,j)]
             withdrawal[accounttable[j]['acctype']] += res.x[index_w(year,j)]
         D = 0
-        if 'aftertax' in S.accounttable:
+        if 'aftertax' in S.accounts:
             D = res.x[index_D(year)]/1000.0
 
         output(("%3d:" + "@%7.0f" * 12 ) %
@@ -838,7 +858,7 @@ def print_model_results(res, csvf): # TODO remove csvf from this function and ot
     output("\n")
     printheader1()
 
-def print_account_trans(res, csvf):
+def print_account_trans(res):
     def print_acc_header1():
         output("%s\n" % S.who)
         output(" age")
@@ -894,7 +914,7 @@ def print_account_trans(res, csvf):
         output("\n")
     print_acc_header1()
 
-def print_tax(res, csvf):
+def print_tax(res):
     def printheader_tax():
         output("%s\n"%S.who)
         output((" age" + "@%7s" * 13) %
@@ -926,7 +946,7 @@ def print_tax(res, csvf):
         output("\n")
     printheader_tax()
 
-def print_tax_brackets(res, csvf):
+def print_tax_brackets(res):
     def printheader_tax_brackets():
         output("@@@@@@%46s" % "Marginal Rate(%):")
         for k in range(len(taxtable)):
@@ -958,7 +978,7 @@ def print_tax_brackets(res, csvf):
         output("@%6.0f\n" % bt)
     printheader_tax_brackets()
 
-def print_cap_gains_brackets(res, csvf):
+def print_cap_gains_brackets(res):
     def printheader_capgains_brackets():
         output("@@@@@%39s" % "Marginal Rate(%):")
         for l in range(len(capgainstable)):
@@ -1100,7 +1120,7 @@ def IncomeSummary(year):
     tax = ntax
     D = 0
     ncg_tax = 0
-    if 'aftertax' in S.accounttable:
+    if 'aftertax' in S.accounts:
         D =  res.x[index_D(year)]
         for l in range(len(capgainstable)):
             ncg_tax += res.x[index_y(year,l)]*capgainstable[l][2]
@@ -1138,7 +1158,7 @@ def get_result_totals(res):
         tspendable += spendable
     return twithd, tincome+twithd, tT, ttax, tcg_tax, tearlytax, tspendable
 
-def print_base_config(res, csvf):
+def print_base_config(res):
     totwithd, tincome, tTaxable, tincometax, tcg_tax, tearlytax, tspendable = get_result_totals(res)
     output("\n")
     output("Optimized for %s\n" % S.maximize)
@@ -1165,8 +1185,10 @@ parser.add_argument('-vtb', '--verbosetaxbrackets', action='store_true',
                     help="Output detailed tax bracket info from solver")
 parser.add_argument('-vw', '--verbosewga', action='store_true',
                     help="Extra wga output from solver")
+parser.add_argument('-vm', '--verbosemodel', action='store_true',
+                    help="Output the binding constraints of the LP model")
 parser.add_argument('-mall', '--verbosemodelall', action='store_true',
-                    help="Combined with -vw will output the entire LP model")
+                    help="Output the entire LP model - not just the binding constraints")
 parser.add_argument('-csv', '--csv', action='store_true',
                     help="Additionally write the output from to a csv file")
 parser.add_argument('conffile')
@@ -1180,6 +1202,10 @@ else:
 S = Data()
 S.load_file(args.conffile)
 accounttable = S.accounttable
+
+print("\naccount:      ", S.accounts)
+print("\naccounttable: ", accounttable)
+
 if args.verbosewga:
     print("accounttable: ", accounttable)
 
@@ -1204,14 +1230,14 @@ nvars = tax_bracket_year + capital_gains_bracket_year + withdrawal_accounts_year
 res = solve()
 consistancy_check(res)
 
-print_account_trans(res, csv_file)
-print_model_results(res, csv_file)
+print_account_trans(res)
+print_model_results(res)
 if args.verbosetax:
-    print_tax(res, csv_file)
+    print_tax(res)
 if args.verbosetaxbrackets:
-    print_tax_brackets(res, csv_file)
-    print_cap_gains_brackets(res, csv_file)
-print_base_config(res, csv_file)
+    print_tax_brackets(res)
+    print_cap_gains_brackets(res)
+print_base_config(res)
 
 if csv_file is not None:
     csv_file.close()
