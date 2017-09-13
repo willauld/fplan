@@ -45,10 +45,6 @@ accountspecs = {'IRA': {'tax': 0.85, 'maxcontrib': 18000+5500*2},
                 'roth':{'tax': 1.0, 'maxcontrib': 5500*2},
                 'aftertax': {'tax': 0.9, 'basis': 0}}
 
-accounttable = [] # array of [bal, rate, discount] # TODO update this comment
-    # discount represents the value of the account balance (after a sort of tax)
-    # The discount is approximently a cost of using the money in the account
-
 # Required Minimal Distributions from IRA starting with age 70
 RMD = [27.4, 26.5, 25.6, 24.7, 23.8, 22.9, 22.0, 21.2, 20.3, 19.5,  # age 70-79
        18.7, 17.9, 17.1, 16.3, 15.5, 14.8, 14.1, 13.4, 12.7, 12.0,  # age 80-89
@@ -405,27 +401,27 @@ def solve():
     # Adder objective function (R1') when PlusEstate is added
     #
     if S.maximize == "PlusEstate":
-        for j in range(len(accounttable)):
-            c[index_b(S.numyr,j)] = -1*accounttable[j]['estateTax'] # account discount rate
+        for j in range(len(S.accounttable)):
+            c[index_b(S.numyr,j)] = -1*S.accounttable[j]['estateTax'] # account discount rate
         print("\nConstructing Spending + Estate Model:\n")
     else:
         print("\nConstructing Spending Model:\n")
         startamount = 0
-        for j in range(len(accounttable)):
-            startamount += accounttable[j]['bal']
+        for j in range(len(S.accounttable)):
+            startamount += S.accounttable[j]['bal']
         balancer = 1/(startamount) 
-        for j in range(len(accounttable)):
-            c[index_b(S.numyr,j)] = -1*balancer *accounttable[j]['estateTax'] # balance and discount rate
+        for j in range(len(S.accounttable)):
+            c[index_b(S.numyr,j)] = -1*balancer *S.accounttable[j]['estateTax'] # balance and discount rate
     
     #
     # Add constraint (2' try)
     #
     for year in range(S.numyr):
         row = [0] * nvars
-        for j in range(len(accounttable)):
+        for j in range(len(S.accounttable)):
             p = 1
-            if accounttable[j]['acctype'] != 'aftertax':
-                if S.apply_early_penalty(year,accounttable[j]['mykey']):
+            if S.accounttable[j]['acctype'] != 'aftertax':
+                if S.apply_early_penalty(year,S.accounttable[j]['mykey']):
                     p = 1-penalty
             row[index_w(year,j)] = -1*p 
         for k in range(len(taxtable)): 
@@ -479,9 +475,9 @@ def solve():
     # Add constaints for (6') rows
     #
     for year in range(S.numyr):
-        for j in range(min(2,len(accounttable))): # at most the first two accounts are type IRA w/ RMD requirement
-            if accounttable[j]['acctype'] == 'IRA':
-                rmd = S.rmd_needed(year,accounttable[j]['mykey'])
+        for j in range(min(2,len(S.accounttable))): # at most the first two accounts are type IRA w/ RMD requirement
+            if S.accounttable[j]['acctype'] == 'IRA':
+                rmd = S.rmd_needed(year,S.accounttable[j]['mykey'])
                 if rmd > 0:
                     row = [0] * nvars
                     row[index_b(year,j)] = 1/rmd 
@@ -497,8 +493,8 @@ def solve():
         row = [0] * nvars
         for k in range(len(taxtable)):
             row[index_x(year,k)] = 1
-        for j in range(len(accounttable)):
-            if accounttable[j]['acctype'] == 'IRA':
+        for j in range(len(S.accounttable)):
+            if S.accounttable[j]['acctype'] == 'IRA':
                 row[index_w(year,j)] = -1 # Account 0 is TDRA
         A+=[row]
         b+=[S.taxed[year]+SS_taxable*S.SS[year]-stded*adj_inf]
@@ -508,8 +504,8 @@ def solve():
     for year in range(S.numyr):
         adj_inf = S.i_rate**year
         row = [0] * nvars
-        for j in range(len(accounttable)):
-            if accounttable[j]['acctype'] == 'IRA':
+        for j in range(len(S.accounttable)):
+            if S.accounttable[j]['acctype'] == 'IRA':
                 row[index_w(year,j)] = 1 # Account 0 is TDRA
         for k in range(len(taxtable)):
             row[index_x(year,k)] = -1
@@ -533,7 +529,7 @@ def solve():
             row = [0] * nvars
             for l in range(len(capgainstable)):
                 row[index_y(year,l)] = 1
-            j = len(accounttable)-1
+            j = len(S.accounttable)-1
             row[index_w(year,j)] = -1*f # last Account is investment / stocks
             A+=[row]
             b+=[0]
@@ -544,7 +540,7 @@ def solve():
         for year in range(S.numyr):
             f = cg_taxable_fraction(year)
             row = [0] * nvars
-            j = len(accounttable)-1
+            j = len(S.accounttable)-1
             row[index_w(year,j)] = f # last Account is investment / stocks
             for l in range(len(capgainstable)):
                 row[index_y(year,l)] = -1
@@ -572,11 +568,11 @@ def solve():
     if S.accmap['aftertax'] > 0:
         aftertax = 1
     for year in range(S.numyr): 
-        for j in range(len(accounttable)-aftertax): # for all accounts except aftertax
+        for j in range(len(S.accounttable)-aftertax): # for all accounts except aftertax
             row = [0] * nvars
             row[index_b(year+1,j)] = 1 ### b[i,j] supports an extra year
-            row[index_b(year,j)] = -1*accounttable[j]['rate']
-            row[index_w(year,j)] = accounttable[j]['rate']
+            row[index_b(year,j)] = -1*S.accounttable[j]['rate']
+            row[index_w(year,j)] = S.accounttable[j]['rate']
             A+=[row]
             b+=[0]
     #
@@ -586,10 +582,10 @@ def solve():
     if S.accmap['aftertax'] > 0:
         aftertax = 1
     for year in range(S.numyr):
-        for j in range(len(accounttable)-aftertax): # for all accounts except aftertax
+        for j in range(len(S.accounttable)-aftertax): # for all accounts except aftertax
             row = [0] * nvars
-            row[index_b(year,j)] = accounttable[j]['rate']
-            row[index_w(year,j)] = -1*accounttable[j]['rate']
+            row[index_b(year,j)] = S.accounttable[j]['rate']
+            row[index_w(year,j)] = -1*S.accounttable[j]['rate']
             row[index_b(year+1,j)] = -1  ### b[i,j] supports an extra year
             A+=[row]
             b+=[0]
@@ -598,12 +594,12 @@ def solve():
     #
     if S.accmap['aftertax'] > 0:
         for year in range(S.numyr): 
-            j = len(accounttable)-1 # nl the last account, the investment account
+            j = len(S.accounttable)-1 # nl the last account, the investment account
             row = [0] * nvars
             row[index_b(year+1,j)] = 1 ### b[i,j] supports an extra year
-            row[index_b(year,j)] = -1*accounttable[j]['rate']
-            row[index_w(year,j)] = accounttable[j]['rate']
-            row[index_D(year)] = -1*accounttable[j]['rate']
+            row[index_b(year,j)] = -1*S.accounttable[j]['rate']
+            row[index_w(year,j)] = S.accounttable[j]['rate']
+            row[index_D(year)] = -1*S.accounttable[j]['rate']
             A+=[row]
             b+=[0]
     #
@@ -611,11 +607,11 @@ def solve():
     #
     if S.accmap['aftertax'] > 0:
         for year in range(S.numyr):
-            j = len(accounttable)-1 # nl the last account, the investment account
+            j = len(S.accounttable)-1 # nl the last account, the investment account
             row = [0] * nvars
-            row[index_b(year,j)] = accounttable[j]['rate']
-            row[index_w(year,j)] = -1*accounttable[j]['rate']
-            row[index_D(year)] = accounttable[j]['rate']
+            row[index_b(year,j)] = S.accounttable[j]['rate']
+            row[index_w(year,j)] = -1*S.accounttable[j]['rate']
+            row[index_D(year)] = S.accounttable[j]['rate']
             row[index_b(year+1,j)] = -1  ### b[i,j] supports an extra year
             A+=[row]
             b+=[0]
@@ -623,20 +619,20 @@ def solve():
     # Constraint for (13a')
     #   Set the begining b[1,j] balances
     #
-    for j in range(len(accounttable)):
+    for j in range(len(S.accounttable)):
         row = [0] * nvars
         row[index_b(0,j)] = 1
         A+=[row]
-        b+=[accounttable[j]['bal']]
+        b+=[S.accounttable[j]['bal']]
     #
     # Constraint for (13b')
     #   Set the begining b[1,j] balances
     #
-    for j in range(len(accounttable)):
+    for j in range(len(S.accounttable)):
         row = [0] * nvars
         row[index_b(0,j)] = -1
         A+=[row]
-        b+=[-1*accounttable[j]['bal']]
+        b+=[-1*S.accounttable[j]['bal']]
     #
     # Constrant for (14') is default for sycpy so no code is needed
     #
@@ -703,12 +699,12 @@ def consistancy_check(res):
                         print("index_y(%d,%d) is %d not %d as it should be" % (i,l,index_y(i,l), ky))
                     ky+=1
         for i in range(S.numyr):
-            for j in range(len(accounttable)):
+            for j in range(len(S.accounttable)):
                 if index_w(i, j) != ky:
                     print("index_w(%d,%d) is %d not %d as it should be" % (i,j,index_w(i,j), ky))
                 ky+=1
         for i in range(S.numyr+1): # b[] has an extra year
-            for j in range(len(accounttable)):
+            for j in range(len(S.accounttable)):
                 if index_b(i, j) != ky:
                     print("index_b(%d,%d) is %d not %d as it should be" % (i,j, index_b(i,j), ky))
                 ky+=1
@@ -773,17 +769,19 @@ def consistancy_check(res):
             print("Error: Expected (age:%d) Taxable Ordinary income %6.2f doesn't match bracket sum %6.2f" % 
                 (year + S.startage, TaxableOrdinary,s))
 
-        for j in range(len(accounttable)-1):
-            a = res.x[index_b(year+1,j)] -( res.x[index_b(year,j)] - res.x[index_w(year,j)])*accounttable[0]['rate']
+        for j in range(len(S.accounttable)-1):
+            a = res.x[index_b(year+1,j)] -( res.x[index_b(year,j)] - res.x[index_w(year,j)])*S.accounttable[j]['rate']
             if a > 1:
+                v = S.accounttable[j]
+                print("account[%d], type %s, index %d, mykey %s" % (j, v['acctype'], v['index'], v['mykey']))
                 print("account[%d] year to year balance NOT OK years %d to %d" % (j, year, year+1))
                 print("difference is", a)
 
-        last = len(accounttable)-1
+        last = len(S.accounttable)-1
         D = 0
         if S.accmap['aftertax'] > 0:
             D = res.x[index_D(year)]
-        if res.x[index_b(year+1,last)] -( res.x[index_b(year,last)] - res.x[index_w(year,last)] + D)*accounttable[0]['rate']>1:
+        if res.x[index_b(year+1,last)] -( res.x[index_b(year,last)] - res.x[index_w(year,last)] + D)*S.accounttable[0]['rate']>1:
             print("account[%d] year to year balance NOT OK years %d to %d" % (2, year, year+1))
 
         T,spendable,tax,rate,cg_tax,earlytax = IncomeSummary(year)
@@ -824,17 +822,17 @@ def print_model_results(res):
         T,spendable,tax,rate,cg_tax,earlytax = IncomeSummary(year)
 
         rmdref = 0
-        for j in range(min(2,len(accounttable))): # at most the first two accounts are type IRA w/ RMD requirement
-            if accounttable[j]['acctype'] == 'IRA':
-                rmd = S.rmd_needed(year,accounttable[j]['mykey'])
+        for j in range(min(2,len(S.accounttable))): # at most the first two accounts are type IRA w/ RMD requirement
+            if S.accounttable[j]['acctype'] == 'IRA':
+                rmd = S.rmd_needed(year,S.accounttable[j]['mykey'])
                 if rmd > 0:
                     rmdref += res.x[index_b(year,j)]/rmd 
 
         balance = {'IRA': 0, 'roth': 0, 'aftertax': 0}
         withdrawal = {'IRA': 0, 'roth': 0, 'aftertax': 0}
-        for j in range(len(accounttable)):
-            balance[accounttable[j]['acctype']] += res.x[index_b(year,j)]
-            withdrawal[accounttable[j]['acctype']] += res.x[index_w(year,j)]
+        for j in range(len(S.accounttable)):
+            balance[S.accounttable[j]['acctype']] += res.x[index_b(year,j)]
+            withdrawal[S.accounttable[j]['acctype']] += res.x[index_w(year,j)]
         D = 0
         if S.accmap['aftertax'] > 0:
             D = res.x[index_D(year)]/1000.0
@@ -850,8 +848,8 @@ def print_model_results(res):
 
     year = S.numyr
     balance = {'IRA': 0, 'roth': 0, 'aftertax': 0}
-    for j in range(len(accounttable)):
-        balance[accounttable[j]['acctype']] += res.x[index_b(year,j)]
+    for j in range(len(S.accounttable)):
+        balance[S.accounttable[j]['acctype']] += res.x[index_b(year,j)]
     output(("%3d:" + "@%7.0f@%7s@%7s" + "@%7.0f@%7s" * 2 + "@%7s" * 5) %
         (year+S.startage, 
         balance['IRA']/1000.0, '-', '-',  # res.x[index_w(year,0)]/1000.0, # IRA
@@ -873,7 +871,7 @@ def print_account_trans(res):
             output(("@%7s" * 4) % ("Roth1", "fRoth1", "Roth2", "fRoth2"))
         elif S.accmap['roth'] == 1:
             output(("@%7s" * 2) % ("Roth", "fRoth"))
-        if S.accmap['IRA']+S.accmap['roth'] == len(accounttable)-1:
+        if S.accmap['IRA']+S.accmap['roth'] == len(S.accounttable)-1:
             output(("@%7s" * 3) % ("AftaTx", "fAftaTx", "tAftaTx"))
         output("\n")
 
@@ -883,8 +881,8 @@ def print_account_trans(res):
         #age = year + S.startage #### who's age??? NEED BOTH!!!!
         rmdref = [0,0]
         for j in range(2): # at most the first two accounts are type IRA w/ RMD requirement
-            if accounttable[j]['acctype'] == 'IRA':
-                rmd = S.rmd_needed(year,accounttable[j]['mykey'])
+            if S.accounttable[j]['acctype'] == 'IRA':
+                rmd = S.rmd_needed(year,S.accounttable[j]['mykey'])
                 if rmd > 0:
                     rmdref[j] = res.x[index_b(year,j)]/rmd 
 
@@ -905,8 +903,8 @@ def print_account_trans(res):
             output(("@%7.0f" * 2) % (
               res.x[index_b(year,index)]/1000.0, res.x[index_w(year,index)]/1000.0)) # roth1
         index = S.accmap['IRA'] + S.accmap['roth']
-        #assert index == len(accounttable)-1
-        if index == len(accounttable)-1:
+        #assert index == len(S.accounttable)-1
+        if index == len(S.accounttable)-1:
             output(("@%7.0f" * 3) % (
                 res.x[index_b(year,index)]/1000.0, res.x[index_w(year,index)]/1000.0, res.x[index_D(year)]/1000.0)) # aftertax account
         output("\n")
@@ -928,8 +926,8 @@ def print_tax(res):
         f = cg_taxable_fraction(year)
         ttax = tax + cg_tax +earlytax
         withdrawal = {'IRA': 0, 'roth': 0, 'aftertax': 0}
-        for j in range(len(accounttable)):
-            withdrawal[accounttable[j]['acctype']] += res.x[index_w(year,j)]
+        for j in range(len(S.accounttable)):
+            withdrawal[S.accounttable[j]['acctype']] += res.x[index_w(year,j)]
         output(("%3d:" + "@%7.0f" * 13 ) %
               (year+S.startage, 
                 withdrawal['IRA']/1000.0, # sum IRA
@@ -996,7 +994,7 @@ def print_cap_gains_brackets(res):
         att = 0
         if S.accmap['aftertax'] > 0:
             f = cg_taxable_fraction(year)
-            j = len(accounttable)-1 # Aftertax / investment account always the last entry when present
+            j = len(S.accounttable)-1 # Aftertax / investment account always the last entry when present
             atw = res.x[index_w(year,j)]/1000.0 # Aftertax / investment account
             att = (f*res.x[index_w(year,j)])/1000.0 # non-basis fraction / cg taxable $ 
         T,spendable,tax,rate,cg_tax,earlytax = IncomeSummary(year)
@@ -1042,11 +1040,11 @@ def print_model_row(row, suppress_newline = False):
             if row[index_y(i, l)] != 0:
                 print("y[%d,%d]: %6.3f " % (i, l, row[index_y(i, l)]),end=' ' )
     for i in range(S.numyr):
-        for j in range(len(accounttable)):
+        for j in range(len(S.accounttable)):
             if row[index_w(i, j)] != 0:
                 print("w[%d,%d]: %6.3f " % (i, j, row[index_w(i, j)]),end=' ' )
     for i in range(S.numyr+1): # b[] has an extra year
-        for j in range(len(accounttable)):
+        for j in range(len(S.accounttable)):
             if row[index_b(i, j)] != 0:
                 print("b[%d,%d]: %6.3f " % (i, j, row[index_b(i, j)]),end=' ' )
     for i in range(S.numyr):
@@ -1071,13 +1069,13 @@ def index_y(i,l):
 
 def index_w(i,j):
     assert i>=0 and i < S.numyr
-    assert j>=0 and j < len(accounttable)
-    return tax_bracket_year+ capital_gains_bracket_year + i*len(accounttable)+j
+    assert j>=0 and j < len(S.accounttable)
+    return tax_bracket_year+ capital_gains_bracket_year + i*len(S.accounttable)+j
 
 def index_b(i,j):
     assert i>=0 and i < S.numyr+1 # b has an extra year on the end 
-    assert j>=0 and j < len(accounttable)
-    return tax_bracket_year+ capital_gains_bracket_year + withdrawal_accounts_year+i*len(accounttable)+j
+    assert j>=0 and j < len(S.accounttable)
+    return tax_bracket_year+ capital_gains_bracket_year + withdrawal_accounts_year+i*len(S.accounttable)+j
 
 def index_s(i):
     assert i>=0 and i < S.numyr
@@ -1100,8 +1098,8 @@ def cg_taxable_fraction(year):
 
 def OrdinaryTaxable(year):
     withdrawals = 0 
-    for j in range(len(accounttable)):
-        if accounttable[j]['acctype'] == 'IRA':
+    for j in range(len(S.accounttable)):
+        if S.accounttable[j]['acctype'] == 'IRA':
             withdrawals += res.x[index_w(year,j)]
     return withdrawals + S.taxed[year] + SS_taxable*S.SS[year] -(stded*S.i_rate**year)
 
@@ -1112,9 +1110,9 @@ def IncomeSummary(year):
     # Need to account for withdrawals from IRA deposited in Investment account NOT SPENDABLE
     age = year + S.startage
     earlytax = 0
-    for j in range(len(accounttable)):
-        if accounttable[j]['acctype'] != 'aftertax':
-            if S.apply_early_penalty(year,accounttable[j]['mykey']):
+    for j in range(len(S.accounttable)):
+        if S.accounttable[j]['acctype'] != 'aftertax':
+            if S.apply_early_penalty(year,S.accounttable[j]['mykey']):
                 earlytax += res.x[index_w(year,j)]*penalty
     T = OrdinaryTaxable(year)
     cut, size, rate, base, brak_amount, sum_brackets = get_max_bracket(year, T, False)
@@ -1130,7 +1128,7 @@ def IncomeSummary(year):
         for l in range(len(capgainstable)):
             ncg_tax += res.x[index_y(year,l)]*capgainstable[l][2]
     tot_withdrawals = 0
-    for j in range(len(accounttable)):
+    for j in range(len(S.accounttable)):
         tot_withdrawals += res.x[index_w(year,j)] 
     spendable = tot_withdrawals - D + S.income[year] + S.SS[year] - tax -ncg_tax - earlytax
     return T, spendable, tax, rate, ncg_tax, earlytax
@@ -1152,7 +1150,7 @@ def get_result_totals(res):
         #    rmd = RMD[age - 70]
         T,spendable,tax,rate,cg_tax,earlytax = IncomeSummary(year)
         tot_withdrawals = 0
-        for j in range(len(accounttable)):
+        for j in range(len(S.accounttable)):
             tot_withdrawals += res.x[index_w(year,j)] 
         twithd += tot_withdrawals 
         tincome += S.income[year] + S.SS[year] # + withdrawals
@@ -1206,24 +1204,26 @@ else:
 
 S = Data()
 S.load_file(args.conffile)
-accounttable = S.accounttable
 
-print("\naccounttable: ", accounttable)
+print("\naccounttable: ", S.accounttable)
+
+if S.accmap['IRA']+S.accmap['roth']+S.accmap['aftertax'] == 0:
+    print('Error: This app optimizes the withdrawals from your retirement account; you must have at least one specified in the input toml file.')
+    exit(0)
 
 if args.verbosewga:
-    print("accounttable: ", accounttable)
+    print("accounttable: ", S.accounttable)
 
+non_binding_only = True
 if args.verbosemodelall:
     non_binding_only = False
-else:
-    non_binding_only = True
 
 tax_bracket_year = S.numyr * len(taxtable) # x[i,k]
 capital_gains_bracket_year = 0 # no y[i,l] if no aftertax account
 if S.accmap['aftertax'] > 0:
     capital_gains_bracket_year = S.numyr * len(capgainstable) # y[i,l]
-withdrawal_accounts_year = S.numyr * len(accounttable) # w[i,j]
-startbalance_accounts_year = (S.numyr+1) * len(accounttable) # b[i,j]
+withdrawal_accounts_year = S.numyr * len(S.accounttable) # w[i,j]
+startbalance_accounts_year = (S.numyr+1) * len(S.accounttable) # b[i,j]
 spendable_year = (S.numyr) # s[i]
 investment_deposites_year = 0 # no D[i] if no aftertax account
 if S.accmap['aftertax'] > 0:
