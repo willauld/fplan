@@ -351,7 +351,7 @@ class Data:
                         #print("inf amount %6.0f, year %d, curbucket %6.0f" % (amount , year, bucket[year]), end='')
                         bucket[year] += amount
                         #print("newbucket %6.0f" % (bucket[year]))
-                        if tax != 0 and v.get('tax'):
+                        if tax is not None and v.get('tax'):
                             tax[year] += amount
 
         INC = [0] * self.numyr
@@ -361,10 +361,10 @@ class Data:
         MAX = [0] * self.numyr
         SS = [0] * self.numyr
 
-        do_details("expense", EXP, 0)
+        do_details("expense", EXP, None)
         do_details("income", INC, TAX)
-        do_details("desired", WANT, 0)
-        do_details("max", MAX, 0)
+        do_details("desired", WANT, None)
+        do_details("max", MAX, None)
         do_SS_details(SS)
 
         self.income = INC
@@ -414,7 +414,7 @@ def solve():
             c[index_b(S.numyr,j)] = -1*balancer *S.accounttable[j]['estateTax'] # balance and discount rate
     
     #
-    # Add constraint (2' try)
+    # Add constraint (2')
     #
     for year in range(S.numyr):
         row = [0] * nvars
@@ -436,24 +436,29 @@ def solve():
     #
     # Add constraint (3a')
     #
+    #"""
     for year in range(S.numyr-1):
         row = [0] * nvars
         row[index_s(year+1)] = 1
         row[index_s(year)] = -1*S.i_rate
         A+=[row]
         b+=[0]
+    #"""
     #
     # Add constraint (3b')
     #
+    #"""
     for year in range(S.numyr-1):
         row = [0] * nvars
         row[index_s(year)] = S.i_rate
         row[index_s(year+1)] = -1
         A+=[row]
         b+=[0]
+    #"""
     #
     # Add constrant (4') rows - not needed if [desired.income] is not defined in input
     #
+    #"""
     if S.desired[0] != 0:
         for year in range(1): # Only needs setting at the beginning
             row = [0] * nvars
@@ -485,26 +490,29 @@ def solve():
                     A+=[row]
                     b+=[0]
 
+    #"""
     #
     # Add constraints for (7a')
     #
+    """
     for year in range(S.numyr):
         adj_inf = S.i_rate**year
         row = [0] * nvars
         for k in range(len(taxtable)):
             row[index_x(year,k)] = 1
-        for j in range(len(S.accounttable)):
+        for j in range(min(2,len(S.accounttable))): # IRA can only be in the first two accounts
             if S.accounttable[j]['acctype'] == 'IRA':
                 row[index_w(year,j)] = -1 # Account 0 is TDRA
         A+=[row]
         b+=[S.taxed[year]+SS_taxable*S.SS[year]-stded*adj_inf]
+    """
     #
     # Add constraints for (7b')
     #
     for year in range(S.numyr):
         adj_inf = S.i_rate**year
         row = [0] * nvars
-        for j in range(len(S.accounttable)):
+        for j in range(min(2,len(S.accounttable))): # IRA can only be in the first two accounts
             if S.accounttable[j]['acctype'] == 'IRA':
                 row[index_w(year,j)] = 1 # Account 0 is TDRA
         for k in range(len(taxtable)):
@@ -647,7 +655,10 @@ def solve():
                                           "tol": 1.0e-7,
                                           "maxiter": 3000})
     if args.verbosemodel or args.verbosemodelall:
-        print_model_matrix(c, A, b, res.slack, non_binding_only)
+        if res.success == False:
+            print_model_matrix(c, A, b, None, False)
+        else:
+            print_model_matrix(c, A, b, res.slack, non_binding_only)
     if args.verbosewga:
         print(res)
 
@@ -664,7 +675,7 @@ def print_model_matrix(c, A, b, s, non_binding_only):
         print()
         print("B? i: A_ub[i]: b[i]")
         for constraint in range(len(A)):
-            if s[constraint] >0:
+            if s is None or s[constraint] >0:
                 print("  ", end='')
             else:
                 print("B ", end='')
@@ -787,7 +798,13 @@ def consistancy_check(res):
         T,spendable,tax,rate,cg_tax,earlytax = IncomeSummary(year)
         if spendable + 0.1 < res.x[index_s(year)]  or spendable -0.1 > res.x[index_s(year)]:
             print("Calc Spendable %6.2f should equal s(year:%d) %6.2f"% (spendable, year, res.x[index_s(year)]))
-            print("w[%d,0]: %6.0f +w[%d,1]: %6.0f +w[%d,2]: %6.0f -D[%d]: %6.0f +o[%d]: %6.0f +SS[%d]: %6.0f -tax: %6.0f -cg_tax: %6.0f" % (year, res.x[index_w(year,0)] ,year, res.x[index_w(year,1)] ,year, res.x[index_w(year,2)] ,year, res.x[index_D(year)] ,year, S.income[year] ,year, S.SS[year] , tax ,cg_tax))
+            for j in range(len(S.accounttable)):
+                print("+w[%d,%d]: %6.0f" % (year, j, res.x[index_w(year,j)])) 
+                if S.accounttable[j]['acctype'] == 'aftertax':
+                    print("-D[%d]: %6.0f" % (year,res.x[index_D(year)]))
+            print("+o[%d]: %6.0f +SS[%d]: %6.0f -tax: %6.0f -cg_tax: %6.0f" % (year, S.income[year] ,year, S.SS[year] , tax ,cg_tax))
+
+            #print("w[%d,0]: %6.0f +w[%d,1]: %6.0f +w[%d,2]: %6.0f -D[%d]: %6.0f +o[%d]: %6.0f +SS[%d]: %6.0f -tax: %6.0f -cg_tax: %6.0f" % (year, res.x[index_w(year,0)] ,year, res.x[index_w(year,1)] ,year, res.x[index_w(year,2)] ,year, res.x[index_D(year)] ,year, S.income[year] ,year, S.SS[year] , tax ,cg_tax))
         bt = 0
         for k in range(len(taxtable)):
             bt += res.x[index_x(year,k)] * taxtable[k][2]
@@ -880,7 +897,7 @@ def print_account_trans(res):
     for year in range(S.numyr):
         #age = year + S.startage #### who's age??? NEED BOTH!!!!
         rmdref = [0,0]
-        for j in range(2): # at most the first two accounts are type IRA w/ RMD requirement
+        for j in range(min(2,len(S.accounttable))): # at most the first two accounts are type IRA w/ RMD requirement
             if S.accounttable[j]['acctype'] == 'IRA':
                 rmd = S.rmd_needed(year,S.accounttable[j]['mykey'])
                 if rmd > 0:
@@ -1035,10 +1052,11 @@ def print_model_row(row, suppress_newline = False):
         for k in range(len(taxtable)):
             if row[index_x(i, k)] != 0:
                 print("x[%d,%d]: %6.3f" % (i, k, row[index_x(i, k)]),end=' ' )
-    for i in range(S.numyr):
-        for l in range(len(capgainstable)):
-            if row[index_y(i, l)] != 0:
-                print("y[%d,%d]: %6.3f " % (i, l, row[index_y(i, l)]),end=' ' )
+    if S.accmap['aftertax'] > 0:
+        for i in range(S.numyr):
+            for l in range(len(capgainstable)):
+                if row[index_y(i, l)] != 0:
+                    print("y[%d,%d]: %6.3f " % (i, l, row[index_y(i, l)]),end=' ' )
     for i in range(S.numyr):
         for j in range(len(S.accounttable)):
             if row[index_w(i, j)] != 0:
@@ -1050,9 +1068,10 @@ def print_model_row(row, suppress_newline = False):
     for i in range(S.numyr):
         if row[index_s(i)] !=0:
             print("s[%d]: %6.3f " % (i, row[index_s(i)]),end=' ' )
-    for i in range(S.numyr):
-        if row[index_D(i)] !=0:
-            print("D[%d]: %6.3f " % (i, row[index_D(i)]),end=' ' )
+    if S.accmap['aftertax'] > 0:
+        for i in range(S.numyr):
+            if row[index_D(i)] !=0:
+                print("D[%d]: %6.3f " % (i, row[index_D(i)]),end=' ' )
     if not suppress_newline:
         print()
 
@@ -1098,10 +1117,13 @@ def cg_taxable_fraction(year):
 
 def OrdinaryTaxable(year):
     withdrawals = 0 
-    for j in range(len(S.accounttable)):
+    for j in range(min(2,len(S.accounttable))):
         if S.accounttable[j]['acctype'] == 'IRA':
             withdrawals += res.x[index_w(year,j)]
-    return withdrawals + S.taxed[year] + SS_taxable*S.SS[year] -(stded*S.i_rate**year)
+    T = withdrawals + S.taxed[year] + SS_taxable*S.SS[year] -(stded*S.i_rate**year)
+    if T < 0:
+        T = 0
+    return T
 
 def IncomeSummary(year):
     # TODO clean up and simplify this fuction
@@ -1208,7 +1230,7 @@ S.load_file(args.conffile)
 print("\naccounttable: ", S.accounttable)
 
 if S.accmap['IRA']+S.accmap['roth']+S.accmap['aftertax'] == 0:
-    print('Error: This app optimizes the withdrawals from your retirement account; you must have at least one specified in the input toml file.')
+    print('Error: This app optimizes the withdrawals from your retirement account(s); you must have at least one specified in the input toml file.')
     exit(0)
 
 if args.verbosewga:
