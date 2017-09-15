@@ -1,0 +1,84 @@
+# This an example input file for ARetirementPlanner.py
+
+# The format of this file will likely change in the future as
+# the program changes in the future.
+
+# most fields are options and have resonable defaults
+
+#retirement_type = 'joint' # defaults to joint, currently only joint is supported, could be single, joint (married)
+
+returns = 6		# return rate of investments
+inflation = 2.5	# yearly inflation rate
+
+# what to optimize for? 'Spending' or spending 'PlusEstate'
+#maximize = "PlusEstate"
+
+[iam.spouse]
+primary = false
+age = 54
+retire = 65
+through = 75 
+
+[iam.bigdaddy] # iam (for each) is required in some joint cases (".xxx" use to match accounts IRA/roth)
+primary = true # uses this iam for the output age listing
+age = 64
+retire = 65
+through = 72
+
+[SocialSecurity.bigdaddy]
+amount =  20_000  # at Full Retirement Age (FRA); Assumes inflation, 85% taxed
+FRA = 67
+age = "68-"
+
+[SocialSecurity.spouse]
+amount = 20_000  # -1 for default spousal benefit amount, amount at Full Retirement Age (FRA); Assumes inflation, 85% taxed
+FRA = 67
+age = "70-"
+
+[income.mytaxfree]
+amount = 3000
+age = "65-70"
+inflation = false
+tax = false          # count this as ordinary taxable income (true/false)
+
+[income.rental_1]
+amount = 5_000
+age = "67-"
+inflation = true
+tax = true          # count this as income tax
+
+[income.rental_2]
+amount = 2400
+age = "67-"
+inflation = true
+tax = true          # count this as income tax
+
+#[desired.income]
+#amount = 45000    # want $120,000 per year
+#age = "68-"
+#inflation = true
+#tax = true          # count this as income tax
+
+#[max.income]
+#amount = 150000
+#age = "68-"
+#inflation = true
+#tax = false 
+
+# after tax savings accounts
+[aftertax]
+bal =   100_000
+basis = 50_000		# for capital gains tax
+
+# pre-tax IRA accounts
+[IRA.bigdaddy]
+#[IRA]
+bal = 200_000
+#rate = 7.25    # defaults to global rate set above
+
+[IRA.spouse]
+bal = 100_000
+
+# roth IRA accounts
+[roth.spouse]
+bal = 20_000

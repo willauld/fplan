@@ -264,7 +264,7 @@ class Data:
         self.accmap = {'IRA': 0, 'roth': 0, 'aftertax': 0}
         for j in range(len(self.accounttable)):
             self.accmap[self.accounttable[j]['acctype']] += 1
-        print("Account Map ", self.accmap)
+        #print("Account Map ", self.accmap)
 
         self.SSinput = [{}, {}] 
         self.parse_expenses(d)
@@ -1210,6 +1210,8 @@ def print_base_config(res):
 parser = argparse.ArgumentParser()
 parser.add_argument('-v', '--verbose', action='store_true',
                     help="Extra output from solver")
+parser.add_argument('-va', '--verboseaccounttrans', action='store_true',
+                    help="Output detailed account transactions from solver")
 parser.add_argument('-vt', '--verbosetax', action='store_true',
                     help="Output detailed tax info from solver")
 parser.add_argument('-vtb', '--verbosetaxbrackets', action='store_true',
@@ -1233,7 +1235,7 @@ else:
 S = Data()
 S.load_file(args.conffile)
 
-print("\naccounttable: ", S.accounttable)
+#print("\naccounttable: ", S.accounttable)
 
 if S.accmap['IRA']+S.accmap['roth']+S.accmap['aftertax'] == 0:
     print('Error: This app optimizes the withdrawals from your retirement account(s); you must have at least one specified in the input toml file.')
@@ -1262,8 +1264,9 @@ nvars = tax_bracket_year + capital_gains_bracket_year + withdrawal_accounts_year
 res = solve()
 consistancy_check(res)
 
-print_account_trans(res)
 print_model_results(res)
+if args.verboseaccounttrans:
+    print_account_trans(res)
 if args.verbosetax:
     print_tax(res)
 if args.verbosetaxbrackets:
