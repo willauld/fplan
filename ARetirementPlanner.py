@@ -804,7 +804,6 @@ def consistancy_check(res):
                     print("-D[%d]: %6.0f" % (year,res.x[index_D(year)]))
             print("+o[%d]: %6.0f +SS[%d]: %6.0f -tax: %6.0f -cg_tax: %6.0f" % (year, S.income[year] ,year, S.SS[year] , tax ,cg_tax))
 
-            #print("w[%d,0]: %6.0f +w[%d,1]: %6.0f +w[%d,2]: %6.0f -D[%d]: %6.0f +o[%d]: %6.0f +SS[%d]: %6.0f -tax: %6.0f -cg_tax: %6.0f" % (year, res.x[index_w(year,0)] ,year, res.x[index_w(year,1)] ,year, res.x[index_w(year,2)] ,year, res.x[index_D(year)] ,year, S.income[year] ,year, S.SS[year] , tax ,cg_tax))
         bt = 0
         for k in range(len(taxtable)):
             bt += res.x[index_x(year,k)] * taxtable[k][2]
@@ -854,13 +853,20 @@ def print_model_results(res):
         if S.accmap['aftertax'] > 0:
             D = res.x[index_D(year)]/1000.0
 
-        output(("%3d:" + "@%7.0f" * 12 ) %
+        output(("%3d:" + "@%7.0f" * 11 ) %
               (year+S.startage, 
               balance['IRA']/1000.0, withdrawal['IRA']/1000.0, rmdref/1000.0, # IRA
               balance['roth']/1000.0, withdrawal['roth']/1000.0, # Roth
               balance['aftertax']/1000.0, withdrawal['aftertax']/1000.0, D, # AftaTax
               S.income[year]/1000.0, S.SS[year]/1000.0,
-              (tax+cg_tax+earlytax)/1000.0, res.x[index_s(year)]/1000.0) )
+              (tax+cg_tax+earlytax)/1000.0) )
+        s = res.x[index_s(year)]/1000.0
+        star = ' '
+        T,spendable,tax,rate,cg_tax,earlytax = IncomeSummary(year)
+        if spendable + 0.1 < res.x[index_s(year)]  or spendable -0.1 > res.x[index_s(year)]:
+            s = spendable/1000.0
+            star = '*'
+        output("@%7.0f%c" % (s, star) )
         output("\n")
 
     year = S.numyr
