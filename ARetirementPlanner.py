@@ -207,6 +207,7 @@ class Data:
             end = yearsthrough[0]+lis_return[0]['age']
             primaryIndx = 0
             secondaryIndx = 1
+            secondarykey = ""
             if indx > 1:
                 if lis_return[0]['primary'] == lis_return[1]['primary']:
                     print("Error: one of two retirees must be primary (i.e., primary = true):")
@@ -216,13 +217,14 @@ class Data:
                 if lis_return[1]['primary'] == True:
                     primaryIndx = 1
                     secondaryIndx = 0
+                secondarykey = lis_return[secondaryIndx]['mykey']
                 delta = lis_return[primaryIndx]['age'] - lis_return[secondaryIndx]['age']
                 start = min(yearstoretire[0], yearstoretire[1]) + lis_return[primaryIndx]['age']
                 lis_return[primaryIndx]['ageAtStart'] = start
                 lis_return[secondaryIndx]['ageAtStart'] = start - delta
                 end = max(yearsthrough[0], yearsthrough[1])+lis_return[primaryIndx]['age']
             #print("delta: %d, start: %d, end: %d, numyr: %d" %(delta, start, end, end-start))
-            return lis_return, start, end-start, lis_return[primaryIndx]['mykey']
+            return lis_return, start, end-start, lis_return[primaryIndx]['mykey'], secondarykey, delta
 
         self.accounttable = []
         with open(file) as conffile:
@@ -252,7 +254,7 @@ class Data:
         self.i_rate = 1 + d.get('inflation', 0) / 100       # inflation rate: 2.5 -> 1.025
         self.r_rate = 1 + d.get('returns', 6) / 100         # invest rate: 6 -> 1.06
 
-        self.retiree, self.startage, self.numyr, self.who = get_retiree_info() # returns entry for each retiree
+        self.retiree, self.startage, self.numyr, self.primary, self.secondary, self.delta = get_retiree_info() # returns entry for each retiree
         #print("\nself.retiree: ", self.retiree, "\n\n")
         
         #print("input dictionary(processed): ", d)
@@ -825,8 +827,15 @@ def output(string): # TODO move to a better place
 
 def print_model_results(res): 
     def printheader1():
-        output("%s\n" % S.who)
-        output((" age" + "@%7s" * 12) % ("IRA", "fIRA", "RMDref", "Roth", "fRoth", "AftaTx", "fAftaTx", "tAftaTx", "o_inc", "SS", "TFedTax", "Spndble"))
+        if S.secondary != "":
+            output("%s/%s\n" % (S.primary, S.secondary))
+            output("    age ")
+        else:
+            if S.primary != 'nokey':
+                output("%s\n" % (S.primary))
+            output(" age ")
+
+        output(("@%7s" * 12) % ("IRA", "fIRA", "RMDref", "Roth", "fRoth", "AftaTx", "fAftaTx", "tAftaTx", "o_inc", "SS", "TFedTax", "Spndble"))
         output("\n")
 
     output("\nActivity Summary:\n")
@@ -853,8 +862,12 @@ def print_model_results(res):
         if S.accmap['aftertax'] > 0:
             D = res.x[index_D(year)]/1000.0
 
-        output(("%3d:" + "@%7.0f" * 11 ) %
-              (year+S.startage, 
+        if S.secondary != "":
+            output("%3d/%3d:" % (year+S.startage, year+S.startage-S.delta))
+        else:
+            output(" %3d:" % (year+S.startage))
+        output(("@%7.0f" * 11 ) %
+              ( 
               balance['IRA']/1000.0, withdrawal['IRA']/1000.0, rmdref/1000.0, # IRA
               balance['roth']/1000.0, withdrawal['roth']/1000.0, # Roth
               balance['aftertax']/1000.0, withdrawal['aftertax']/1000.0, D, # AftaTax
@@ -873,8 +886,12 @@ def print_model_results(res):
     balance = {'IRA': 0, 'roth': 0, 'aftertax': 0}
     for j in range(len(S.accounttable)):
         balance[S.accounttable[j]['acctype']] += res.x[index_b(year,j)]
-    output(("%3d:" + "@%7.0f@%7s@%7s" + "@%7.0f@%7s" * 2 + "@%7s" * 5) %
-        (year+S.startage, 
+    if S.secondary != "":
+        output("  final:" )
+    else:
+        output("finl:" )
+    output(("@%7.0f@%7s@%7s" + "@%7.0f@%7s" * 2 + "@%7s" * 5) %
+        ( 
         balance['IRA']/1000.0, '-', '-',  # res.x[index_w(year,0)]/1000.0, # IRA
         balance['roth']/1000.0, '-', # res.x[index_w(year,1)]/1000.0, # Roth
         balance['aftertax']/1000.0, '-', # res.x[index_w(year,2)]/1000.0, # AftaTax
@@ -884,8 +901,14 @@ def print_model_results(res):
 
 def print_account_trans(res):
     def print_acc_header1():
-        output("%s\n" % S.who)
-        output(" age")
+        #output("%s\n" % S.who)
+        if S.secondary != "":
+            output("%s/%s\n" % (S.primary, S.secondary))
+            output("    age ")
+        else:
+            if S.primary != 'nokey':
+                output("%s\n" % (S.primary))
+            output(" age ")
         if S.accmap['IRA'] >1:
             output(("@%7s" * 6) % ("IRA1", "fIRA1", "RMDref1", "IRA2", "fIRA2", "RMDref2"))
         elif S.accmap['IRA'] == 1:
@@ -909,7 +932,10 @@ def print_account_trans(res):
                 if rmd > 0:
                     rmdref[j] = res.x[index_b(year,j)]/rmd 
 
-        output("%3d:" % (year+S.startage))
+        if S.secondary != "":
+            output("%3d/%3d:" % (year+S.startage, year+S.startage-S.delta))
+        else:
+            output(" %3d:" % (year+S.startage))
         if S.accmap['IRA'] >1:
             output(("@%7.0f" * 6) % (
               res.x[index_b(year,0)]/1000.0, res.x[index_w(year,0)]/1000.0, rmdref[0]/1000.0, # IRA1
@@ -935,8 +961,14 @@ def print_account_trans(res):
 
 def print_tax(res):
     def printheader_tax():
-        output("%s\n"%S.who)
-        output((" age" + "@%7s" * 13) %
+        if S.secondary != "":
+            output("%s/%s\n" % (S.primary, S.secondary))
+            output("    age ")
+        else:
+            if S.primary != 'nokey':
+                output("%s\n" % (S.primary))
+            output(" age ")
+        output(("@%7s" * 13) %
           ("fIRA", "TxbleO", "TxbleSS", "deduct", "T_inc", "earlyP", "fedtax", "mTaxB%", "fAftaTx", "cgTax%", "cgTax", "TFedTax", "spndble" ))
         output("\n")
 
@@ -951,9 +983,12 @@ def print_tax(res):
         withdrawal = {'IRA': 0, 'roth': 0, 'aftertax': 0}
         for j in range(len(S.accounttable)):
             withdrawal[S.accounttable[j]['acctype']] += res.x[index_w(year,j)]
-        output(("%3d:" + "@%7.0f" * 13 ) %
-              (year+S.startage, 
-                withdrawal['IRA']/1000.0, # sum IRA
+        if S.secondary != "":
+            output("%3d/%3d:" % (year+S.startage, year+S.startage-S.delta))
+        else:
+            output(" %3d:" % (year+S.startage))
+        output(("@%7.0f" * 13 ) %
+              ( withdrawal['IRA']/1000.0, # sum IRA
               S.taxed[year]/1000.0, SS_taxable*S.SS[year]/1000.0,
               stded*i_mul/1000.0, T/1000.0, earlytax/1000.0, tax/1000.0, rate*100, 
                 withdrawal['aftertax']/1000.0, # sum Aftertax
@@ -964,13 +999,24 @@ def print_tax(res):
 
 def print_tax_brackets(res):
     def printheader_tax_brackets():
-        output("@@@@@@%46s" % "Marginal Rate(%):")
+        if S.secondary != "":
+            output("@@@@@@%50s" % "Marginal Rate(%):")
+        else:
+            output("@@@@@@%47s" % "Marginal Rate(%):")
         for k in range(len(taxtable)):
             (cut, size, rate, base) = taxtable[k]
             output("@%6.0f" % (rate*100))
         output("\n")
-        output("%s\n"%S.who)
-        output((" age" + "@%7s" * 6) % ("fIRA", "TxbleO", "TxbleSS", "deduct", "T_inc", "fedtax"))
+        #output("%s\n"%S.who)
+        #output("%s/%s\n" % (S.primary, S.secondary))
+        if S.secondary != "":
+            output("%s/%s\n" % (S.primary, S.secondary))
+            output("    age ")
+        else:
+            if S.primary != 'nokey':
+                output("%s\n" % (S.primary))
+            output(" age ")
+        output(("@%7s" * 6) % ("fIRA", "TxbleO", "TxbleSS", "deduct", "T_inc", "fedtax"))
         for k in range(len(taxtable)):
             output("@brckt%d" % k)
         output("@brkTot\n")
@@ -982,8 +1028,12 @@ def print_tax_brackets(res):
         i_mul = S.i_rate ** year
         T,spendable,tax,rate,cg_tax,earlytax = IncomeSummary(year)
         ttax = tax + cg_tax
-        output(("%3d:" + "@%7.0f" * 6 ) %
-              (year+S.startage, 
+        if S.secondary != "":
+            output("%3d/%3d:" % (year+S.startage, year+S.startage-S.delta))
+        else:
+            output(" %3d:" % (year+S.startage))
+        output(("@%7.0f" * 6 ) %
+              (
               res.x[index_w(year,0)]/1000.0, # IRA
               S.taxed[year]/1000.0, SS_taxable*S.SS[year]/1000.0,
               stded*i_mul/1000.0, T/1000.0, tax/1000.0) )
@@ -996,13 +1046,24 @@ def print_tax_brackets(res):
 
 def print_cap_gains_brackets(res):
     def printheader_capgains_brackets():
-        output("@@@@@%39s" % "Marginal Rate(%):")
+        if S.secondary != "":
+            output("@@@@@@%42s" % "Marginal Rate(%):")
+        else:
+            output("@@@@@%40s" % " Marginal Rate(%):")
         for l in range(len(capgainstable)):
             (cut, size, rate) = capgainstable[l]
             output("@%6.0f" % (rate*100))
         output("\n")
-        output("%s\n"%S.who)
-        output((" age" + "@%7s" * 5) % ("fAftaTx","cgTax%", "cgTaxbl", "T_inc", "cgTax"))
+        #output("%s\n"%S.who)
+        #output("%s/%s\n" % (S.primary, S.secondary))
+        if S.secondary != "":
+            output("%s/%s\n" % (S.primary, S.secondary))
+            output("    age ")
+        else:
+            if S.primary != 'nokey':
+                output("%s\n" % (S.primary))
+            output(" age ")
+        output(("@%7s" * 5) % ("fAftaTx","cgTax%", "cgTaxbl", "T_inc", "cgTax"))
         for l in range(len(capgainstable)):
             output ("@brckt%d" % l)
         output ("@brkTot\n")
@@ -1022,8 +1083,12 @@ def print_cap_gains_brackets(res):
             att = (f*res.x[index_w(year,j)])/1000.0 # non-basis fraction / cg taxable $ 
         T,spendable,tax,rate,cg_tax,earlytax = IncomeSummary(year)
         ttax = tax + cg_tax
-        output(("%3d:" + "@%7.0f" * 5 ) %
-              (year+S.startage, 
+        if S.secondary != "":
+            output("%3d/%3d:" % (year+S.startage, year+S.startage-S.delta))
+        else:
+            output(" %3d:" % (year+S.startage))
+        output(("@%7.0f" * 5 ) %
+              (
               atw, # Aftertax / investment account
               f*100, att, # non-basis fraction / cg taxable $ 
               T/1000.0, cg_tax/1000.0))
