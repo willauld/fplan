@@ -434,7 +434,7 @@ def solve():
             row[index_D(year)] = 1
         row[index_s(year)] = 1
         A+=[row]
-        b+=[S.income[year] + S.SS[year]]
+        b+=[S.income[year] + S.SS[year] - S.expenses[year]]
     #
     # Add constraint (3a')
     #
@@ -835,7 +835,7 @@ def print_model_results(res):
                 output("%s\n" % (S.primary))
             output(" age ")
 
-        output(("@%7s" * 12) % ("IRA", "fIRA", "RMDref", "Roth", "fRoth", "AftaTx", "fAftaTx", "tAftaTx", "o_inc", "SS", "TFedTax", "Spndble"))
+        output(("@%7s" * 13) % ("IRA", "fIRA", "RMDref", "Roth", "fRoth", "AftaTx", "fAftaTx", "tAftaTx", "o_inc", "SS", "Exp", "TFedTax", "Spndble"))
         output("\n")
 
     output("\nActivity Summary:\n")
@@ -866,13 +866,12 @@ def print_model_results(res):
             output("%3d/%3d:" % (year+S.startage, year+S.startage-S.delta))
         else:
             output(" %3d:" % (year+S.startage))
-        output(("@%7.0f" * 11 ) %
-              ( 
-              balance['IRA']/1000.0, withdrawal['IRA']/1000.0, rmdref/1000.0, # IRA
-              balance['roth']/1000.0, withdrawal['roth']/1000.0, # Roth
-              balance['aftertax']/1000.0, withdrawal['aftertax']/1000.0, D, # AftaTax
-              S.income[year]/1000.0, S.SS[year]/1000.0,
-              (tax+cg_tax+earlytax)/1000.0) )
+        output(("@%7.0f" * 12 ) %
+              ( balance['IRA']/1000.0, withdrawal['IRA']/1000.0, rmdref/1000.0, # IRA
+                balance['roth']/1000.0, withdrawal['roth']/1000.0, # Roth
+                balance['aftertax']/1000.0, withdrawal['aftertax']/1000.0, D, # AftaTax
+                S.income[year]/1000.0, S.SS[year]/1000.0, S.expenses[year]/1000.0,
+                (tax+cg_tax+earlytax)/1000.0) )
         s = res.x[index_s(year)]/1000.0
         star = ' '
         T,spendable,tax,rate,cg_tax,earlytax = IncomeSummary(year)
@@ -890,12 +889,12 @@ def print_model_results(res):
         output("  final:" )
     else:
         output("finl:" )
-    output(("@%7.0f@%7s@%7s" + "@%7.0f@%7s" * 2 + "@%7s" * 5) %
+    output(("@%7.0f@%7s@%7s" + "@%7.0f@%7s" * 2 + "@%7s" * 6) %
         ( 
         balance['IRA']/1000.0, '-', '-',  # res.x[index_w(year,0)]/1000.0, # IRA
         balance['roth']/1000.0, '-', # res.x[index_w(year,1)]/1000.0, # Roth
         balance['aftertax']/1000.0, '-', # res.x[index_w(year,2)]/1000.0, # AftaTax
-        '-', '-', '-', '-', '-'))
+        '-', '-', '-', '-', '-', '-'))
     output("\n")
     printheader1()
 
@@ -1223,7 +1222,7 @@ def IncomeSummary(year):
     tot_withdrawals = 0
     for j in range(len(S.accounttable)):
         tot_withdrawals += res.x[index_w(year,j)] 
-    spendable = tot_withdrawals - D + S.income[year] + S.SS[year] - tax -ncg_tax - earlytax
+    spendable = tot_withdrawals - D + S.income[year] + S.SS[year] - S.expenses[year] - tax -ncg_tax - earlytax
     return T, spendable, tax, rate, ncg_tax, earlytax
 
 def get_result_totals(res):
