@@ -45,6 +45,8 @@ accountspecs = {'IRA': {'tax': 0.85, 'maxcontrib': 18000+5500*2},
                 'roth':{'tax': 1.0, 'maxcontrib': 5500*2},
                 'aftertax': {'tax': 0.9, 'basis': 0}}
 
+contribspecs = {'401k': 18000, '401kCatchup': 3000,  'IRARoth': 5500, "IRARothCatchup": 1000, 'CatchupAge': 50}
+
 # Required Minimal Distributions from IRA starting with age 70
 RMD = [27.4, 26.5, 25.6, 24.7, 23.8, 22.9, 22.0, 21.2, 20.3, 19.5,  # age 70-79
        18.7, 17.9, 17.1, 16.3, 15.5, 14.8, 14.1, 13.4, 12.7, 12.0,  # age 80-89
@@ -115,6 +117,18 @@ class Data:
             for f in temp:
                 dict[type][f] = temp[f]
 
+    def maxContribution(self, year):
+        ### not currently handling 401K max contributions TODO
+        max = 0
+        for v in self.retiree:
+            max += contribspecs['IRARoth']
+            age = v['ageAtStart'] +year
+            if age >= contribspecs['CatchupAge']:
+                max += contribspecs['IRARothCatchup']
+        max *= S.i_rate ** year # adjust for inflation
+        #print('maxContribution: ', max)
+        return max
+
     def match_retiree(self, retireekey):
         for v in self.retiree:
             #print("    retiree: ", v)
@@ -152,19 +166,44 @@ class Data:
                 entry['estateTax'] = accountspecs[type]['tax']
                 entry['bal'] = v['bal']
                 entry['mykey'] = k
-                if type == 'IRA' or type == 'roth':
-                    r = self.match_retiree(k)
-                    if r is None:
+                r = self.match_retiree(k)
+                if r is None:
+                    if type == 'IRA' or type == 'roth':
                         print("Error: Account must match a retiree\n\t[%s.%s] should match [iam.%s] but there is no [iam.%s]\n"%(type,k,k,k))
                         exit(1)
-                    if 'maxcontrib' not in v:
-                        mxcontrib = accountspecs[type]['maxcontrib']
-                        entry['maxcontrib'] = mxcontrib
-                        v['maxcontrib'] = mxcontrib
-                    else:
-                        entry['maxcontrib'] = v['maxcontrib']
-                else:  
-                    assert type == 'aftertax'
+                    ageAtStart = self.match_retiree(self.primary)['ageAtStart']
+                else:
+                    ageAtStart = r['ageAtStart']
+                if 'contrib' not in v:
+                    entry['contrib'] = 0
+                    v['contrib'] = 0
+                else:
+                    entry['contrib'] = v['contrib']
+                    if entry['contrib']>0:
+                        if 'inflation' not in    v:
+                            entry['inflation'] = False 
+                        else:
+                            entry['inflation'] = v['inflation']
+                        period = v.get('period',None) 
+                        if period is None:
+                            print("%s account contribution needs a defined period of contribution." % type)
+                            print("Please add the contribution period to the toml file in the [%s] section"%type)
+                            exit(1)
+                        entry['contributions'] = [0] * self.numyr
+                        bucket = entry['contributions']
+                        #print('period is: ', period)
+                        for age in agelist(period):
+                                year = age - ageAtStart #self.startage
+                                if year < 0:
+                                    continue
+                                elif year >= self.numyr:
+                                    break
+                                else:
+                                    bucket[year] = entry['contrib'] 
+                                    if entry['inflation']:
+                                        bucket[year] = entry['contrib'] * self.i_rate ** year
+                                    #print("age %d, year %d, bucket: %6.0f += amount %6.0f" %(age, year, bucket[year], adj_amount))
+                if type == 'aftertax':
                     if 'basis' not in v:
                         entry['basis'] = 0
                         v['basis'] = 0
@@ -178,6 +217,7 @@ class Data:
                     entry['rate'] = rate
                     v['rate'] = rate
                 lis_return.append(entry)
+                #print('entry: ', entry)
                 index += 1
             return lis_return
 
@@ -236,9 +276,9 @@ class Data:
         
         self.check_record( d, 'iam', ('age', 'retire', 'through', 'primary'))
         self.check_record( d, 'SocialSecurity', ('FRA', 'age', 'amount'))
-        self.check_record( d, 'IRA', ('bal', 'rate', 'maxcontrib'))
-        self.check_record( d, 'roth', ('bal', 'rate', 'maxcontrib'))
-        self.check_record( d, 'aftertax', ('bal', 'rate', 'basis'))
+        self.check_record( d, 'IRA', ('bal', 'rate', 'contrib', 'inflation', 'period'))
+        self.check_record( d, 'roth', ('bal', 'rate', 'contrib', 'inflation', 'period'))
+        self.check_record( d, 'aftertax', ('bal', 'rate', 'contrib', 'inflation', 'period', 'basis'))
         self.check_record( d, 'expense', ('amount', 'age', 'inflation', 'tax'))
         self.check_record( d, 'income', ('amount', 'age', 'inflation', 'tax'))
         self.check_record( d, 'desired', ('amount', 'age', 'inflation', 'tax'))
@@ -376,6 +416,24 @@ class Data:
         self.max = MAX
         self.SS = SS 
 
+def precheck_consistancy():
+    print("\nDoing Pre-check:")
+    # check that there is income for all contibutions
+        #tcontribs = 0
+    for year in range(S.numyr):
+        t = 0
+        for j in range(len(S.accounttable)):
+            if S.accounttable[j]['acctype'] != 'aftertax':
+                v = S.accounttable[j]
+                c = v.get('contributions', None)
+                if c is not None: 
+                    t += c[year]
+        if t > S.income[year]:
+            print("year: %d, contributions to Retirement accounts exceeds other earned income"%year)
+            print("Please change the contributions in the toml file to be less than non-SS income.")
+            exit(1)
+    return True
+
 # Minimize: c^T * x
 # Subject to: A_ub * x <= b_ub
 #all vars positive
@@ -431,7 +489,8 @@ def solve():
         if S.accmap['aftertax'] > 0:
             for l in range(len(capgainstable)): 
                 row[index_y(year,l)] = capgainstable[l][2] # cap gains tax
-            row[index_D(year)] = 1
+            for j in range(len(S.accounttable)):
+                row[index_D(year,j)] = 1
         row[index_s(year)] = 1
         A+=[row]
         b+=[S.income[year] + S.SS[year] - S.expenses[year]]
@@ -478,6 +537,31 @@ def solve():
             A+=[row]
             b+=[ S.max[year] ]     # [ dm_i]
 
+    #
+    # Add constaints for (5+') rows
+    #
+    for year in range(S.numyr):
+        row = [0] * nvars
+        for j in range(len(S.accounttable)):
+            if S.accounttable[j]['acctype'] != 'aftertax':
+                row[index_D(year,j)] = 1
+        A+=[row]
+        b+=[min(S.income[year],S.maxContribution(year))] 
+    #
+    # Add constaints for (5++') rows
+    #
+    #"""
+    for year in range(S.numyr):
+        row = [0] * nvars
+        for j in range(len(S.accounttable)):
+            v = S.accounttable[j].get('contributions', None)     # ['acctype'] != 'aftertax':
+            if v is not None: 
+                if v[year] > 0:
+                    row = [0] * nvars
+                    row[index_D(year,j)] = -1
+                    A+=[row]
+                    b+=[-1*v[year]]
+    #"""
     #
     # Add constaints for (6') rows
     #
@@ -574,6 +658,7 @@ def solve():
     #
     # Add constraints for (11a')
     #
+    """
     aftertax = 0
     if S.accmap['aftertax'] > 0:
         aftertax = 1
@@ -588,6 +673,7 @@ def solve():
     #
     # Add constraints for (11b')
     #
+    
     aftertax = 0
     if S.accmap['aftertax'] > 0:
         aftertax = 1
@@ -599,29 +685,32 @@ def solve():
             row[index_b(year+1,j)] = -1  ### b[i,j] supports an extra year
             A+=[row]
             b+=[0]
+    #"""
     #
     # Add constraints for (12a')
     #
-    if S.accmap['aftertax'] > 0:
-        for year in range(S.numyr): 
-            j = len(S.accounttable)-1 # nl the last account, the investment account
+    #if S.accmap['aftertax'] > 0:
+    for year in range(S.numyr): 
+        for j in range(len(S.accounttable)): # for all accounts 
+            #j = len(S.accounttable)-1 # nl the last account, the investment account
             row = [0] * nvars
             row[index_b(year+1,j)] = 1 ### b[i,j] supports an extra year
             row[index_b(year,j)] = -1*S.accounttable[j]['rate']
             row[index_w(year,j)] = S.accounttable[j]['rate']
-            row[index_D(year)] = -1*S.accounttable[j]['rate']
+            row[index_D(year,j)] = -1*S.accounttable[j]['rate']
             A+=[row]
             b+=[0]
     #
     # Add constraints for (12b')
     #
-    if S.accmap['aftertax'] > 0:
-        for year in range(S.numyr):
-            j = len(S.accounttable)-1 # nl the last account, the investment account
+    #if S.accmap['aftertax'] > 0:
+    for year in range(S.numyr):
+        for j in range(len(S.accounttable)): # for all accounts 
+            #j = len(S.accounttable)-1 # nl the last account, the investment account
             row = [0] * nvars
             row[index_b(year,j)] = S.accounttable[j]['rate']
             row[index_w(year,j)] = -1*S.accounttable[j]['rate']
-            row[index_D(year)] = S.accounttable[j]['rate']
+            row[index_D(year,j)] = S.accounttable[j]['rate']
             row[index_b(year+1,j)] = -1  ### b[i,j] supports an extra year
             A+=[row]
             b+=[0]
@@ -727,9 +816,10 @@ def consistancy_check(res):
             ky+=1
         if S.accmap['aftertax'] > 0:
             for i in range(S.numyr):
-                if index_D(i) != ky:
-                    print("index_D(%d) is %d not %d as it should be" % (i,index_D(i), ky))
-                ky+=1
+                for j in range(len(S.accounttable)):
+                    if index_D(i,j) != ky:
+                        print("index_D(%d,%d) is %d not %d as it should be" % (i, j,index_D(i,j), ky))
+                    ky+=1
 
     # check to see if the ordinary tax brackets are filled in properly
     print()
@@ -782,28 +872,29 @@ def consistancy_check(res):
             print("Error: Expected (age:%d) Taxable Ordinary income %6.2f doesn't match bracket sum %6.2f" % 
                 (year + S.startage, TaxableOrdinary,s))
 
-        for j in range(len(S.accounttable)-1):
-            a = res.x[index_b(year+1,j)] -( res.x[index_b(year,j)] - res.x[index_w(year,j)])*S.accounttable[j]['rate']
+        for j in range(len(S.accounttable)):
+            a = res.x[index_b(year+1,j)] -( res.x[index_b(year,j)] - res.x[index_w(year,j)] + res.x[index_D(year,j)])*S.accounttable[j]['rate']
+            #a = res.x[index_b(year+1,j)] -( res.x[index_b(year,j)] - res.x[index_w(year,j)])*S.accounttable[j]['rate']
             if a > 1:
                 v = S.accounttable[j]
                 print("account[%d], type %s, index %d, mykey %s" % (j, v['acctype'], v['index'], v['mykey']))
                 print("account[%d] year to year balance NOT OK years %d to %d" % (j, year, year+1))
                 print("difference is", a)
 
-        last = len(S.accounttable)-1
-        D = 0
-        if S.accmap['aftertax'] > 0:
-            D = res.x[index_D(year)]
-        if res.x[index_b(year+1,last)] -( res.x[index_b(year,last)] - res.x[index_w(year,last)] + D)*S.accounttable[0]['rate']>1:
-            print("account[%d] year to year balance NOT OK years %d to %d" % (2, year, year+1))
+        #last = len(S.accounttable)-1
+        #D = 0
+        #if S.accmap['aftertax'] > 0:
+        #    D = res.x[index_D(year,last)]
+        #if res.x[index_b(year+1,last)] -( res.x[index_b(year,last)] - res.x[index_w(year,last)] + D)*S.accounttable[last]['rate']>2:
+        #    print("account[%d] year to year balance NOT OK years %d to %d" % (2, year, year+1))
 
         T,spendable,tax,rate,cg_tax,earlytax = IncomeSummary(year)
         if spendable + 0.1 < res.x[index_s(year)]  or spendable -0.1 > res.x[index_s(year)]:
             print("Calc Spendable %6.2f should equal s(year:%d) %6.2f"% (spendable, year, res.x[index_s(year)]))
             for j in range(len(S.accounttable)):
                 print("+w[%d,%d]: %6.0f" % (year, j, res.x[index_w(year,j)])) 
-                if S.accounttable[j]['acctype'] == 'aftertax':
-                    print("-D[%d]: %6.0f" % (year,res.x[index_D(year)]))
+                #if S.accounttable[j]['acctype'] == 'aftertax':
+                print("-D[%d,%d]: %6.0f" % (year, j, res.x[index_D(year,j)]))
             print("+o[%d]: %6.0f +SS[%d]: %6.0f -tax: %6.0f -cg_tax: %6.0f" % (year, S.income[year] ,year, S.SS[year] , tax ,cg_tax))
 
         bt = 0
@@ -860,7 +951,7 @@ def print_model_results(res):
             withdrawal[S.accounttable[j]['acctype']] += res.x[index_w(year,j)]
         D = 0
         if S.accmap['aftertax'] > 0:
-            D = res.x[index_D(year)]/1000.0
+            D = res.x[index_D(year, len(S.accounttable)-1)]/1000.0
 
         if S.secondary != "":
             output("%3d/%3d:" % (year+S.startage, year+S.startage-S.delta))
@@ -909,13 +1000,13 @@ def print_account_trans(res):
                 output("%s\n" % (S.primary))
             output(" age ")
         if S.accmap['IRA'] >1:
-            output(("@%7s" * 6) % ("IRA1", "fIRA1", "RMDref1", "IRA2", "fIRA2", "RMDref2"))
+            output(("@%7s" * 8) % ("IRA1", "fIRA1", "tIRA1", "RMDref1", "IRA2", "fIRA2", "tIRA2", "RMDref2"))
         elif S.accmap['IRA'] == 1:
-            output(("@%7s" * 3) % ("IRA", "fIRA", "RMDref"))
+            output(("@%7s" * 4) % ("IRA", "fIRA", "tIRA", "RMDref"))
         if S.accmap['roth'] >1:
-            output(("@%7s" * 4) % ("Roth1", "fRoth1", "Roth2", "fRoth2"))
+            output(("@%7s" * 6) % ("Roth1", "fRoth1", "tRoth1", "Roth2", "fRoth2", "tRoth2"))
         elif S.accmap['roth'] == 1:
-            output(("@%7s" * 2) % ("Roth", "fRoth"))
+            output(("@%7s" * 3) % ("Roth", "fRoth", "tRoth"))
         if S.accmap['IRA']+S.accmap['roth'] == len(S.accounttable)-1:
             output(("@%7s" * 3) % ("AftaTx", "fAftaTx", "tAftaTx"))
         output("\n")
@@ -925,7 +1016,7 @@ def print_account_trans(res):
     for year in range(S.numyr):
         #age = year + S.startage #### who's age??? NEED BOTH!!!!
         rmdref = [0,0]
-        for j in range(min(2,len(S.accounttable))): # at most the first two accounts are type IRA w/ RMD requirement
+        for j in range(min(2,len(S.accounttable))): # only first two accounts are type IRA w/ RMD
             if S.accounttable[j]['acctype'] == 'IRA':
                 rmd = S.rmd_needed(year,S.accounttable[j]['mykey'])
                 if rmd > 0:
@@ -936,25 +1027,27 @@ def print_account_trans(res):
         else:
             output(" %3d:" % (year+S.startage))
         if S.accmap['IRA'] >1:
-            output(("@%7.0f" * 6) % (
-              res.x[index_b(year,0)]/1000.0, res.x[index_w(year,0)]/1000.0, rmdref[0]/1000.0, # IRA1
-              res.x[index_b(year,1)]/1000.0, res.x[index_w(year,1)]/1000.0, rmdref[1]/1000.0)) # IRA2
+            output(("@%7.0f" * 8) % (
+              res.x[index_b(year,0)]/1000.0, res.x[index_w(year,0)]/1000.0, res.x[index_D(year,0)]/1000.0, rmdref[0]/1000.0, # IRA1
+              res.x[index_b(year,1)]/1000.0, res.x[index_w(year,1)]/1000.0, res.x[index_D(year,1)]/1000.0, rmdref[1]/1000.0)) # IRA2
         elif S.accmap['IRA'] == 1:
-            output(("@%7.0f" * 3) % (
-              res.x[index_b(year,0)]/1000.0, res.x[index_w(year,0)]/1000.0, rmdref[0]/1000.0)) # IRA1
+            output(("@%7.0f" * 4) % (
+              res.x[index_b(year,0)]/1000.0, res.x[index_w(year,0)]/1000.0, res.x[index_D(year,0)]/1000.0, rmdref[0]/1000.0)) # IRA1
         index = S.accmap['IRA']
         if S.accmap['roth'] >1:
-            output(("@%7.0f" * 4) % (
-              res.x[index_b(year,index)]/1000.0, res.x[index_w(year,index)]/1000.0, # roth1
-              res.x[index_b(year,index+1)]/1000.0, res.x[index_w(year,index+1)]/1000.0)) # roth2
+            output(("@%7.0f" * 6) % (
+              res.x[index_b(year,index)]/1000.0, res.x[index_w(year,index)]/1000.0, res.x[index_D(year,index)]/1000.0, # roth1
+              res.x[index_b(year,index+1)]/1000.0, res.x[index_w(year,index+1)]/1000.0, res.x[index_D(year,index+1)]/1000.0)) # roth2
         elif S.accmap['roth'] == 1:
-            output(("@%7.0f" * 2) % (
-              res.x[index_b(year,index)]/1000.0, res.x[index_w(year,index)]/1000.0)) # roth1
+            output(("@%7.0f" * 3) % (
+              res.x[index_b(year,index)]/1000.0, res.x[index_w(year,index)]/1000.0, res.x[index_D(year,index)]/1000.0)) # roth1
         index = S.accmap['IRA'] + S.accmap['roth']
         #assert index == len(S.accounttable)-1
         if index == len(S.accounttable)-1:
             output(("@%7.0f" * 3) % (
-                res.x[index_b(year,index)]/1000.0, res.x[index_w(year,index)]/1000.0, res.x[index_D(year)]/1000.0)) # aftertax account
+                res.x[index_b(year,index)]/1000.0, 
+                res.x[index_w(year,index)]/1000.0, 
+                res.x[index_D(year,index)]/1000.0)) # aftertax account
         output("\n")
     print_acc_header1()
 
@@ -1140,8 +1233,9 @@ def print_model_row(row, suppress_newline = False):
             print("s[%d]: %6.3f " % (i, row[index_s(i)]),end=' ' )
     if S.accmap['aftertax'] > 0:
         for i in range(S.numyr):
-            if row[index_D(i)] !=0:
-                print("D[%d]: %6.3f " % (i, row[index_D(i)]),end=' ' )
+            for j in range(len(S.accounttable)):
+                if row[index_D(i,j)] !=0:
+                    print("D[%d,%d]: %6.3f " % (i, j, row[index_D(i,j)]),end=' ' )
     if not suppress_newline:
         print()
 
@@ -1170,10 +1264,11 @@ def index_s(i):
     assert i>=0 and i < S.numyr
     return tax_bracket_year + capital_gains_bracket_year + withdrawal_accounts_year + startbalance_accounts_year + i
 
-def index_D(i):
-    assert S.accmap['aftertax'] > 0
+def index_D(i,j):
+    #assert S.accmap['aftertax'] > 0
+    assert j>=0 and j < len(S.accounttable)
     assert i>=0 and i < S.numyr
-    return tax_bracket_year + capital_gains_bracket_year + withdrawal_accounts_year + startbalance_accounts_year + spendable_year + i
+    return tax_bracket_year + capital_gains_bracket_year + withdrawal_accounts_year + startbalance_accounts_year + spendable_year + i*len(S.accounttable) + j
 
 def cg_taxable_fraction(year):
     f = 1
@@ -1215,8 +1310,10 @@ def IncomeSummary(year):
     tax = ntax
     D = 0
     ncg_tax = 0
+    #if S.accmap['aftertax'] > 0:
+    for j in range(len(S.accounttable)):
+        D +=  res.x[index_D(year,j)]
     if S.accmap['aftertax'] > 0:
-        D =  res.x[index_D(year)]
         for l in range(len(capgainstable)):
             ncg_tax += res.x[index_y(year,l)]*capgainstable[l][2]
     tot_withdrawals = 0
@@ -1321,22 +1418,23 @@ startbalance_accounts_year = (S.numyr+1) * len(S.accounttable) # b[i,j]
 spendable_year = (S.numyr) # s[i]
 investment_deposites_year = 0 # no D[i] if no aftertax account
 if S.accmap['aftertax'] > 0:
-    investment_deposites_year = (S.numyr) # D[i]
+    investment_deposites_year = S.numyr * len(S.accounttable) # D[i,j]
 
 nvars = tax_bracket_year + capital_gains_bracket_year + withdrawal_accounts_year + startbalance_accounts_year + spendable_year + investment_deposites_year
 
-res = solve()
-consistancy_check(res)
+if precheck_consistancy():
+    res = solve()
+    consistancy_check(res)
 
-print_model_results(res)
-if args.verboseaccounttrans:
-    print_account_trans(res)
-if args.verbosetax:
-    print_tax(res)
-if args.verbosetaxbrackets:
-    print_tax_brackets(res)
-    print_cap_gains_brackets(res)
-print_base_config(res)
+    print_model_results(res)
+    if args.verboseaccounttrans:
+        print_account_trans(res)
+    if args.verbosetax:
+        print_tax(res)
+    if args.verbosetaxbrackets:
+        print_tax_brackets(res)
+        print_cap_gains_brackets(res)
+    print_base_config(res)
 
 if csv_file is not None:
     csv_file.close()

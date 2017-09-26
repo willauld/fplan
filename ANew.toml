@@ -13,10 +13,6 @@ inflation = 2.5	# yearly inflation rate
 # what to optimize for? 'Spending' or spending 'PlusEstate'
 #maximize = "PlusEstate"
 
-# age range to simulate
-#startage = 58   # Ragsday.py does not handle younger than age 60
-#startage = 68   # Ragsday.py does not handle younger than age 60
-#endage = 72	# stops at 99
 
 [iam.spouse]
 primary = false
@@ -42,7 +38,7 @@ age = "70-"
 
 [income.mytaxfree]
 amount = 3000
-age = "67-"
+age = "56-"
 inflation = false
 tax = false          # count this as ordinary taxable income (true/false)
 
@@ -79,13 +75,18 @@ tax = true          # count this as income tax
 [aftertax]
 bal =   700_000
 basis = 400_000		# for capital gains tax
+contrib = 10        # specify the amount you will contribute anually for the specified period
+#inflation = true   # will you increase the contribution to match inflation?
+period = '56-65'
 
 # pre-tax IRA accounts
 [IRA.will]
 #[IRA]
 bal = 2_000_000
 #rate = 7.25
-maxcontrib = 00
+contrib = 100
+inflation = true   # will you increase the contribution to match inflation?
+period = '56-65'
 
 [IRA.spouse]
 bal = 200_000
@@ -93,4 +94,4 @@ bal = 200_000
 # roth IRA accounts
 [roth.spouse]
 bal = 100_000
-maxcontrib = 000
+contrib = 000
