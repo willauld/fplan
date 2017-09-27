@@ -434,10 +434,11 @@ def precheck_consistancy():
             exit(1)
     return True
 
+# Build model for:
 # Minimize: c^T * x
 # Subject to: A_ub * x <= b_ub
-#all vars positive
-def solve():
+#all vars positiveA
+def build_model():
 
     A = []
     b = []
@@ -739,6 +740,9 @@ def solve():
         print("Num vars: ", len(c))
         print("Num contraints: ", len(b))
         print()
+    return c, A, b
+
+def solve(c, A, b):
 
     res = scipy.optimize.linprog(c, A_ub=A, b_ub=b,
                                  options={"disp": args.verbose,
@@ -1423,7 +1427,8 @@ if S.accmap['aftertax'] > 0:
 nvars = tax_bracket_year + capital_gains_bracket_year + withdrawal_accounts_year + startbalance_accounts_year + spendable_year + investment_deposites_year
 
 if precheck_consistancy():
-    res = solve()
+    c, A, b = build_model()
+    res = solve(c, A, b)
     consistancy_check(res)
 
     print_model_results(res)
