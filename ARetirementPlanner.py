@@ -930,7 +930,7 @@ def print_model_results(res):
                 output("%s\n" % (S.primary))
             output(" age ")
 
-        output(("@%7s" * 13) % ("IRA", "fIRA", "RMDref", "Roth", "fRoth", "AftaTx", "fAftaTx", "tAftaTx", "o_inc", "SS", "Exp", "TFedTax", "Spndble"))
+        output(("@%7s" * 12) % ("fIRA", "tIRA", "RMDref", "fRoth", "tRoth", "fAftaTx", "tAftaTx", "o_inc", "SS", "Expense", "TFedTax", "Spndble"))
         output("\n")
 
     output("\nActivity Summary:\n")
@@ -948,25 +948,33 @@ def print_model_results(res):
                 if rmd > 0:
                     rmdref += res.x[index_b(year,j)]/rmd 
 
-        balance = {'IRA': 0, 'roth': 0, 'aftertax': 0}
+        #balance = {'IRA': 0, 'roth': 0, 'aftertax': 0}
         withdrawal = {'IRA': 0, 'roth': 0, 'aftertax': 0}
+        deposit = {'IRA': 0, 'roth': 0, 'aftertax': 0}
         for j in range(len(S.accounttable)):
-            balance[S.accounttable[j]['acctype']] += res.x[index_b(year,j)]
+            #balance[S.accounttable[j]['acctype']] += res.x[index_b(year,j)]
             withdrawal[S.accounttable[j]['acctype']] += res.x[index_w(year,j)]
-        D = 0
-        if S.accmap['aftertax'] > 0:
-            D = res.x[index_D(year, len(S.accounttable)-1)]/1000.0
+            deposit[S.accounttable[j]['acctype']] += res.x[index_D(year,j)]
+        #D = 0
+        #if S.accmap['aftertax'] > 0:
+        #    D = res.x[index_D(year, len(S.accounttable)-1)]/1000.0
 
         if S.secondary != "":
             output("%3d/%3d:" % (year+S.startage, year+S.startage-S.delta))
         else:
             output(" %3d:" % (year+S.startage))
-        output(("@%7.0f" * 12 ) %
-              ( balance['IRA']/1000.0, withdrawal['IRA']/1000.0, rmdref/1000.0, # IRA
-                balance['roth']/1000.0, withdrawal['roth']/1000.0, # Roth
-                balance['aftertax']/1000.0, withdrawal['aftertax']/1000.0, D, # AftaTax
+        output(("@%7.0f" * 11 ) %
+              ( withdrawal['IRA']/1000.0, deposit['IRA']/1000.0, rmdref/1000.0, # IRA
+                withdrawal['roth']/1000.0, deposit['roth']/1000.0,  # Roth
+                withdrawal['aftertax']/1000.0, deposit['aftertax']/1000.0,  #D, # AftaTax
                 S.income[year]/1000.0, S.SS[year]/1000.0, S.expenses[year]/1000.0,
                 (tax+cg_tax+earlytax)/1000.0) )
+        #output(("@%7.0f" * 12 ) %
+        #      ( balance['IRA']/1000.0, withdrawal['IRA']/1000.0, rmdref/1000.0, # IRA
+        #        balance['roth']/1000.0, withdrawal['roth']/1000.0, # Roth
+        #        balance['aftertax']/1000.0, withdrawal['aftertax']/1000.0, D, # AftaTax
+        #        S.income[year]/1000.0, S.SS[year]/1000.0, S.expenses[year]/1000.0,
+        #        (tax+cg_tax+earlytax)/1000.0) )
         s = res.x[index_s(year)]/1000.0
         star = ' '
         T,spendable,tax,rate,cg_tax,earlytax = IncomeSummary(year)
@@ -976,21 +984,21 @@ def print_model_results(res):
         output("@%7.0f%c" % (s, star) )
         output("\n")
 
-    year = S.numyr
-    balance = {'IRA': 0, 'roth': 0, 'aftertax': 0}
-    for j in range(len(S.accounttable)):
-        balance[S.accounttable[j]['acctype']] += res.x[index_b(year,j)]
-    if S.secondary != "":
-        output("  final:" )
-    else:
-        output("finl:" )
-    output(("@%7.0f@%7s@%7s" + "@%7.0f@%7s" * 2 + "@%7s" * 6) %
-        ( 
-        balance['IRA']/1000.0, '-', '-',  # res.x[index_w(year,0)]/1000.0, # IRA
-        balance['roth']/1000.0, '-', # res.x[index_w(year,1)]/1000.0, # Roth
-        balance['aftertax']/1000.0, '-', # res.x[index_w(year,2)]/1000.0, # AftaTax
-        '-', '-', '-', '-', '-', '-'))
-    output("\n")
+    #year = S.numyr
+    #balance = {'IRA': 0, 'roth': 0, 'aftertax': 0}
+    #for j in range(len(S.accounttable)):
+    #    balance[S.accounttable[j]['acctype']] += res.x[index_b(year,j)]
+    #if S.secondary != "":
+    #    output("  final:" )
+    #else:
+    #    output("finl:" )
+    #output(("@%7.0f@%7s@%7s" + "@%7.0f@%7s" * 2 + "@%7s" * 6) %
+    #    ( 
+    #    balance['IRA']/1000.0, '-', '-',  # res.x[index_w(year,0)]/1000.0, # IRA
+    #    balance['roth']/1000.0, '-', # res.x[index_w(year,1)]/1000.0, # Roth
+    #    balance['aftertax']/1000.0, '-', # res.x[index_w(year,2)]/1000.0, # AftaTax
+    #    '-', '-', '-', '-', '-', '-'))
+    #output("\n")
     printheader1()
 
 def print_account_trans(res):
