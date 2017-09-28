@@ -787,52 +787,7 @@ def print_model_matrix(c, A, b, s, non_binding_only):
                 print_constraint( A[constraint], b[constraint])
         print("\n\n%d non-binding constrains printed\n" % j)
     print()
-"""
-def do_check_vindx.sequence():
-        # vindx.?() functions are laid out to index a vector of variables 
-        # laid out in the order x(i,k), y(i,l), w(i,j), b(i,j), s(i), D(i), ns()
-        passOK = True
-        ky = 0
-        row = [0] * nvars
-        for i in range(S.numyr):
-            for k in range(len(taxtable)):
-                if vindx.x(i, k) != ky:
-                    passOK = False
-                    print("vindx.x(%d,%d) is %d not %d as it should be" % (i,k,vindx.x(i,k), ky))
-                ky+=1
-        if S.accmap['aftertax'] > 0:
-            for i in range(S.numyr):
-                for l in range(len(capgainstable)):
-                    if vindx.y(i, l) != ky:
-                        passOK = False
-                        print("vindx.y(%d,%d) is %d not %d as it should be" % (i,l,vindx.y(i,l), ky))
-                    ky+=1
-        for i in range(S.numyr):
-            for j in range(len(S.accounttable)):
-                if vindx.w(i, j) != ky:
-                    passOK = False
-                    print("vindx.w(%d,%d) is %d not %d as it should be" % (i,j,vindx.w(i,j), ky))
-                ky+=1
-        for i in range(S.numyr+1): # b[] has an extra year
-            for j in range(len(S.accounttable)):
-                if vindx.b(i, j) != ky:
-                    passOK = False
-                    print("vindx.b(%d,%d) is %d not %d as it should be" % (i,j, vindx.b(i,j), ky))
-                ky+=1
-        for i in range(S.numyr):
-            if vindx.s(i) != ky:
-                    passOK = False
-                    print("vindx.s(%d) is %d not %d as it should be" % (i, vindx.s(i), ky))
-            ky+=1
-        if S.accmap['aftertax'] > 0:
-            for i in range(S.numyr):
-                for j in range(len(S.accounttable)):
-                    if vindx.D(i,j) != ky:
-                        passOK = False
-                        print("vindx.D(%d,%d) is %d not %d as it should be" % (i, j,vindx.D(i,j), ky))
-                    ky+=1
-        return passOK
-"""
+
 def consistancy_check(res, years, taxbins, cgbins, accounts, accmap, vindx):
     # check to see if the ordinary tax brackets are filled in properly
     print()
@@ -1261,38 +1216,7 @@ def print_model_row(row, suppress_newline = False):
                     print("D[%d,%d]: %6.3f " % (i, j, row[vindx.D(i,j)]),end=' ' )
     if not suppress_newline:
         print()
-"""
-def vindx.x(i, k):
-    assert i>=0 and i < S.numyr
-    assert k>=0 and k < len(taxtable)
-    return i*len(taxtable)+k
 
-def vindx.y(i,l):
-    assert S.accmap['aftertax'] > 0
-    assert i>=0 and i < S.numyr
-    assert l>=0 and l < len(capgainstable)
-    return tax_bracket_year + i*len(capgainstable)+l
-
-def vindx.w(i,j):
-    assert i>=0 and i < S.numyr
-    assert j>=0 and j < len(S.accounttable)
-    return tax_bracket_year+ capital_gains_bracket_year + i*len(S.accounttable)+j
-
-def vindx.b(i,j):
-    assert i>=0 and i < S.numyr+1 # b has an extra year on the end 
-    assert j>=0 and j < len(S.accounttable)
-    return tax_bracket_year+ capital_gains_bracket_year + withdrawal_accounts_year+i*len(S.accounttable)+j
-
-def vindx.s(i):
-    assert i>=0 and i < S.numyr
-    return tax_bracket_year + capital_gains_bracket_year + withdrawal_accounts_year + startbalance_accounts_year + i
-
-def vindx.D(i,j):
-    #assert S.accmap['aftertax'] > 0
-    assert j>=0 and j < len(S.accounttable)
-    assert i>=0 and i < S.numyr
-    return tax_bracket_year + capital_gains_bracket_year + withdrawal_accounts_year + startbalance_accounts_year + spendable_year + i*len(S.accounttable) + j
-"""
 def cg_taxable_fraction(year):
     f = 1
     if S.accmap['aftertax'] > 0:
@@ -1431,20 +1355,7 @@ if args.verbosewga:
 non_binding_only = True
 if args.verbosemodelall:
     non_binding_only = False
-"""
-tax_bracket_year = S.numyr * len(taxtable) # x[i,k]
-capital_gains_bracket_year = 0 # no y[i,l] if no aftertax account
-if S.accmap['aftertax'] > 0:
-    capital_gains_bracket_year = S.numyr * len(capgainstable) # y[i,l]
-withdrawal_accounts_year = S.numyr * len(S.accounttable) # w[i,j]
-startbalance_accounts_year = (S.numyr+1) * len(S.accounttable) # b[i,j]
-spendable_year = (S.numyr) # s[i]
-investment_deposites_year = 0 # no D[i] if no aftertax account
-if S.accmap['aftertax'] > 0:
-    investment_deposites_year = S.numyr * len(S.accounttable) # D[i,j]
 
-nvars = tax_bracket_year + capital_gains_bracket_year + withdrawal_accounts_year + startbalance_accounts_year + spendable_year + investment_deposites_year
-"""
 years = S.numyr
 taxbins = len(taxtable) 
 cgbins = len(capgainstable) 
