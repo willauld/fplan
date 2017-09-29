@@ -1,5 +1,8 @@
+import sys
+import os
 import unittest
 import vector_var_index as v
+import app_output
 
 #from ARetirementPlanner import do_check_index_sequence
 #from primes import is_prime
@@ -37,6 +40,50 @@ class TestIndexes(unittest.TestCase):
         indx = v.vector_var_index(years, taxbins, cgbins, accounts, accmap)
         z = v.my_check_index_sequence(years, taxbins, cgbins, accounts, accmap, indx)
         self.assertTrue(z)
+
+    def test_app_output_without_csv_file(self):
+        ao = app_output.app_output(None)
+        temp = sys.stdout
+        sys.stdout = open('stdout.log', 'w')
+        #sys.stderr = open('stderr.log', 'w')
+        ao.output("1@2@3@4")
+        sys.stdout.close()
+        sys.stdout = temp
+        inf = open('stdout.log', 'r')
+        result = inf.read()
+        #print("result: ", result)
+        inf.close()
+        self.assertEqual("1 2 3 4", result)
+        try:
+            os.remove('stdout.log')
+        except OSError as e:  ## if failed, report it back to the user ##
+            print ("Error: %s - %s." % (e.filename,e.strerror))
+
+    def test_app_output_with_csv_file(self):
+        fn = 'test_csv_file_for_unit_testing.csv'
+        ao = app_output.app_output(fn)
+        temp = sys.stdout
+        sys.stdout = open('stdout.log', 'w')
+        #sys.stderr = open('stderr.log', 'w')
+        ao.output("1@2@3@4")
+        sys.stdout.close()
+        sys.stdout = temp
+        inf = open('stdout.log', 'r')
+        result = inf.read()
+        #print("result: ", result)
+        inf.close()
+        self.assertEqual("1 2 3 4", result)
+        del ao
+        incsv = open(fn, 'r')
+        result2 = incsv.read()
+        #print("result2: ", result2)
+        incsv.close()
+        self.assertEqual("1,2,3,4", result2)
+        try:
+            os.remove('stdout.log')
+            os.remove(fn)
+        except OSError as e:  ## if failed, report it back to the user ##
+            print ("Error: %s - %s." % (e.filename,e.strerror))
 
     def test_trueistrue(self):
         """ testing """

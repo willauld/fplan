@@ -8,8 +8,8 @@ import toml
 import argparse
 import scipy.optimize
 import re
-import sys
 import vector_var_index as vvar
+import app_output as app_out
 
 # 2017 table (predict it moves with inflation?)
 # only married joint at the moment
@@ -859,7 +859,8 @@ def consistancy_check(res, years, taxbins, cgbins, accounts, accmap, vindx):
         #    print("Calc cg_tax %6.2f should equal Fcg(year:%d): %6.2f" % (cg_tax, year, res.x[vindx.Fcg(year)]))
     print()
 
-def output(string): # TODO move to a better place
+"""
+def ao.output(string): # TODO move to a better place
     #
     # output writes the information after first changing any '@' in the string
     # to a space for stdout or a ',' for csv files. The later is written
@@ -868,22 +869,23 @@ def output(string): # TODO move to a better place
     sys.stdout.write(string.replace('@',' '))
     if csv_file is not None:
         csv_file.write(string.replace('@',','))
+"""
 
 def print_model_results(res): 
     def printheader1():
         if S.secondary != "":
-            output("%s/%s\n" % (S.primary, S.secondary))
-            output("    age ")
+            ao.output("%s/%s\n" % (S.primary, S.secondary))
+            ao.output("    age ")
         else:
             if S.primary != 'nokey':
-                output("%s\n" % (S.primary))
-            output(" age ")
+                ao.output("%s\n" % (S.primary))
+            ao.output(" age ")
 
-        output(("@%7s" * 12) % ("fIRA", "tIRA", "RMDref", "fRoth", "tRoth", "fAftaTx", "tAftaTx", "o_inc", "SS", "Expense", "TFedTax", "Spndble"))
-        output("\n")
+        ao.output(("@%7s" * 12) % ("fIRA", "tIRA", "RMDref", "fRoth", "tRoth", "fAftaTx", "tAftaTx", "o_inc", "SS", "Expense", "TFedTax", "Spndble"))
+        ao.output("\n")
 
-    output("\nActivity Summary:\n")
-    output('\n')
+    ao.output("\nActivity Summary:\n")
+    ao.output('\n')
     printheader1()
     for year in range(S.numyr):
         i_mul = S.i_rate ** year
@@ -909,16 +911,16 @@ def print_model_results(res):
         #    D = res.x[vindx.D(year, len(S.accounttable)-1)]/1000.0
 
         if S.secondary != "":
-            output("%3d/%3d:" % (year+S.startage, year+S.startage-S.delta))
+            ao.output("%3d/%3d:" % (year+S.startage, year+S.startage-S.delta))
         else:
-            output(" %3d:" % (year+S.startage))
-        output(("@%7.0f" * 11 ) %
+            ao.output(" %3d:" % (year+S.startage))
+        ao.output(("@%7.0f" * 11 ) %
               ( withdrawal['IRA']/1000.0, deposit['IRA']/1000.0, rmdref/1000.0, # IRA
                 withdrawal['roth']/1000.0, deposit['roth']/1000.0,  # Roth
                 withdrawal['aftertax']/1000.0, deposit['aftertax']/1000.0,  #D, # AftaTax
                 S.income[year]/1000.0, S.SS[year]/1000.0, S.expenses[year]/1000.0,
                 (tax+cg_tax+earlytax)/1000.0) )
-        #output(("@%7.0f" * 12 ) %
+        #ao.output(("@%7.0f" * 12 ) %
         #      ( balance['IRA']/1000.0, withdrawal['IRA']/1000.0, rmdref/1000.0, # IRA
         #        balance['roth']/1000.0, withdrawal['roth']/1000.0, # Roth
         #        balance['aftertax']/1000.0, withdrawal['aftertax']/1000.0, D, # AftaTax
@@ -930,49 +932,49 @@ def print_model_results(res):
         if spendable + 0.1 < res.x[vindx.s(year)]  or spendable -0.1 > res.x[vindx.s(year)]:
             s = spendable/1000.0
             star = '*'
-        output("@%7.0f%c" % (s, star) )
-        output("\n")
+        ao.output("@%7.0f%c" % (s, star) )
+        ao.output("\n")
 
     #year = S.numyr
     #balance = {'IRA': 0, 'roth': 0, 'aftertax': 0}
     #for j in range(len(S.accounttable)):
     #    balance[S.accounttable[j]['acctype']] += res.x[vindx.b(year,j)]
     #if S.secondary != "":
-    #    output("  final:" )
+    #    ao.output("  final:" )
     #else:
-    #    output("finl:" )
-    #output(("@%7.0f@%7s@%7s" + "@%7.0f@%7s" * 2 + "@%7s" * 6) %
+    #    ao.output("finl:" )
+    #ao.output(("@%7.0f@%7s@%7s" + "@%7.0f@%7s" * 2 + "@%7s" * 6) %
     #    ( 
     #    balance['IRA']/1000.0, '-', '-',  # res.x[vindx.w(year,0)]/1000.0, # IRA
     #    balance['roth']/1000.0, '-', # res.x[vindx.w(year,1)]/1000.0, # Roth
     #    balance['aftertax']/1000.0, '-', # res.x[vindx.w(year,2)]/1000.0, # AftaTax
     #    '-', '-', '-', '-', '-', '-'))
-    #output("\n")
+    #ao.output("\n")
     printheader1()
 
 def print_account_trans(res):
     def print_acc_header1():
-        #output("%s\n" % S.who)
+        #ao.output("%s\n" % S.who)
         if S.secondary != "":
-            output("%s/%s\n" % (S.primary, S.secondary))
-            output("    age ")
+            ao.output("%s/%s\n" % (S.primary, S.secondary))
+            ao.output("    age ")
         else:
             if S.primary != 'nokey':
-                output("%s\n" % (S.primary))
-            output(" age ")
+                ao.output("%s\n" % (S.primary))
+            ao.output(" age ")
         if S.accmap['IRA'] >1:
-            output(("@%7s" * 8) % ("IRA1", "fIRA1", "tIRA1", "RMDref1", "IRA2", "fIRA2", "tIRA2", "RMDref2"))
+            ao.output(("@%7s" * 8) % ("IRA1", "fIRA1", "tIRA1", "RMDref1", "IRA2", "fIRA2", "tIRA2", "RMDref2"))
         elif S.accmap['IRA'] == 1:
-            output(("@%7s" * 4) % ("IRA", "fIRA", "tIRA", "RMDref"))
+            ao.output(("@%7s" * 4) % ("IRA", "fIRA", "tIRA", "RMDref"))
         if S.accmap['roth'] >1:
-            output(("@%7s" * 6) % ("Roth1", "fRoth1", "tRoth1", "Roth2", "fRoth2", "tRoth2"))
+            ao.output(("@%7s" * 6) % ("Roth1", "fRoth1", "tRoth1", "Roth2", "fRoth2", "tRoth2"))
         elif S.accmap['roth'] == 1:
-            output(("@%7s" * 3) % ("Roth", "fRoth", "tRoth"))
+            ao.output(("@%7s" * 3) % ("Roth", "fRoth", "tRoth"))
         if S.accmap['IRA']+S.accmap['roth'] == len(S.accounttable)-1:
-            output(("@%7s" * 3) % ("AftaTx", "fAftaTx", "tAftaTx"))
-        output("\n")
+            ao.output(("@%7s" * 3) % ("AftaTx", "fAftaTx", "tAftaTx"))
+        ao.output("\n")
 
-    output("\nAccount Transactions Summary:\n\n")
+    ao.output("\nAccount Transactions Summary:\n\n")
     print_acc_header1()
     for year in range(S.numyr):
         #age = year + S.startage #### who's age??? NEED BOTH!!!!
@@ -984,48 +986,48 @@ def print_account_trans(res):
                     rmdref[j] = res.x[vindx.b(year,j)]/rmd 
 
         if S.secondary != "":
-            output("%3d/%3d:" % (year+S.startage, year+S.startage-S.delta))
+            ao.output("%3d/%3d:" % (year+S.startage, year+S.startage-S.delta))
         else:
-            output(" %3d:" % (year+S.startage))
+            ao.output(" %3d:" % (year+S.startage))
         if S.accmap['IRA'] >1:
-            output(("@%7.0f" * 8) % (
+            ao.output(("@%7.0f" * 8) % (
               res.x[vindx.b(year,0)]/1000.0, res.x[vindx.w(year,0)]/1000.0, res.x[vindx.D(year,0)]/1000.0, rmdref[0]/1000.0, # IRA1
               res.x[vindx.b(year,1)]/1000.0, res.x[vindx.w(year,1)]/1000.0, res.x[vindx.D(year,1)]/1000.0, rmdref[1]/1000.0)) # IRA2
         elif S.accmap['IRA'] == 1:
-            output(("@%7.0f" * 4) % (
+            ao.output(("@%7.0f" * 4) % (
               res.x[vindx.b(year,0)]/1000.0, res.x[vindx.w(year,0)]/1000.0, res.x[vindx.D(year,0)]/1000.0, rmdref[0]/1000.0)) # IRA1
         index = S.accmap['IRA']
         if S.accmap['roth'] >1:
-            output(("@%7.0f" * 6) % (
+            ao.output(("@%7.0f" * 6) % (
               res.x[vindx.b(year,index)]/1000.0, res.x[vindx.w(year,index)]/1000.0, res.x[vindx.D(year,index)]/1000.0, # roth1
               res.x[vindx.b(year,index+1)]/1000.0, res.x[vindx.w(year,index+1)]/1000.0, res.x[vindx.D(year,index+1)]/1000.0)) # roth2
         elif S.accmap['roth'] == 1:
-            output(("@%7.0f" * 3) % (
+            ao.output(("@%7.0f" * 3) % (
               res.x[vindx.b(year,index)]/1000.0, res.x[vindx.w(year,index)]/1000.0, res.x[vindx.D(year,index)]/1000.0)) # roth1
         index = S.accmap['IRA'] + S.accmap['roth']
         #assert index == len(S.accounttable)-1
         if index == len(S.accounttable)-1:
-            output(("@%7.0f" * 3) % (
+            ao.output(("@%7.0f" * 3) % (
                 res.x[vindx.b(year,index)]/1000.0, 
                 res.x[vindx.w(year,index)]/1000.0, 
                 res.x[vindx.D(year,index)]/1000.0)) # aftertax account
-        output("\n")
+        ao.output("\n")
     print_acc_header1()
 
 def print_tax(res):
     def printheader_tax():
         if S.secondary != "":
-            output("%s/%s\n" % (S.primary, S.secondary))
-            output("    age ")
+            ao.output("%s/%s\n" % (S.primary, S.secondary))
+            ao.output("    age ")
         else:
             if S.primary != 'nokey':
-                output("%s\n" % (S.primary))
-            output(" age ")
-        output(("@%7s" * 13) %
+                ao.output("%s\n" % (S.primary))
+            ao.output(" age ")
+        ao.output(("@%7s" * 13) %
           ("fIRA", "TxbleO", "TxbleSS", "deduct", "T_inc", "earlyP", "fedtax", "mTaxB%", "fAftaTx", "cgTax%", "cgTax", "TFedTax", "spndble" ))
-        output("\n")
+        ao.output("\n")
 
-    output("\nTax Summary:\n\n")
+    ao.output("\nTax Summary:\n\n")
     printheader_tax()
     for year in range(S.numyr):
         age = year + S.startage
@@ -1037,44 +1039,44 @@ def print_tax(res):
         for j in range(len(S.accounttable)):
             withdrawal[S.accounttable[j]['acctype']] += res.x[vindx.w(year,j)]
         if S.secondary != "":
-            output("%3d/%3d:" % (year+S.startage, year+S.startage-S.delta))
+            ao.output("%3d/%3d:" % (year+S.startage, year+S.startage-S.delta))
         else:
-            output(" %3d:" % (year+S.startage))
-        output(("@%7.0f" * 13 ) %
+            ao.output(" %3d:" % (year+S.startage))
+        ao.output(("@%7.0f" * 13 ) %
               ( withdrawal['IRA']/1000.0, # sum IRA
               S.taxed[year]/1000.0, SS_taxable*S.SS[year]/1000.0,
               stded*i_mul/1000.0, T/1000.0, earlytax/1000.0, tax/1000.0, rate*100, 
                 withdrawal['aftertax']/1000.0, # sum Aftertax
               f*100, cg_tax/1000.0,
               ttax/1000.0, res.x[vindx.s(year)]/1000.0 ))
-        output("\n")
+        ao.output("\n")
     printheader_tax()
 
 def print_tax_brackets(res):
     def printheader_tax_brackets():
         if S.secondary != "":
-            output("@@@@@@%50s" % "Marginal Rate(%):")
+            ao.output("@@@@@@%50s" % "Marginal Rate(%):")
         else:
-            output("@@@@@@%47s" % "Marginal Rate(%):")
+            ao.output("@@@@@@%47s" % "Marginal Rate(%):")
         for k in range(len(taxtable)):
             (cut, size, rate, base) = taxtable[k]
-            output("@%6.0f" % (rate*100))
-        output("\n")
-        #output("%s\n"%S.who)
-        #output("%s/%s\n" % (S.primary, S.secondary))
+            ao.output("@%6.0f" % (rate*100))
+        ao.output("\n")
+        #ao.output("%s\n"%S.who)
+        #ao.output("%s/%s\n" % (S.primary, S.secondary))
         if S.secondary != "":
-            output("%s/%s\n" % (S.primary, S.secondary))
-            output("    age ")
+            ao.output("%s/%s\n" % (S.primary, S.secondary))
+            ao.output("    age ")
         else:
             if S.primary != 'nokey':
-                output("%s\n" % (S.primary))
-            output(" age ")
-        output(("@%7s" * 6) % ("fIRA", "TxbleO", "TxbleSS", "deduct", "T_inc", "fedtax"))
+                ao.output("%s\n" % (S.primary))
+            ao.output(" age ")
+        ao.output(("@%7s" * 6) % ("fIRA", "TxbleO", "TxbleSS", "deduct", "T_inc", "fedtax"))
         for k in range(len(taxtable)):
-            output("@brckt%d" % k)
-        output("@brkTot\n")
+            ao.output("@brckt%d" % k)
+        ao.output("@brkTot\n")
 
-    output("\nOverall Tax Bracket Summary:\n")
+    ao.output("\nOverall Tax Bracket Summary:\n")
     printheader_tax_brackets()
     for year in range(S.numyr):
         age = year + S.startage
@@ -1082,46 +1084,46 @@ def print_tax_brackets(res):
         T,spendable,tax,rate,cg_tax,earlytax = IncomeSummary(year)
         ttax = tax + cg_tax
         if S.secondary != "":
-            output("%3d/%3d:" % (year+S.startage, year+S.startage-S.delta))
+            ao.output("%3d/%3d:" % (year+S.startage, year+S.startage-S.delta))
         else:
-            output(" %3d:" % (year+S.startage))
-        output(("@%7.0f" * 6 ) %
+            ao.output(" %3d:" % (year+S.startage))
+        ao.output(("@%7.0f" * 6 ) %
               (
               res.x[vindx.w(year,0)]/1000.0, # IRA
               S.taxed[year]/1000.0, SS_taxable*S.SS[year]/1000.0,
               stded*i_mul/1000.0, T/1000.0, tax/1000.0) )
         bt = 0
         for k in range(len(taxtable)):
-            output("@%6.0f" % res.x[vindx.x(year,k)])
+            ao.output("@%6.0f" % res.x[vindx.x(year,k)])
             bt += res.x[vindx.x(year,k)]
-        output("@%6.0f\n" % bt)
+        ao.output("@%6.0f\n" % bt)
     printheader_tax_brackets()
 
 def print_cap_gains_brackets(res):
     def printheader_capgains_brackets():
         if S.secondary != "":
-            output("@@@@@@%42s" % "Marginal Rate(%):")
+            ao.output("@@@@@@%42s" % "Marginal Rate(%):")
         else:
-            output("@@@@@%40s" % " Marginal Rate(%):")
+            ao.output("@@@@@%40s" % " Marginal Rate(%):")
         for l in range(len(capgainstable)):
             (cut, size, rate) = capgainstable[l]
-            output("@%6.0f" % (rate*100))
-        output("\n")
-        #output("%s\n"%S.who)
-        #output("%s/%s\n" % (S.primary, S.secondary))
+            ao.output("@%6.0f" % (rate*100))
+        ao.output("\n")
+        #ao.output("%s\n"%S.who)
+        #ao.output("%s/%s\n" % (S.primary, S.secondary))
         if S.secondary != "":
-            output("%s/%s\n" % (S.primary, S.secondary))
-            output("    age ")
+            ao.output("%s/%s\n" % (S.primary, S.secondary))
+            ao.output("    age ")
         else:
             if S.primary != 'nokey':
-                output("%s\n" % (S.primary))
-            output(" age ")
-        output(("@%7s" * 5) % ("fAftaTx","cgTax%", "cgTaxbl", "T_inc", "cgTax"))
+                ao.output("%s\n" % (S.primary))
+            ao.output(" age ")
+        ao.output(("@%7s" * 5) % ("fAftaTx","cgTax%", "cgTaxbl", "T_inc", "cgTax"))
         for l in range(len(capgainstable)):
-            output ("@brckt%d" % l)
-        output ("@brkTot\n")
+            ao.output("@brckt%d" % l)
+        ao.output("@brkTot\n")
 
-    output("\nOverall Capital Gains Bracket Summary:\n")
+    ao.output("\nOverall Capital Gains Bracket Summary:\n")
     printheader_capgains_brackets()
     for year in range(S.numyr):
         age = year + S.startage
@@ -1137,10 +1139,10 @@ def print_cap_gains_brackets(res):
         T,spendable,tax,rate,cg_tax,earlytax = IncomeSummary(year)
         ttax = tax + cg_tax
         if S.secondary != "":
-            output("%3d/%3d:" % (year+S.startage, year+S.startage-S.delta))
+            ao.output("%3d/%3d:" % (year+S.startage, year+S.startage-S.delta))
         else:
-            output(" %3d:" % (year+S.startage))
-        output(("@%7.0f" * 5 ) %
+            ao.output(" %3d:" % (year+S.startage))
+        ao.output(("@%7.0f" * 5 ) %
               (
               atw, # Aftertax / investment account
               f*100, att, # non-basis fraction / cg taxable $ 
@@ -1151,10 +1153,10 @@ def print_cap_gains_brackets(res):
             ty = 0
             if S.accmap['aftertax'] > 0:
                 ty = res.x[vindx.y(year,l)]
-            output("@%6.0f" % ty)
+            ao.output("@%6.0f" % ty)
             bt += ty
             bttax += ty * capgainstable[l][2]
-        output("@%6.0f\n" % bt)
+        ao.output("@%6.0f\n" % bt)
         if args.verbosewga:
             print(" cg bracket ttax %6.0f " % bttax, end='')
             print("x->y[1]: %6.0f "% (res.x[vindx.x(year,0)]+res.x[vindx.x(year,1)]),end='')
@@ -1283,19 +1285,19 @@ def get_result_totals(res):
 
 def print_base_config(res):
     totwithd, tincome, tTaxable, tincometax, tcg_tax, tearlytax, tspendable = get_result_totals(res)
-    output("\n")
-    output("Optimized for %s\n" % S.maximize)
-    output('Minium desired: ${:0_.0f}\n'.format(S.desired[0]))
-    output('Maximum desired: ${:0_.0f}\n'.format(S.max[0]))
-    output('After tax yearly income: ${:0_.0f} adjusting for inflation\n'.format(res.x[vindx.s(0)]))
-    output("\n")
-    output('total withdrawals: ${:0_.0f}\n'.format(totwithd))
-    output('total ordinary taxable income ${:_.0f}\n'.format(tTaxable))
-    output('total ordinary tax on all taxable income: ${:0_.0f} ({:.1f}%) of taxable income\n'.format(tincometax+tearlytax, 100*(tincometax+tearlytax)/tTaxable))
-    output('total income (withdrawals + other) ${:_.0f}\n'.format(tincome))
-    output('total cap gains tax: ${:0_.0f}\n'.format(tcg_tax))
-    output('total all tax on all income: ${:0_.0f} ({:.1f}%)\n'.format(tincometax+tcg_tax+tearlytax, 100*(tincometax+tcg_tax+tearlytax)/tincome))
-    output("Total spendable (after tax money): ${:0_.0f}\n".format(tspendable))
+    ao.output("\n")
+    ao.output("Optimized for %s\n" % S.maximize)
+    ao.output('Minium desired: ${:0_.0f}\n'.format(S.desired[0]))
+    ao.output('Maximum desired: ${:0_.0f}\n'.format(S.max[0]))
+    ao.output('After tax yearly income: ${:0_.0f} adjusting for inflation\n'.format(res.x[vindx.s(0)]))
+    ao.output("\n")
+    ao.output('total withdrawals: ${:0_.0f}\n'.format(totwithd))
+    ao.output('total ordinary taxable income ${:_.0f}\n'.format(tTaxable))
+    ao.output('total ordinary tax on all taxable income: ${:0_.0f} ({:.1f}%) of taxable income\n'.format(tincometax+tearlytax, 100*(tincometax+tearlytax)/tTaxable))
+    ao.output('total income (withdrawals + other) ${:_.0f}\n'.format(tincome))
+    ao.output('total cap gains tax: ${:0_.0f}\n'.format(tcg_tax))
+    ao.output('total all tax on all income: ${:0_.0f} ({:.1f}%)\n'.format(tincometax+tcg_tax+tearlytax, 100*(tincometax+tcg_tax+tearlytax)/tincome))
+    ao.output("Total spendable (after tax money): ${:0_.0f}\n".format(tspendable))
 
 # Program entry point
 # Instantiate the parser
@@ -1319,10 +1321,10 @@ parser.add_argument('-csv', '--csv', action='store_true',
 parser.add_argument('conffile')
 args = parser.parse_args()
 
+csv_file_name = None
 if args.csv:
-    csv_file = open("a.csv", 'w')
-else:
-    csv_file = None
+    csv_file_name = 'a.csv'
+ao = app_out.app_output(csv_file_name)
 
 S = Data()
 S.load_file(args.conffile)
@@ -1362,6 +1364,3 @@ if precheck_consistancy():
         print_tax_brackets(res)
         print_cap_gains_brackets(res)
     print_base_config(res)
-
-if csv_file is not None:
-    csv_file.close()
