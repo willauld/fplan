@@ -442,32 +442,6 @@ def solve(c, A, b):
 
     return res
 
-"""
-def print_model_matrix(c, A, b, s, non_binding_only):
-    if not non_binding_only:
-        print("c: ")
-        print_model_row(c)
-        print()
-        print("B? i: A_ub[i]: b[i]")
-        for constraint in range(len(A)):
-            if s is None or s[constraint] >0:
-                print("  ", end='')
-            else:
-                print("B ", end='')
-            print(constraint, ": ", sep='', end='')
-            print_constraint( A[constraint], b[constraint])
-    else:
-        print(" i: A_ub[i]: b[i]")
-        j = 0
-        for constraint in range(len(A)):
-            if s[constraint] >0:
-                j+=1
-                print(constraint, ": ", sep='', end='')
-                print_constraint( A[constraint], b[constraint])
-        print("\n\n%d non-binding constrains printed\n" % j)
-    print()
-"""
-
 def consistancy_check(res, years, taxbins, cgbins, accounts, accmap, vindx):
     # check to see if the ordinary tax brackets are filled in properly
     print()
@@ -555,18 +529,6 @@ def consistancy_check(res, years, taxbins, cgbins, accounts, accmap, vindx):
         #if cg_tax + 0.1 < res.x[vindx.Fcg(year)]  or cg_tax -0.1 > res.x[vindx.Fcg(year)]:
         #    print("Calc cg_tax %6.2f should equal Fcg(year:%d): %6.2f" % (cg_tax, year, res.x[vindx.Fcg(year)]))
     print()
-
-"""
-def ao.output(string): # TODO move to a better place
-    #
-    # output writes the information after first changing any '@' in the string
-    # to a space for stdout or a ',' for csv files. The later is written
-    # whenever the csv_file handle is not None
-    #
-    sys.stdout.write(string.replace('@',' '))
-    if csv_file is not None:
-        csv_file.write(string.replace('@',','))
-"""
 
 def print_model_results(res): 
     def printheader1():
@@ -865,41 +827,6 @@ def print_cap_gains_brackets(res):
         #if (capgainstable[1][1]*i_mul - (res.x[vindx.x(year,2)]+ res.x[vindx.x(year,3)]+ res.x[vindx.x(year,4)]+res.x[vindx.x(year,5)])) <= res.x[vindx.y(year,2)]:
         #    print("y[2]remain: %6.0f " % (capgainstable[1][1]*i_mul - (res.x[vindx.x(year,2)]+ res.x[vindx.x(year,3)]+ res.x[vindx.x(year,4)]+res.x[vindx.x(year,5)])))
     printheader_capgains_brackets()
-
-"""
-def print_constraint(row, b):
-    print_model_row(row, True)
-    print("<= b[]: %6.2f" % b)
-
-def print_model_row(row, suppress_newline = False):
-    for i in range(S.numyr):
-        for k in range(len(taxtable)):
-            if row[vindx.x(i, k)] != 0:
-                print("x[%d,%d]: %6.3f" % (i, k, row[vindx.x(i, k)]),end=' ' )
-    if S.accmap['aftertax'] > 0:
-        for i in range(S.numyr):
-            for l in range(len(capgainstable)):
-                if row[vindx.y(i, l)] != 0:
-                    print("y[%d,%d]: %6.3f " % (i, l, row[vindx.y(i, l)]),end=' ' )
-    for i in range(S.numyr):
-        for j in range(len(S.accounttable)):
-            if row[vindx.w(i, j)] != 0:
-                print("w[%d,%d]: %6.3f " % (i, j, row[vindx.w(i, j)]),end=' ' )
-    for i in range(S.numyr+1): # b[] has an extra year
-        for j in range(len(S.accounttable)):
-            if row[vindx.b(i, j)] != 0:
-                print("b[%d,%d]: %6.3f " % (i, j, row[vindx.b(i, j)]),end=' ' )
-    for i in range(S.numyr):
-        if row[vindx.s(i)] !=0:
-            print("s[%d]: %6.3f " % (i, row[vindx.s(i)]),end=' ' )
-    if S.accmap['aftertax'] > 0:
-        for i in range(S.numyr):
-            for j in range(len(S.accounttable)):
-                if row[vindx.D(i,j)] !=0:
-                    print("D[%d,%d]: %6.3f " % (i, j, row[vindx.D(i,j)]),end=' ' )
-    if not suppress_newline:
-        print()
-"""
 
 def OrdinaryTaxable(year):
     withdrawals = 0 
