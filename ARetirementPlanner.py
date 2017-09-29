@@ -60,23 +60,6 @@ penalty = 0.1       # 10% early withdrawal penalty
 SS_taxable = 0.85   # maximum portion of SS that is taxable
 SS_notTaxable = 1 - SS_taxable
 
-def get_max_bracket(year, expect_total, printErrors):
-    i_mul = S.i_rate ** year
-    s = 0
-    for k in range(len(taxtable)):
-        (cut, size, rate, base) = taxtable[k]
-        cut *= i_mul
-        size *= i_mul
-        base *= i_mul
-        s += res.x[vindx.x(year,k)]
-        if k == len(taxtable) -1 or res.x[vindx.x(year,k+1)] ==0 :
-            break
-    if printErrors:
-        if (expect_total + 0.1 < s) or (expect_total - 0.1 > s):
-            print("max_bracket: cut: %6.1f size: %6.1f rate: %3.3f base: %6.1f lastBrakAmt: %6.1f brakSum: %6.1f" % (cut, size, rate, base, res.x[vindx.x(year,k)], s), flush=True)
-            print("Error(year %d): Expected bracket sum to be %6.2f but is %6.2f" % (year, expect_total, s))
-    return cut, size, rate, base, res.x[vindx.x(year,k)], s
-
 def agelist(str):
     for x in str.split(','):
         m = re.match('^(\d+)(-(\d+)?)?$', x)
@@ -1249,11 +1232,12 @@ def IncomeSummary(year):
             if S.apply_early_penalty(year,S.accounttable[j]['mykey']):
                 earlytax += res.x[vindx.w(year,j)]*penalty
     T = OrdinaryTaxable(year)
-    cut, size, rate, base, brak_amount, sum_brackets = get_max_bracket(year, T, False)
-    #tax = brak_amount * rate + base
     ntax = 0
+    rate = 0
     for k in range(len(taxtable)):
         ntax += res.x[vindx.x(year,k)]*taxtable[k][2]
+        if res.x[vindx.x(year,k)] > 0:
+            rate = taxtable[k][2]
     tax = ntax
     D = 0
     ncg_tax = 0
