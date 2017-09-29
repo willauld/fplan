@@ -12,7 +12,7 @@ import vector_var_index as vvar
 import app_output as app_out
 
 #from lp_constraint_model import build_model
-import lp_constraint_model
+import lp_constraint_model as lp
 
 # 2017 table (predict it moves with inflation?)
 # only married joint at the moment
@@ -430,9 +430,9 @@ def solve(c, A, b):
                                           "maxiter": 3000})
     if args.verbosemodel or args.verbosemodelall:
         if res.success == False:
-            print_model_matrix(c, A, b, None, False)
+            model.print_model_matrix(c, A, b, None, False)
         else:
-            print_model_matrix(c, A, b, res.slack, non_binding_only)
+            model.print_model_matrix(c, A, b, res.slack, non_binding_only)
     if args.verbosewga:
         print(res)
 
@@ -442,6 +442,7 @@ def solve(c, A, b):
 
     return res
 
+"""
 def print_model_matrix(c, A, b, s, non_binding_only):
     if not non_binding_only:
         print("c: ")
@@ -465,6 +466,7 @@ def print_model_matrix(c, A, b, s, non_binding_only):
                 print_constraint( A[constraint], b[constraint])
         print("\n\n%d non-binding constrains printed\n" % j)
     print()
+"""
 
 def consistancy_check(res, years, taxbins, cgbins, accounts, accmap, vindx):
     # check to see if the ordinary tax brackets are filled in properly
@@ -728,7 +730,7 @@ def print_tax(res):
         age = year + S.startage
         i_mul = S.i_rate ** year
         T,spendable,tax,rate,cg_tax,earlytax = IncomeSummary(year)
-        f = lp_constraint_model.cg_taxable_fraction(S, year)
+        f = model.cg_taxable_fraction(year)
         ttax = tax + cg_tax +earlytax
         withdrawal = {'IRA': 0, 'roth': 0, 'aftertax': 0}
         for j in range(len(S.accounttable)):
@@ -827,7 +829,7 @@ def print_cap_gains_brackets(res):
         atw = 0
         att = 0
         if S.accmap['aftertax'] > 0:
-            f = lp_constraint_model.cg_taxable_fraction(S, year)
+            f = model.cg_taxable_fraction(year)
             j = len(S.accounttable)-1 # Aftertax / investment account always the last entry when present
             atw = res.x[vindx.w(year,j)]/1000.0 # Aftertax / investment account
             att = (f*res.x[vindx.w(year,j)])/1000.0 # non-basis fraction / cg taxable $ 
@@ -864,6 +866,7 @@ def print_cap_gains_brackets(res):
         #    print("y[2]remain: %6.0f " % (capgainstable[1][1]*i_mul - (res.x[vindx.x(year,2)]+ res.x[vindx.x(year,3)]+ res.x[vindx.x(year,4)]+res.x[vindx.x(year,5)])))
     printheader_capgains_brackets()
 
+"""
 def print_constraint(row, b):
     print_model_row(row, True)
     print("<= b[]: %6.2f" % b)
@@ -896,17 +899,6 @@ def print_model_row(row, suppress_newline = False):
                     print("D[%d,%d]: %6.3f " % (i, j, row[vindx.D(i,j)]),end=' ' )
     if not suppress_newline:
         print()
-
-"""
-def cg_taxable_fraction(year):
-    f = 1
-    if S.accmap['aftertax'] > 0:
-        for v in S.accounttable:
-            if v['acctype'] == 'aftertax':
-                f = 1 - (v['basis']/(v['bal']*v['rate']**year))
-                break # should be the last entry anyway but...
-    #f = 1 - (S.aftertax['basis']/(S.aftertax['bal']*S.aftertax['rate']**year))
-    return f
 """
 
 def OrdinaryTaxable(year):
@@ -1048,7 +1040,8 @@ vindx = vvar.vector_var_index(years, taxbins, cgbins, accounts, S.accmap)
 nvars = vindx.vsize
 
 if precheck_consistancy():
-    c, A, b = lp_constraint_model.build_model(S, vindx, taxtable, capgainstable, penalty, stded, SS_taxable, args)
+    model = lp.lp_constraint_model(S, vindx, taxtable, capgainstable, penalty, stded, SS_taxable, args)
+    c, A, b = model.build_model()
     res = solve(c, A, b)
     consistancy_check(res, years, taxbins, cgbins, accounts, S.accmap, vindx)
 
