@@ -964,7 +964,7 @@ cgbins = len(capgainstable)
 accounts = len(S.accounttable) 
         
 vindx = vvar.vector_var_index(years, taxbins, cgbins, accounts, S.accmap)
-nvars = vindx.vsize
+#nvars = vindx.vsize
 
 if precheck_consistancy():
     model = lp.lp_constraint_model(S, vindx, taxtable, capgainstable, penalty, stded, SS_taxable, args)
