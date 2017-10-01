@@ -4,7 +4,6 @@
 # A Retirement Planner (optimize withdrawals for most efficient use of the nest egg)
 #
 
-#import toml
 import argparse
 import scipy.optimize
 #import taxinfo ### TODO replace the following line with this one and edits to this file

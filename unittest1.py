@@ -1,19 +1,14 @@
 import sys
 import os
+import pickle
 import unittest
+import toml
 import vector_var_index as v
 import app_output
+import taxinfo
+import lp_constraint_model as lpclass
+import tomldata
 
-#from ARetirementPlanner import do_check_index_sequence
-#from primes import is_prime
-#
-#class PrimesTestCase(unittest.TestCase):
-#    """Tests for `primes.py`."""
-#
-#    def test_is_five_prime(self):
-#        """Is five successfully determined to be prime?"""
-#        self.assertTrue(is_prime(5))
-#
 class TestIndexes(unittest.TestCase):
     """ Tests to ensure the set of functions index_?() are defined properly """
 
@@ -41,6 +36,7 @@ class TestIndexes(unittest.TestCase):
         z = v.my_check_index_sequence(years, taxbins, cgbins, accounts, accmap, indx)
         self.assertTrue(z)
 
+class TestAppOutput(unittest.TestCase):
     def test_app_output_without_csv_file(self):
         ao = app_output.app_output(None)
         temp = sys.stdout
@@ -85,9 +81,105 @@ class TestIndexes(unittest.TestCase):
         except OSError as e:  ## if failed, report it back to the user ##
             print ("Error: %s - %s." % (e.filename,e.strerror))
 
-    def test_trueistrue(self):
-        """ testing """
-        self.assertTrue(True)
+class TestLpConstraintModel(unittest.TestCase):
+    # TODO define some good test for model construction and printing
+    #def __init__(self, ?unit_test?):
+    #    self.toml_file = None
+
+    def write_working_toml_file(self):
+        tomls = """
+returns = 6
+inflation = 2.5
+[aftertax]
+bal = 700000
+basis = 400000
+contrib = 10
+period = "56-65"
+[iam.spouse]
+primary = false
+age = 54
+retire = 60
+through = 75
+[iam.will]
+primary = true
+age = 56
+retire = 58
+through = 72
+[SocialSecurity.will]
+amount = 31000
+FRA = 67
+age = "68-"
+[SocialSecurity.spouse]
+amount = 21000
+FRA = 67
+age = "70-"
+[income.mytaxfree]
+amount = 3000
+age = "56-"
+inflation = false
+tax = false
+[income.rental_1]
+amount = 36000
+age = "67-"
+inflation = true
+tax = true
+[income.rental_2]
+amount = 2400
+age = "67-"
+inflation = true
+tax = true
+[IRA.will]
+bal = 2000000
+contrib = 100
+inflation = true
+period = "56-65"
+[IRA.spouse]
+bal = 200000
+[roth.spouse]
+bal = 100000
+contrib = 0
+        """
+        self.toml_file = None
+        self.toml_file_name = 'self_temp_toml.toml'
+        self.bin_constraint_name = 'constrain_model_test_file.bcm' # bcm = binary constraint model 
+        #with open('Anew.toml') as f:
+        #    parsed_toml = toml.loads(f.read())
+        #new_toml_str = toml.dumps(parsed_toml)
+
+        #print("tomls: %s" % tomls)
+        self.toml_file = open(self.toml_file_name, 'w')
+        self.toml_file.write(tomls)
+        #self.toml_file.flush()
+        self.toml_file.close()
+
+    def __del__(self):
+        # TODO delete the toml file!!!!
+        try:
+            os.remove(self.toml_file_name)
+        except OSError as e:  ## if failed, report it back to the user ##
+            print ("Error: %s - %s." % (e.filename,e.strerror))
+
+    def test_lp_constraint_model_build_against_know_model(self):
+        self.write_working_toml_file()
+        S = tomldata.Data()
+        S.load_file(self.toml_file_name) #### TODO replace with one written here and deleted later
+        years = S.numyr
+        taxbins = len(taxinfo.taxtable)
+        cgbins = len(taxinfo.capgainstable)
+        accounts = len(S.accounttable) 
+        verbose = False
+        vindx = v.vector_var_index(years, taxbins, cgbins, accounts, S.accmap)
+        lp = lpclass.lp_constraint_model(S, vindx, taxinfo.taxtable, taxinfo.capgainstable, taxinfo.penalty, taxinfo.stded, taxinfo.SS_taxable, verbose)
+        c, A, b = lp.build_model()
+
+        #with open(self.bin_constraint_name, 'wb') as fil: # USE TO UPDATE THE BINARY 'GOOD' model
+        #    pickle.dump([c, A, b], fil)
+
+        with open(self.bin_constraint_name, 'rb') as fil:
+            [nc, nA, nb] = pickle.load(fil)
+        
+        #Do a deep compare:
+        self.assertEqual(pickle.dumps([c, A, b]), pickle.dumps([nc, nA, nb])) 
 
 
 if __name__ == '__main__':
