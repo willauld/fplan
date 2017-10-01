@@ -7,7 +7,6 @@
 #import toml
 import argparse
 import scipy.optimize
-import re
 #import taxinfo ### TODO replace the following line with this one and edits to this file
 from taxinfo import accountspecs, taxtable, capgainstable, penalty, stded, SS_taxable, contribspecs, RMD
 import tomldata
