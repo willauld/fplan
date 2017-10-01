@@ -1,6 +1,6 @@
 
 class lp_constraint_model:
-    def __init__(self, S, vindx, taxtable, capgainstable, penalty, stded, SS_taxable, args):
+    def __init__(self, S, vindx, taxtable, capgainstable, penalty, stded, SS_taxable, verbose):
         self.S = S
         self.var_index = vindx
         self.taxtable = taxtable
@@ -8,7 +8,7 @@ class lp_constraint_model:
         self.penalty = penalty
         self.stded = stded
         self.ss_taxable = SS_taxable
-        self.args = args
+        self.verbose = verbose
 
     # Build model for:
     # Minimize: c^T * x
@@ -16,6 +16,7 @@ class lp_constraint_model:
     #all vars positiveA
     def build_model(self):
     
+        ### TODO integrate the following assignments into the code and remove them
         S = self.S
         vindx = self.var_index
         taxtable = self.taxtable
@@ -23,7 +24,6 @@ class lp_constraint_model:
         penalty = self.penalty
         stded = self.stded
         SS_taxable = self.ss_taxable
-        args = self.args
     
         nvars = vindx.vsize
         A = []
@@ -322,7 +322,7 @@ class lp_constraint_model:
         #
         # Constrant for (14') is default for sycpy so no code is needed
         #
-        if args.verbose:
+        if self.verbose:
             print("Num vars: ", len(c))
             print("Num contraints: ", len(b))
             print()
@@ -341,7 +341,6 @@ class lp_constraint_model:
         return f
     
     
-    #def build_model(S, vindx, taxtable, capgainstable, penalty, stded, SS_taxable, args):
     def print_model_matrix(self, c, A, b, s, non_binding_only):
         if not non_binding_only:
             print("c: ")
@@ -380,7 +379,6 @@ class lp_constraint_model:
         penalty = self.penalty
         stded = self.stded
         SS_taxable = self.ss_taxable
-        args = self.args
     
         for i in range(S.numyr):
             for k in range(len(taxtable)):

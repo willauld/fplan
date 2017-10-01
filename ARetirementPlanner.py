@@ -917,7 +917,7 @@ accounts = len(S.accounttable)
 vindx = vvar.vector_var_index(years, taxbins, cgbins, accounts, S.accmap)
 
 if precheck_consistancy():
-    model = lp.lp_constraint_model(S, vindx, taxtable, capgainstable, penalty, stded, SS_taxable, args)
+    model = lp.lp_constraint_model(S, vindx, taxtable, capgainstable, penalty, stded, SS_taxable, args.verbose)
     c, A, b = model.build_model()
     res = solve(c, A, b)
     consistancy_check(res, years, taxbins, cgbins, accounts, S.accmap, vindx)
