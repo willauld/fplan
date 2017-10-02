@@ -24,7 +24,7 @@ ORP continues to be a much more complete tool.
 * Federal income and capital gains tax with 2017 tables
 * Assumes an average cost basis that shrinks over time (looking to improve this)
 * (not correct) Roth withdraw limitations before age 59
-* Early IRA withdrawals have a 10% penalty. (this is added to 'tax')
+* Early IRA withdrawals have a 10% penalty
 * inflation
 * Required Minimum Distributions from IRA
 * Arbitrary income or expenses happening at certain years. Income can
@@ -47,7 +47,7 @@ ORP continues to be a much more complete tool.
 
 * Taxes are only for Married filing jointly at the moment
 * Standard deductions and exemptions 
-* Age 60 is assumed to be past 59.5
+* Assumed to be past 59.5 only by age 60
 
 ## Installing
 
@@ -90,9 +90,12 @@ optional arguments:
 
 ## Output
 
-The standard output is a table by age with the following columns. All numbers
-in table are in 1000s of dollars. Additional details are available with the
-appropriate application switches.
+The standard output is a table by age with the following columns. In cases 
+where there are two different acount owners the data is combined in this 
+table but split out in the optional account transaction summary table. All 
+numbers in table are in 1000s of dollars except those for the tax brackets 
+in optional output. Additional details are available with the appropriate 
+application switches.
 
 * fIRA: amount to withdrawal from IRA(s) this year
 * tIRA: amount to deposit to IRA(s) this year
