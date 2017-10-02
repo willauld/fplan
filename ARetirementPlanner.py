@@ -13,9 +13,6 @@ import vector_var_index as vvar
 import app_output as app_out
 import lp_constraint_model as lp
 
-OneK = 1000.0
-OneK = 1
-
 def precheck_consistancy():
     print("\nDoing Pre-check:")
     # check that there is income for all contibutions
@@ -63,8 +60,6 @@ def consistancy_check(res, years, taxbins, cgbins, accounts, accmap, vindx):
     print()
 
     result = vvar.my_check_index_sequence(years, taxbins, cgbins, accounts, accmap, vindx)
-    #result = my_check_index_sequence()
-    print("IndexSequance result: ", result)
 
     for year in range(S.numyr):
         s = 0
@@ -103,7 +98,6 @@ def consistancy_check(res, years, taxbins, cgbins, accounts, accmap, vindx):
                     print("Inproperly packed GC tax brackets in year %d bracket %d" % (year, l))
                 if bamount == 0.0:
                     fz = True
-        #TaxableOrdinary = res.x[vindx.w(year,0)] + S.income[year] -stded*i_mul
         TaxableOrdinary = OrdinaryTaxable(year)
         if (TaxableOrdinary + 0.1 < s) or (TaxableOrdinary - 0.1 > s):
             print("Error: Expected (age:%d) Taxable Ordinary income %6.2f doesn't match bracket sum %6.2f" % 
@@ -111,26 +105,17 @@ def consistancy_check(res, years, taxbins, cgbins, accounts, accmap, vindx):
 
         for j in range(len(S.accounttable)):
             a = res.x[vindx.b(year+1,j)] -( res.x[vindx.b(year,j)] - res.x[vindx.w(year,j)] + res.x[vindx.D(year,j)])*S.accounttable[j]['rate']
-            #a = res.x[vindx.b(year+1,j)] -( res.x[vindx.b(year,j)] - res.x[vindx.w(year,j)])*S.accounttable[j]['rate']
             if a > 1:
                 v = S.accounttable[j]
                 print("account[%d], type %s, index %d, mykey %s" % (j, v['acctype'], v['index'], v['mykey']))
                 print("account[%d] year to year balance NOT OK years %d to %d" % (j, year, year+1))
                 print("difference is", a)
 
-        #last = len(S.accounttable)-1
-        #D = 0
-        #if S.accmap['aftertax'] > 0:
-        #    D = res.x[vindx.D(year,last)]
-        #if res.x[vindx.b(year+1,last)] -( res.x[vindx.b(year,last)] - res.x[vindx.w(year,last)] + D)*S.accounttable[last]['rate']>2:
-        #    print("account[%d] year to year balance NOT OK years %d to %d" % (2, year, year+1))
-
         T,spendable,tax,rate,cg_tax,earlytax = IncomeSummary(year)
         if spendable + 0.1 < res.x[vindx.s(year)]  or spendable -0.1 > res.x[vindx.s(year)]:
             print("Calc Spendable %6.2f should equal s(year:%d) %6.2f"% (spendable, year, res.x[vindx.s(year)]))
             for j in range(len(S.accounttable)):
                 print("+w[%d,%d]: %6.0f" % (year, j, res.x[vindx.w(year,j)])) 
-                #if S.accounttable[j]['acctype'] == 'aftertax':
                 print("-D[%d,%d]: %6.0f" % (year, j, res.x[vindx.D(year,j)]))
             print("+o[%d]: %6.0f +SS[%d]: %6.0f -tax: %6.0f -cg_tax: %6.0f" % (year, S.income[year] ,year, S.SS[year] , tax ,cg_tax))
 
@@ -139,8 +124,6 @@ def consistancy_check(res, years, taxbins, cgbins, accounts, accmap, vindx):
             bt += res.x[vindx.x(year,k)] * taxtable[k][2]
         if tax + 0.1 < bt  or tax -0.1 > bt:
             print("Calc tax %6.2f should equal brackettax(bt)[]: %6.2f" % (tax, bt))
-        #if cg_tax + 0.1 < res.x[vindx.Fcg(year)]  or cg_tax -0.1 > res.x[vindx.Fcg(year)]:
-        #    print("Calc cg_tax %6.2f should equal Fcg(year:%d): %6.2f" % (cg_tax, year, res.x[vindx.Fcg(year)]))
     print()
 
 def print_model_results(res): 
@@ -171,16 +154,11 @@ def print_model_results(res):
                 if rmd > 0:
                     rmdref += res.x[vindx.b(year,j)]/rmd 
 
-        #balance = {'IRA': 0, 'roth': 0, 'aftertax': 0}
         withdrawal = {'IRA': 0, 'roth': 0, 'aftertax': 0}
         deposit = {'IRA': 0, 'roth': 0, 'aftertax': 0}
         for j in range(len(S.accounttable)):
-            #balance[S.accounttable[j]['acctype']] += res.x[vindx.b(year,j)]
             withdrawal[S.accounttable[j]['acctype']] += res.x[vindx.w(year,j)]
             deposit[S.accounttable[j]['acctype']] += res.x[vindx.D(year,j)]
-        #D = 0
-        #if S.accmap['aftertax'] > 0:
-        #    D = res.x[vindx.D(year, len(S.accounttable)-1)]/OneK
 
         if S.secondary != "":
             ao.output("%3d/%3d:" % (year+S.startage, year+S.startage-S.delta))
@@ -192,12 +170,6 @@ def print_model_results(res):
                 withdrawal['aftertax']/OneK, deposit['aftertax']/OneK,  #D, # AftaTax
                 S.income[year]/OneK, S.SS[year]/OneK, S.expenses[year]/OneK,
                 (tax+cg_tax+earlytax)/OneK) )
-        #ao.output(("@%7.0f" * 12 ) %
-        #      ( balance['IRA']/OneK, withdrawal['IRA']/OneK, rmdref/OneK, # IRA
-        #        balance['roth']/OneK, withdrawal['roth']/OneK, # Roth
-        #        balance['aftertax']/OneK, withdrawal['aftertax']/OneK, D, # AftaTax
-        #        S.income[year]/OneK, S.SS[year]/OneK, S.expenses[year]/OneK,
-        #        (tax+cg_tax+earlytax)/OneK) )
         s = res.x[vindx.s(year)]/OneK
         star = ' '
         T,spendable,tax,rate,cg_tax,earlytax = IncomeSummary(year)
@@ -206,22 +178,6 @@ def print_model_results(res):
             star = '*'
         ao.output("@%7.0f%c" % (s, star) )
         ao.output("\n")
-
-    #year = S.numyr
-    #balance = {'IRA': 0, 'roth': 0, 'aftertax': 0}
-    #for j in range(len(S.accounttable)):
-    #    balance[S.accounttable[j]['acctype']] += res.x[vindx.b(year,j)]
-    #if S.secondary != "":
-    #    ao.output("  final:" )
-    #else:
-    #    ao.output("finl:" )
-    #ao.output(("@%7.0f@%7s@%7s" + "@%7.0f@%7s" * 2 + "@%7s" * 6) %
-    #    ( 
-    #    balance['IRA']/OneK, '-', '-',  # res.x[vindx.w(year,0)]/OneK, # IRA
-    #    balance['roth']/OneK, '-', # res.x[vindx.w(year,1)]/OneK, # Roth
-    #    balance['aftertax']/OneK, '-', # res.x[vindx.w(year,2)]/OneK, # AftaTax
-    #    '-', '-', '-', '-', '-', '-'))
-    #ao.output("\n")
     printheader1()
 
 def print_account_trans(res):
@@ -249,7 +205,6 @@ def print_account_trans(res):
     ao.output("\nAccount Transactions Summary:\n\n")
     print_acc_header1()
     for year in range(S.numyr):
-        #age = year + S.startage #### who's age??? NEED BOTH!!!!
         rmdref = [0,0]
         for j in range(min(2,len(S.accounttable))): # only first two accounts are type IRA w/ RMD
             if S.accounttable[j]['acctype'] == 'IRA':
@@ -334,8 +289,6 @@ def print_tax_brackets(res):
             (cut, size, rate, base) = taxtable[k]
             ao.output("@%6.0f" % (rate*100))
         ao.output("\n")
-        #ao.output("%s\n"%S.who)
-        #ao.output("%s/%s\n" % (S.primary, S.secondary))
         if S.secondary != "":
             ao.output("%s/%s\n" % (S.primary, S.secondary))
             ao.output("    age ")
@@ -381,8 +334,6 @@ def print_cap_gains_brackets(res):
             (cut, size, rate) = capgainstable[l]
             ao.output("@%6.0f" % (rate*100))
         ao.output("\n")
-        #ao.output("%s\n"%S.who)
-        #ao.output("%s/%s\n" % (S.primary, S.secondary))
         if S.secondary != "":
             ao.output("%s/%s\n" % (S.primary, S.secondary))
             ao.output("    age ")
@@ -443,10 +394,12 @@ def print_cap_gains_brackets(res):
 
 def OrdinaryTaxable(year):
     withdrawals = 0 
+    deposits = 0 
     for j in range(min(2,len(S.accounttable))):
         if S.accounttable[j]['acctype'] == 'IRA':
             withdrawals += res.x[vindx.w(year,j)]
-    T = withdrawals + S.taxed[year] + SS_taxable*S.SS[year] -(stded*S.i_rate**year)
+            deposits += res.x[vindx.D(year,j)]
+    T = withdrawals - deposits + S.taxed[year] + SS_taxable*S.SS[year] -(stded*S.i_rate**year)
     if T < 0:
         T = 0
     return T
@@ -496,9 +449,6 @@ def get_result_totals(res):
     for year in range(S.numyr):
         i_mul = S.i_rate ** year
         discountR = S.i_rate**-year # use rate of inflation as discount rate
-        #age = year + S.startage
-        #if age >= 70:
-        #    rmd = RMD[age - 70]
         T,spendable,tax,rate,cg_tax,earlytax = IncomeSummary(year)
         tot_withdrawals = 0
         for j in range(len(S.accounttable)):
@@ -547,6 +497,8 @@ parser.add_argument('-mall', '--verbosemodelall', action='store_true',
                     help="Output the entire LP model - not just the binding constraints")
 parser.add_argument('-csv', '--csv', action='store_true',
                     help="Additionally write the output from to a csv file")
+parser.add_argument('-1k', '--noroundingoutput', action='store_true',
+                    help="Do not round the output to thousands")
 parser.add_argument('conffile')
 args = parser.parse_args()
 
@@ -570,6 +522,10 @@ if args.verbosewga:
 non_binding_only = True
 if args.verbosemodelall:
     non_binding_only = False
+
+OneK = 1000.0
+if args.noroundingoutput:
+    OneK = 1
 
 years = S.numyr
 taxbins = len(taxtable) 
