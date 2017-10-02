@@ -1,7 +1,7 @@
 # Retirement planner
 
 This is a retirement planner application designed to explore
-optimial withdrawals from retirement accounts while accounting for
+optimal withdrawals from retirement accounts while accounting for
 other income, social security and federal taxes. It uses a Linear
 Programming solution to maximize the amount of money available
 for yearly spending assuming spending goes up with inflation.
