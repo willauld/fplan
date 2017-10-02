@@ -181,6 +181,29 @@ contrib = 0
         #Do a deep compare:
         self.assertEqual(pickle.dumps([c, A, b]), pickle.dumps([nc, nA, nb])) 
 
+        self.model_matrix_name = 'known_good_model_matrix.pickle'
+        temp = sys.stdout
+        sys.stdout = open('stdout.log', 'w')
+        #sys.stderr = open('stderr.log', 'w')
+
+        lp.print_model_matrix(c, A, b, None, False)
+
+        sys.stdout.close()
+        sys.stdout = temp
+        inf = open('stdout.log', 'r')
+        result = inf.read()
+        #print("result: ", result)
+        inf.close()
+
+        #with open(self.model_matrix_name, 'wb') as fil1: # USE TO UPDATE THE BINARY 'GOOD' model matrix
+        #    pickle.dump(result, fil1)
+
+        with open(self.model_matrix_name, 'rb') as fil2:
+            known_good = pickle.load(fil2)
+
+        self.assertEqual(pickle.dumps(result), pickle.dumps(known_good)) 
+
+
 
 if __name__ == '__main__':
     unittest.main()
