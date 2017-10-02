@@ -203,6 +203,11 @@ contrib = 0
 
         self.assertEqual(pickle.dumps(result), pickle.dumps(known_good)) 
 
+class TestTomlInput(unittest.TestCase):
+    """ Tests to ensure we are getting the correct and needed input from toml configuration file """
+
+    def test_toml_input_(self):
+        pass
 
 
 if __name__ == '__main__':

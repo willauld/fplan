@@ -176,6 +176,7 @@ class lp_constraint_model:
             for j in range(min(2,len(S.accounttable))): # IRA can only be in the first two accounts
                 if S.accounttable[j]['acctype'] == 'IRA':
                     row[vindx.w(year,j)] = -1 # Account 0 is TDRA
+                    row[vindx.D(year,j)] = 1  # Account 0 is TDRA
             A+=[row]
             b+=[S.taxed[year]+SS_taxable*S.SS[year]-stded*adj_inf]
         """
@@ -188,6 +189,7 @@ class lp_constraint_model:
             for j in range(min(2,len(S.accounttable))): # IRA can only be in the first two accounts
                 if S.accounttable[j]['acctype'] == 'IRA':
                     row[vindx.w(year,j)] = 1 # Account 0 is TDRA
+                    row[vindx.D(year,j)] = -1 # Account 0 is TDRA
             for k in range(len(taxtable)):
                 row[vindx.x(year,k)] = -1
             A+=[row]
@@ -337,7 +339,6 @@ class lp_constraint_model:
                 if v['acctype'] == 'aftertax':
                     f = 1 - (v['basis']/(v['bal']*v['rate']**year))
                     break # should be the last entry anyway but...
-        #f = 1 - (S.aftertax['basis']/(S.aftertax['bal']*S.aftertax['rate']**year))
         return f
     
     
