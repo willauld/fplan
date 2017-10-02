@@ -203,6 +203,11 @@ contrib = 0
 
         self.assertEqual(pickle.dumps(result), pickle.dumps(known_good)) 
 
+        try:
+            os.remove('stdout.log')
+        except OSError as e:  ## if failed, report it back to the user ##
+            print ("Error: %s - %s." % (e.filename,e.strerror))
+
 class TestTomlInput(unittest.TestCase):
     """ Tests to ensure we are getting the correct and needed input from toml configuration file """
 
