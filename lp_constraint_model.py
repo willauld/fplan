@@ -148,6 +148,10 @@ class lp_constraint_model:
                         row[vindx.D(year,j)] = -1
                         A+=[row]
                         b+=[-1*v[year]]
+        #
+        # Add constaints for (5+++') rows
+        #
+        # TBD
         #"""
         #
         # Add constaints for (6') rows
@@ -163,25 +167,8 @@ class lp_constraint_model:
                         A+=[row]
                         b+=[0]
     
-        #"""
         #
-        # Add constraints for (7a')
-        #
-        """
-        for year in range(S.numyr):
-            adj_inf = S.i_rate**year
-            row = [0] * nvars
-            for k in range(len(taxtable)):
-                row[vindx.x(year,k)] = 1
-            for j in range(min(2,len(S.accounttable))): # IRA can only be in the first two accounts
-                if S.accounttable[j]['acctype'] == 'IRA':
-                    row[vindx.w(year,j)] = -1 # Account 0 is TDRA
-                    row[vindx.D(year,j)] = 1  # Account 0 is TDRA
-            A+=[row]
-            b+=[S.taxed[year]+SS_taxable*S.SS[year]-stded*adj_inf]
-        """
-        #
-        # Add constraints for (7b')
+        # Add constraints for (7')
         #
         for year in range(S.numyr):
             adj_inf = S.i_rate**year
@@ -247,38 +234,6 @@ class lp_constraint_model:
         #
         # Add constraints for (11a')
         #
-        """
-        aftertax = 0
-        if S.accmap['aftertax'] > 0:
-            aftertax = 1
-        for year in range(S.numyr): 
-            for j in range(len(S.accounttable)-aftertax): # for all accounts except aftertax
-                row = [0] * nvars
-                row[vindx.b(year+1,j)] = 1 ### b[i,j] supports an extra year
-                row[vindx.b(year,j)] = -1*S.accounttable[j]['rate']
-                row[vindx.w(year,j)] = S.accounttable[j]['rate']
-                A+=[row]
-                b+=[0]
-        #
-        # Add constraints for (11b')
-        #
-        
-        aftertax = 0
-        if S.accmap['aftertax'] > 0:
-            aftertax = 1
-        for year in range(S.numyr):
-            for j in range(len(S.accounttable)-aftertax): # for all accounts except aftertax
-                row = [0] * nvars
-                row[vindx.b(year,j)] = S.accounttable[j]['rate']
-                row[vindx.w(year,j)] = -1*S.accounttable[j]['rate']
-                row[vindx.b(year+1,j)] = -1  ### b[i,j] supports an extra year
-                A+=[row]
-                b+=[0]
-        #"""
-        #
-        # Add constraints for (12a')
-        #
-        #if S.accmap['aftertax'] > 0:
         for year in range(S.numyr): 
             for j in range(len(S.accounttable)): # for all accounts 
                 #j = len(S.accounttable)-1 # nl the last account, the investment account
@@ -290,9 +245,8 @@ class lp_constraint_model:
                 A+=[row]
                 b+=[0]
         #
-        # Add constraints for (12b')
+        # Add constraints for (11b')
         #
-        #if S.accmap['aftertax'] > 0:
         for year in range(S.numyr):
             for j in range(len(S.accounttable)): # for all accounts 
                 #j = len(S.accounttable)-1 # nl the last account, the investment account
