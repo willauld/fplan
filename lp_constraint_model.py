@@ -151,8 +151,16 @@ class lp_constraint_model:
         #
         # Add constaints for (5+++') rows
         #
-        # TBD
-        #"""
+        for year in range(S.numyr):
+            for j in range(min(2,len(S.accounttable))): # at most the first two accounts are type IRA w/ RMD requirement
+                if S.accounttable[j]['acctype'] == 'IRA':
+                    ownerage = S.account_owner_age(year, S.accounttable[j])
+                    if ownerage >= 70:
+                        row = [0] * nvars
+                        row[vindx.D(year,j)] = 1
+                        A+=[row]
+                        b+=[0]
+    
         #
         # Add constaints for (6') rows
         #

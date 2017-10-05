@@ -79,6 +79,12 @@ class Data:
             #print("rmd: %d, age: %d, retiree: %s" % (rmd, age, retireekey))
         return rmd
 
+    def account_owner_age(self,year,account):
+        retireekey = account['mykey']
+        v = self.match_retiree(retireekey)
+        age = v['ageAtStart']+year
+        return age
+
     def apply_early_penalty(self,year,retireekey):
         response = False
         v = self.match_retiree(retireekey)
