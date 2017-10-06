@@ -60,7 +60,7 @@ class Data:
                 if age >= contribspecs['CatchupAge']:
                     max += contribspecs['TDRACatchup']
         max *= self.i_rate ** year # adjust for inflation
-        print('maxContribution: %6.0f' % max, retireekey)
+        #print('maxContribution: %6.0f' % max, retireekey)
         return max
 
     def match_retiree(self, retireekey):
