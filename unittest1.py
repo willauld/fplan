@@ -8,12 +8,13 @@ import app_output
 import taxinfo
 import lp_constraint_model as lpclass
 import tomldata
+from ARetirementPlanner import solve
 
 class TestIndexes(unittest.TestCase):
-    """ Tests to ensure the set of functions index_?() are defined properly """
+    """     Tests to ensure the set of functions index_?() are defined properly """
 
     def test_index_var_layout_with_aftertax(self):
-        """ check that the index_?() are properly laid out in a vector """
+        """     check that the index_?() are properly laid out in a vector """
         years = 10
         taxbins = 8
         cgbins = 3
@@ -25,7 +26,7 @@ class TestIndexes(unittest.TestCase):
         self.assertTrue(z)
 
     def test_index_var_layout_without_aftertax(self):
-        """ check that the index_?() are properly laid out in a vector """
+        """     check that the index_?() are properly laid out in a vector """
         years = 10
         taxbins = 8
         cgbins = 3
@@ -159,10 +160,13 @@ contrib = 0
         except OSError as e:  ## if failed, report it back to the user ##
             print ("Error: %s - %s." % (e.filename,e.strerror))
 
-    def test_lp_constraint_model_build_against_know_model(self):
+    def lp_constraint_model_load_default_toml(self):
         self.write_working_toml_file()
         S = tomldata.Data()
-        S.load_file(self.toml_file_name) #### TODO replace with one written here and deleted later
+        S.load_file(self.toml_file_name) 
+        return S
+
+    def lp_constraint_model_build_model(self, S):
         years = S.numyr
         taxbins = len(taxinfo.taxtable)
         cgbins = len(taxinfo.capgainstable)
@@ -171,6 +175,21 @@ contrib = 0
         vindx = v.vector_var_index(years, taxbins, cgbins, accounts, S.accmap)
         lp = lpclass.lp_constraint_model(S, vindx, taxinfo.taxtable, taxinfo.capgainstable, taxinfo.penalty, taxinfo.stded, taxinfo.SS_taxable, verbose)
         c, A, b = lp.build_model()
+        return vindx, lp, c, A, b
+
+    def test_lp_constraint_model_contrib_IRA1(self):
+        S = self.lp_constraint_model_load_default_toml()
+        # TODO: add any local changes to the initial data
+        # default toml has IRA.will contrib 100 with inflation from 56-65, No need to modify
+        vindx, lp, c, A, b = self.lp_constraint_model_build_model(S)
+        # TODO: Test created model or solve...
+        res = solve(c, A, b)
+
+    def test_lp_constraint_model_build_against_know_model(self):
+        S = self.lp_constraint_model_load_default_toml()
+        # TODO: add any local changes to the initial data
+        vindx, lp, c, A, b = self.lp_constraint_model_build_model(S)
+        # TODO: Test created model or solve...
 
         #with open(self.bin_constraint_name, 'wb') as fil: # USE TO UPDATE THE BINARY 'GOOD' model
         #    pickle.dump([c, A, b], fil)

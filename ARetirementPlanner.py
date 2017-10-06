@@ -31,25 +31,16 @@ def precheck_consistancy():
             exit(1)
     return True
 
-def solve(c, A, b):
+def solve(c, A, b, verbose):
 
     res = scipy.optimize.linprog(c, A_ub=A, b_ub=b,
-                                 options={"disp": args.verbose,
+                                 options={"disp": verbose,
                                           #"bland": True,
                                           "tol": 1.0e-7,
                                           "maxiter": 3000})
-    if args.verbosemodel or args.verbosemodelall:
-        if res.success == False:
-            model.print_model_matrix(c, A, b, None, False)
-        else:
-            model.print_model_matrix(c, A, b, res.slack, non_binding_only)
-    if args.verbosewga:
-        print(res)
-
     if res.success == False:
         print(res)
         exit(1)
-
     return res
 
 def consistancy_check(res, years, taxbins, cgbins, accounts, accmap, vindx):
@@ -480,72 +471,82 @@ def print_base_config(res):
 
 # Program entry point
 # Instantiate the parser
-parser = argparse.ArgumentParser()
-parser.add_argument('-v', '--verbose', action='store_true',
-                    help="Extra output from solver")
-parser.add_argument('-va', '--verboseaccounttrans', action='store_true',
-                    help="Output detailed account transactions from solver")
-parser.add_argument('-vt', '--verbosetax', action='store_true',
-                    help="Output detailed tax info from solver")
-parser.add_argument('-vtb', '--verbosetaxbrackets', action='store_true',
-                    help="Output detailed tax bracket info from solver")
-parser.add_argument('-vw', '--verbosewga', action='store_true',
-                    help="Extra wga output from solver")
-parser.add_argument('-vm', '--verbosemodel', action='store_true',
-                    help="Output the binding constraints of the LP model")
-parser.add_argument('-mall', '--verbosemodelall', action='store_true',
-                    help="Output the entire LP model - not just the binding constraints")
-parser.add_argument('-csv', '--csv', action='store_true',
-                    help="Additionally write the output from to a csv file")
-parser.add_argument('-1k', '--noroundingoutput', action='store_true',
-                    help="Do not round the output to thousands")
-parser.add_argument('conffile')
-args = parser.parse_args()
-
-csv_file_name = None
-if args.csv:
-    csv_file_name = 'a.csv'
-ao = app_out.app_output(csv_file_name)
-
-S = tomldata.Data()
-S.load_file(args.conffile)
-
-#print("\naccounttable: ", S.accounttable)
-
-if S.accmap['IRA']+S.accmap['roth']+S.accmap['aftertax'] == 0:
-    print('Error: This app optimizes the withdrawals from your retirement account(s); you must have at least one specified in the input toml file.')
-    exit(0)
-
-if args.verbosewga:
-    print("accounttable: ", S.accounttable)
-
-non_binding_only = True
-if args.verbosemodelall:
-    non_binding_only = False
-
-OneK = 1000.0
-if args.noroundingoutput:
-    OneK = 1
-
-years = S.numyr
-taxbins = len(taxtable) 
-cgbins = len(capgainstable) 
-accounts = len(S.accounttable) 
-        
-vindx = vvar.vector_var_index(years, taxbins, cgbins, accounts, S.accmap)
-
-if precheck_consistancy():
-    model = lp.lp_constraint_model(S, vindx, taxtable, capgainstable, penalty, stded, SS_taxable, args.verbose)
-    c, A, b = model.build_model()
-    res = solve(c, A, b)
-    consistancy_check(res, years, taxbins, cgbins, accounts, S.accmap, vindx)
-
-    print_model_results(res)
-    if args.verboseaccounttrans:
-        print_account_trans(res)
-    if args.verbosetax:
-        print_tax(res)
-    if args.verbosetaxbrackets:
-        print_tax_brackets(res)
-        print_cap_gains_brackets(res)
-    print_base_config(res)
+print('\n__name__ is %s\n' % __name__)
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-v', '--verbose', action='store_true',
+                        help="Extra output from solver")
+    parser.add_argument('-va', '--verboseaccounttrans', action='store_true',
+                        help="Output detailed account transactions from solver")
+    parser.add_argument('-vt', '--verbosetax', action='store_true',
+                        help="Output detailed tax info from solver")
+    parser.add_argument('-vtb', '--verbosetaxbrackets', action='store_true',
+                        help="Output detailed tax bracket info from solver")
+    parser.add_argument('-vw', '--verbosewga', action='store_true',
+                        help="Extra wga output from solver")
+    parser.add_argument('-vm', '--verbosemodel', action='store_true',
+                        help="Output the binding constraints of the LP model")
+    parser.add_argument('-mall', '--verbosemodelall', action='store_true',
+                        help="Output the entire LP model - not just the binding constraints")
+    parser.add_argument('-csv', '--csv', action='store_true',
+                        help="Additionally write the output from to a csv file")
+    parser.add_argument('-1k', '--noroundingoutput', action='store_true',
+                        help="Do not round the output to thousands")
+    parser.add_argument('conffile')
+    args = parser.parse_args()
+    
+    csv_file_name = None
+    if args.csv:
+        csv_file_name = 'a.csv'
+    ao = app_out.app_output(csv_file_name)
+    
+    S = tomldata.Data()
+    S.load_file(args.conffile)
+    
+    #print("\naccounttable: ", S.accounttable)
+    
+    if S.accmap['IRA']+S.accmap['roth']+S.accmap['aftertax'] == 0:
+        print('Error: This app optimizes the withdrawals from your retirement account(s); you must have at least one specified in the input toml file.')
+        exit(0)
+    
+    if args.verbosewga:
+        print("accounttable: ", S.accounttable)
+    
+    non_binding_only = True
+    if args.verbosemodelall:
+        non_binding_only = False
+    
+    OneK = 1000.0
+    if args.noroundingoutput:
+        OneK = 1
+    
+    years = S.numyr
+    taxbins = len(taxtable) 
+    cgbins = len(capgainstable) 
+    accounts = len(S.accounttable) 
+            
+    vindx = vvar.vector_var_index(years, taxbins, cgbins, accounts, S.accmap)
+    
+    if precheck_consistancy():
+        model = lp.lp_constraint_model(S, vindx, taxtable, capgainstable, penalty, stded, SS_taxable, args.verbose)
+        c, A, b = model.build_model()
+        res = solve(c, A, b, args.verbose)
+        if args.verbosemodel or args.verbosemodelall:
+            if res.success == False:
+                model.print_model_matrix(c, A, b, None, False)
+            else:
+                model.print_model_matrix(c, A, b, res.slack, non_binding_only)
+        if args.verbosewga:
+            print(res)
+        consistancy_check(res, years, taxbins, cgbins, accounts, S.accmap, vindx)
+    
+        print_model_results(res)
+        if args.verboseaccounttrans:
+            print_account_trans(res)
+        if args.verbosetax:
+            print_tax(res)
+        if args.verbosetaxbrackets:
+            print_tax_brackets(res)
+            print_cap_gains_brackets(res)
+        print_base_config(res)
+    
