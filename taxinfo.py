@@ -70,6 +70,7 @@ marriedjointstded = 12700 + 2*4050 # standard deduction + 2 personal exemptions
 marriedseparatestded = 9350 + 4050 # standard deduction + 1 personal exemptions
 singlestded = 6350 + 4050          # standard deduction + 1 personal exemptions
 
+# TODO make these selectable through input file
 taxtable = marriedjointtax
 capgainstable = marriedjointcapitalgains
 stded = marriedjointstded
