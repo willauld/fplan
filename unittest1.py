@@ -183,7 +183,10 @@ contrib = 0
         # default toml has IRA.will contrib 100 with inflation from 56-65, No need to modify
         vindx, lp, c, A, b = self.lp_constraint_model_build_model(S)
         # TODO: Test created model or solve...
-        res = solve(c, A, b)
+        verbose = False
+        res = solve(c, A, b, verbose)
+        self.assertGreaterEqual (res.x[vindx.D(0,0)],100) # TODO change index to find correct values for owner and age
+        #self.assertGreaterEqual (res.x[vindx.D(0,1)],100) # TODO change index to find correct values for owner and age
 
     def test_lp_constraint_model_build_against_know_model(self):
         S = self.lp_constraint_model_load_default_toml()
