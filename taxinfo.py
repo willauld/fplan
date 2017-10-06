@@ -80,7 +80,7 @@ accountspecs = {'IRA': {'tax': 0.85, 'maxcontrib': 18000+5500*2},
                 'roth':{'tax': 1.0, 'maxcontrib': 5500*2},
                 'aftertax': {'tax': 0.9, 'basis': 0}}
 
-contribspecs = {'401k': 18000, '401kCatchup': 3000,  'IRARoth': 5500, "IRARothCatchup": 1000, 'CatchupAge': 50}
+contribspecs = {'401k': 18000, '401kCatchup': 3000,  'TDRA': 5500, "TDRACatchup": 1000, 'CatchupAge': 50}
 
 penalty = 0.1       # 10% early withdrawal penalty
 SS_taxable = 0.85   # maximum portion of SS that is taxable

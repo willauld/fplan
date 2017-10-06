@@ -50,16 +50,17 @@ class Data:
             for f in temp:
                 dict[type][f] = temp[f]
 
-    def maxContribution(self, year):
+    def maxContribution(self, year, retireekey):
         ### not currently handling 401K max contributions TODO
         max = 0
         for v in self.retiree:
-            max += contribspecs['IRARoth']
-            age = v['ageAtStart'] +year
-            if age >= contribspecs['CatchupAge']:
-                max += contribspecs['IRARothCatchup']
+            if retireekey is None or v['mykey'] == retireekey:
+                max += contribspecs['TDRA']
+                age = v['ageAtStart'] + year
+                if age >= contribspecs['CatchupAge']:
+                    max += contribspecs['TDRACatchup']
         max *= self.i_rate ** year # adjust for inflation
-        #print('maxContribution: ', max)
+        print('maxContribution: %6.0f' % max, retireekey)
         return max
 
     def match_retiree(self, retireekey):

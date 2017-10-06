@@ -125,19 +125,32 @@ class lp_constraint_model:
                 b+=[ S.max[year] ]     # [ dm_i]
     
         #
-        # Add constaints for (5+') rows
+        # Add constaints for (6') rows
         #
+        #"""
         for year in range(S.numyr):
             row = [0] * nvars
             for j in range(len(S.accounttable)):
-                if S.accounttable[j]['acctype'] != 'aftertax':
-                    row[vindx.D(year,j)] = 1
-            A+=[row]
-            b+=[min(S.income[year],S.maxContribution(year))] 
+                if S.accounttable[j]['acctype'] != 'aftertax': 
+                        row[vindx.D(year,j)] = 1
+                A+=[row]
+                b+=[min(S.income[year],S.maxContribution(year,None))] 
         #
-        # Add constaints for (5++') rows
+        # Add constaints for (7') rows
         #
         #"""
+        for year in range(S.numyr): # TODO this is not needed when there is only one retiree
+            for v in S.retiree:
+                row = [0] * nvars
+                for j in range(len(S.accounttable)):
+                    if v['mykey'] == S.accounttable[j]['mykey']: # ['acctype'] != 'aftertax': no 'mykey' in aftertax (this will either break or just not match - we will see)
+                        row[vindx.D(year,j)] = 1
+                A+=[row]
+                b+=[S.maxContribution(year,v['mykey'])] 
+        #"""
+        #
+        # Add constaints for (8') rows
+        #
         for year in range(S.numyr):
             row = [0] * nvars
             for j in range(len(S.accounttable)):
@@ -149,7 +162,7 @@ class lp_constraint_model:
                         A+=[row]
                         b+=[-1*v[year]]
         #
-        # Add constaints for (5+++') rows
+        # Add constaints for (9') rows
         #
         for year in range(S.numyr):
             for j in range(min(2,len(S.accounttable))): # at most the first two accounts are type IRA w/ RMD requirement
@@ -162,7 +175,7 @@ class lp_constraint_model:
                         b+=[0]
     
         #
-        # Add constaints for (6') rows
+        # Add constaints for (10') rows
         #
         for year in range(S.numyr):
             for j in range(min(2,len(S.accounttable))): # at most the first two accounts are type IRA w/ RMD requirement
@@ -176,7 +189,7 @@ class lp_constraint_model:
                         b+=[0]
     
         #
-        # Add constraints for (7')
+        # Add constraints for (11')
         #
         for year in range(S.numyr):
             adj_inf = S.i_rate**year
@@ -190,7 +203,7 @@ class lp_constraint_model:
             A+=[row]
             b+=[stded*adj_inf-S.taxed[year]-SS_taxable*S.SS[year]]
         #
-        # Add constraints for (8')
+        # Add constraints for (12')
         #
         for year in range(S.numyr):
             for k in range(len(taxtable)-1):
@@ -199,7 +212,7 @@ class lp_constraint_model:
                 A+=[row]
                 b+=[(taxtable[k][1])*(S.i_rate**year)] # inflation adjusted
         #
-        # Add constraints for (9a')
+        # Add constraints for (13a')
         #
         if S.accmap['aftertax'] > 0:
             for year in range(S.numyr):
@@ -212,7 +225,7 @@ class lp_constraint_model:
                 A+=[row]
                 b+=[0]
         #
-        # Add constraints for (9b')
+        # Add constraints for (13b')
         #
         if S.accmap['aftertax'] > 0:
             for year in range(S.numyr):
@@ -225,7 +238,7 @@ class lp_constraint_model:
                 A+=[row]
                 b+=[0]
         #
-        # Add constraints for (10')
+        # Add constraints for (14')
         #
         if S.accmap['aftertax'] > 0:
             for year in range(S.numyr):
@@ -240,7 +253,7 @@ class lp_constraint_model:
                     b+=[capgainstable[l][1]*adj_inf] # mcg[i,l] inflation adjusted
                     #print_constraint( row, capgainstable[l][1]*adj_inf)
         #
-        # Add constraints for (11a')
+        # Add constraints for (15a')
         #
         for year in range(S.numyr): 
             for j in range(len(S.accounttable)): # for all accounts 
@@ -253,7 +266,7 @@ class lp_constraint_model:
                 A+=[row]
                 b+=[0]
         #
-        # Add constraints for (11b')
+        # Add constraints for (15b')
         #
         for year in range(S.numyr):
             for j in range(len(S.accounttable)): # for all accounts 
@@ -266,7 +279,7 @@ class lp_constraint_model:
                 A+=[row]
                 b+=[0]
         #
-        # Constraint for (13a')
+        # Constraint for (16a')
         #   Set the begining b[1,j] balances
         #
         for j in range(len(S.accounttable)):
@@ -275,7 +288,7 @@ class lp_constraint_model:
             A+=[row]
             b+=[S.accounttable[j]['bal']]
         #
-        # Constraint for (13b')
+        # Constraint for (16b')
         #   Set the begining b[1,j] balances
         #
         for j in range(len(S.accounttable)):
@@ -284,7 +297,7 @@ class lp_constraint_model:
             A+=[row]
             b+=[-1*S.accounttable[j]['bal']]
         #
-        # Constrant for (14') is default for sycpy so no code is needed
+        # Constrant for (17') is default for sycpy so no code is needed
         #
         if self.verbose:
             print("Num vars: ", len(c))
