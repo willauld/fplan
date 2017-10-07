@@ -13,6 +13,8 @@ import vector_var_index as vvar
 import app_output as app_out
 import lp_constraint_model as lp
 
+prog_version = '0.1'
+
 def precheck_consistancy():
     print("\nDoing Pre-check:")
     # check that there is income for all contibutions
@@ -471,7 +473,6 @@ def print_base_config(res):
 
 # Program entry point
 # Instantiate the parser
-print('\n__name__ is %s\n' % __name__)
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-v', '--verbose', action='store_true',
@@ -492,9 +493,14 @@ if __name__ == '__main__':
                         help="Additionally write the output from to a csv file")
     parser.add_argument('-1k', '--noroundingoutput', action='store_true',
                         help="Do not round the output to thousands")
+    parser.add_argument('-V', '--version', action='store_true',
+                        help="Display the program version number")
     parser.add_argument('conffile')
     args = parser.parse_args()
     
+    if args.version:
+        print('Version: %s' % prog_version)
+
     csv_file_name = None
     if args.csv:
         csv_file_name = 'a.csv'
