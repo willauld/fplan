@@ -23,7 +23,7 @@ class TestIndexes(unittest.TestCase):
         
         indx = v.vector_var_index(years, taxbins, cgbins, accounts, accmap)
         z = v.my_check_index_sequence(years, taxbins, cgbins, accounts, accmap, indx)
-        self.assertTrue(z)
+        self.assertTrue(z, msg='Variable index functions should count from 0 to #var-1')
 
     def test_index_var_layout_without_aftertax(self):
         """     check that the index_?() are properly laid out in a vector """
@@ -186,7 +186,7 @@ contrib = 0
         verbose = False
         res = solve(c, A, b, verbose)
         self.assertGreaterEqual (res.x[vindx.D(0,0)],100) # TODO change index to find correct values for owner and age
-        #self.assertGreaterEqual (res.x[vindx.D(0,1)],100) # TODO change index to find correct values for owner and age
+        # TODO, now check for the rest of the values between ages 56-65 (maybe shorten this time period)
 
     def test_lp_constraint_model_build_against_know_model(self):
         S = self.lp_constraint_model_load_default_toml()
