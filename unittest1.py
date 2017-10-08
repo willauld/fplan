@@ -186,9 +186,17 @@ contrib = 0
         verbose = False
         res = solve(c, A, b, verbose)
         for i in range(65-max(56,57)): # TODO change the index calculation to load data not my hand chosen numbers
-            # TODO, now check for the rest of the values between ages 56-65 (maybe shorten this time period)
+            # check all the values between ages 56-65
             atleast = 100*S.i_rate**i
-            self.assertGreaterEqual (res.x[vindx.D(i,0)],atleast, msg='Contribution should be at least {} but is {}'.format(atleast, res.x[vindx.D(i,0)])) # TODO change index to find correct values for owner and age
+            # TODO change account index to find correct values for owner account
+            self.assertGreaterEqual (
+                res.x[vindx.D(i,0)],atleast, 
+                msg='Contribution should be at least {} but is {}'.format(atleast, res.x[vindx.D(i,0)])) 
+        onePassedYear = 65-max(56,57)+1
+        # TODO change account index to find correct values for owner account
+        self.assertLess (
+            res.x[vindx.D(onePassedYear,0)],atleast, 
+            msg='Contribution should likely be less than previous year contribution {} and is {}'.format(atleast, res.x[vindx.D(onePassedYear,0)])) 
 
     def test_lp_constraint_model_build_against_know_model(self):
         S = self.lp_constraint_model_load_default_toml()
