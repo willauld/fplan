@@ -11,10 +11,10 @@ import tomldata
 from ARetirementPlanner import solve
 
 class TestIndexes(unittest.TestCase):
-    """     Tests to ensure the set of functions index_?() are defined properly """
+    """.    Tests to ensure the set of functions index_?() are defined properly """
 
     def test_index_var_layout_with_aftertax(self):
-        """     check that the index_?() are properly laid out in a vector """
+        """.    check that the index_?() are properly laid out in a vector """
         years = 10
         taxbins = 8
         cgbins = 3
@@ -26,7 +26,7 @@ class TestIndexes(unittest.TestCase):
         self.assertTrue(z, msg='Variable index functions should count from 0 to #var-1')
 
     def test_index_var_layout_without_aftertax(self):
-        """     check that the index_?() are properly laid out in a vector """
+        """.    check that the index_?() are properly laid out in a vector """
         years = 10
         taxbins = 8
         cgbins = 3
@@ -50,7 +50,7 @@ class TestAppOutput(unittest.TestCase):
         result = inf.read()
         #print("result: ", result)
         inf.close()
-        self.assertEqual("1 2 3 4", result)
+        self.assertEqual("1 2 3 4", result, msg='result is: {}'.format(result))
         try:
             os.remove('stdout.log')
         except OSError as e:  ## if failed, report it back to the user ##
@@ -185,8 +185,10 @@ contrib = 0
         # TODO: Test created model or solve...
         verbose = False
         res = solve(c, A, b, verbose)
-        self.assertGreaterEqual (res.x[vindx.D(0,0)],100) # TODO change index to find correct values for owner and age
-        # TODO, now check for the rest of the values between ages 56-65 (maybe shorten this time period)
+        for i in range(65-max(56,57)): # TODO change the index calculation to load data not my hand chosen numbers
+            # TODO, now check for the rest of the values between ages 56-65 (maybe shorten this time period)
+            atleast = 100*S.i_rate**i
+            self.assertGreaterEqual (res.x[vindx.D(i,0)],atleast, msg='Contribution should be at least {} but is {}'.format(atleast, res.x[vindx.D(i,0)])) # TODO change index to find correct values for owner and age
 
     def test_lp_constraint_model_build_against_know_model(self):
         S = self.lp_constraint_model_load_default_toml()
