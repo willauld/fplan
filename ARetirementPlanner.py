@@ -13,7 +13,7 @@ import vector_var_index as vvar
 import app_output as app_out
 import lp_constraint_model as lp
 
-__version__ = '0.1'
+__version__ = '0.2-rc1'
 
 def precheck_consistancy():
     print("\nDoing Pre-check:")
@@ -493,14 +493,11 @@ if __name__ == '__main__':
                         help="Additionally write the output from to a csv file")
     parser.add_argument('-1k', '--noroundingoutput', action='store_true',
                         help="Do not round the output to thousands")
-    parser.add_argument('-V', '--version', action='version', version='%(prog)s version '+__version__, #action='store_true',
+    parser.add_argument('-V', '--version', action='version', version='%(prog)s Version '+__version__,
                         help="Display the program version number")
     parser.add_argument('conffile', help='Require configuration input toml file')
     args = parser.parse_args()
     
-    if args.version: ## TODO this is currently not in use as the version is handled with action version that I don't like so much!
-        print('Version: %s' % __version__)
-
     csv_file_name = None
     if args.csv:
         csv_file_name = 'a.csv'
