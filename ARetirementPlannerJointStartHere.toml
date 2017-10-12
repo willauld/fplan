@@ -1,57 +1,57 @@
 # This input file is meant as a starter for a joint plan
 
-# most fields are options and have resonable defaults
+# most fields are options and have reasonable defaults
 
 #retirement_type = 'joint' # defaults to joint, currently only joint is supported, could be single, joint (married)
 
-returns = 6		# return rate of investments
-inflation = 2.5	# yearly inflation rate
+returns = 6		# return rate of investments, defaults to 6%
+inflation = 2.5	# yearly inflation rate, defaults to 0%
 
-# what to optimize for? 'Spending' or spending 'PlusEstate'
+# what to optimize for? 'Spending' or spending 'PlusEstate', defaults to Spending
 #maximize = "PlusEstate"
 
 [iam.retiree1]  # iam (for each) is required in some joint cases (".xxx" use to match accounts IRA/roth)
 primary = true  # retiree to have age listed first in the output (must choose one)
 age = 54        # your current age
-retire = 65     # age your plan to retire
+retire = 65     # age you plan to retire
 through = 75    # age you want to plan through
 
 [iam.retiree2]  # iam (for each) is required in some joint cases (".xxx" use to match accounts IRA/roth)
 age = 54        # your current age
-retire = 65     # age your plan to retire
+retire = 65     # age you plan to retire
 through = 75    # age you want to plan through
 
 #[SocialSecurity.retiree1]
 #FRA = 67            # your full retirement age (FRA) according to the IRS
 #amount =  20_000    # estimated yearly amount at Full Retirement Age (FRA); Assumes inflation, 85% taxed
-#age = "70-"         # period you expect to recieve SS ("68-" indicates start at 68 and continue)
+#age = "70-"         # period you expect to receive SS ("68-" indicates start at 68 and continue)
 
 #[SocialSecurity.retiree2]
 #FRA = 67            # your full retirement age (FRA) according to the IRS
 #amount = -1         # -1 for default spousal benefit amount, amount at Full Retirement Age (FRA); Assumes inflation, 85% taxed
-#age = "67-"         # period you expect to recieve SS ("68-" indicates start at 68 and continue)
+#age = "67-"         # period you expect to receive SS ("68-" indicates start at 68 and continue)
 
 #[income.taxfreeNoneInflationAdjustedAnuity]
 #amount = 3000      # yearly amount
-#age = "65-70"      # period you expect to recieve it
+#age = "65-70"      # period you expect to receive it
 #inflation = false  # not inflation adjusted
 #tax = false        # not federally taxable
 
 #[income.InflationAdjustedAnuity]
 #amount = 3000      # yearly amount
-#age = "65-70"      # period you expect to recieve it
+#age = "65-70"      # period you expect to receive it
 #inflation = true   # inflation adjusted
 #tax = true         # federally taxable
 
 #[income.rental]
 #amount = 5_000     # yearly amount
-#age = "67-"        # period you expect to recieve it
+#age = "67-"        # period you expect to receive it
 #inflation = true   # inflation adjusted
 #tax = true         # federally taxable
 
 #[desired.income]   # used when maximize = "PlusEstate"
 #amount = 45_000    # retirement first year income
-#age = "68-"        # period you expect to recieve it TODO **** remove
+#age = "68-"        # period you expect to receive it TODO **** remove
 #inflation = true   # inflation adjusted TODO **** remove
 #tax = true         # federally taxable TODO **** remove
 
