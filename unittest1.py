@@ -10,6 +10,76 @@ import lp_constraint_model as lpclass
 import tomldata
 from ARetirementPlanner import solve
 
+class working_toml_file:
+    def __init__(self, filename):
+        self.toml_file_name = filename
+        #self.toml_file_name = 'self_temp_toml.toml'
+        self.write_working_toml_file()
+
+    def write_working_toml_file(self):
+        tomls = """
+returns = 6
+inflation = 2.5
+[aftertax]
+bal = 700000
+basis = 400000
+contrib = 10
+period = "56-65"
+[iam.spouse]
+primary = false
+age = 54
+retire = 60
+through = 75
+[iam.will]
+primary = true
+age = 56
+retire = 58
+through = 72
+[SocialSecurity.will]
+amount = 31000
+FRA = 67
+age = "68-"
+[SocialSecurity.spouse]
+amount = 21000
+FRA = 67
+age = "70-"
+[income.mytaxfree]
+amount = 3000
+age = "56-"
+inflation = false
+tax = false
+[income.rental_1]
+amount = 36000
+age = "67-"
+inflation = true
+tax = true
+[income.rental_2]
+amount = 2400
+age = "67-"
+inflation = true
+tax = true
+[IRA.will]
+bal = 2000000
+contrib = 100
+inflation = true
+period = "56-65"
+[IRA.spouse]
+bal = 200000
+[roth.spouse]
+bal = 100000
+contrib = 0
+        """
+        self.toml_file = open(self.toml_file_name, 'w')
+        self.toml_file.write(tomls)
+        #self.toml_file.flush()
+        self.toml_file.close()
+
+    def __del__(self):
+        try:
+            os.remove(self.toml_file_name)
+        except OSError as e:  ## if failed, report it back to the user ##
+            print ("Error: %s - %s." % (e.filename,e.strerror))
+
 class TestIndexes(unittest.TestCase):
     """.    Tests to ensure the set of functions index_?() are defined properly """
 
@@ -84,86 +154,15 @@ class TestAppOutput(unittest.TestCase):
 
 class TestLpConstraintModel(unittest.TestCase):
     # TODO define some good test for model construction and printing
-    #def __init__(self, ?unit_test?):
-    #    self.toml_file = None
-
-    def write_working_toml_file(self):
-        tomls = """
-returns = 6
-inflation = 2.5
-[aftertax]
-bal = 700000
-basis = 400000
-contrib = 10
-period = "56-65"
-[iam.spouse]
-primary = false
-age = 54
-retire = 60
-through = 75
-[iam.will]
-primary = true
-age = 56
-retire = 58
-through = 72
-[SocialSecurity.will]
-amount = 31000
-FRA = 67
-age = "68-"
-[SocialSecurity.spouse]
-amount = 21000
-FRA = 67
-age = "70-"
-[income.mytaxfree]
-amount = 3000
-age = "56-"
-inflation = false
-tax = false
-[income.rental_1]
-amount = 36000
-age = "67-"
-inflation = true
-tax = true
-[income.rental_2]
-amount = 2400
-age = "67-"
-inflation = true
-tax = true
-[IRA.will]
-bal = 2000000
-contrib = 100
-inflation = true
-period = "56-65"
-[IRA.spouse]
-bal = 200000
-[roth.spouse]
-bal = 100000
-contrib = 0
-        """
-        self.toml_file = None
-        self.toml_file_name = 'self_temp_toml.toml'
+    def __init__(self, other):
         self.bin_constraint_name = 'constrain_model_test_file.bcm' # bcm = binary constraint model 
-        #with open('Anew.toml') as f:
-        #    parsed_toml = toml.loads(f.read())
-        #new_toml_str = toml.dumps(parsed_toml)
-
-        #print("tomls: %s" % tomls)
-        self.toml_file = open(self.toml_file_name, 'w')
-        self.toml_file.write(tomls)
-        #self.toml_file.flush()
-        self.toml_file.close()
-
-    def __del__(self):
-        # TODO delete the toml file!!!!
-        try:
-            os.remove(self.toml_file_name)
-        except OSError as e:  ## if failed, report it back to the user ##
-            print ("Error: %s - %s." % (e.filename,e.strerror))
+        super().__init__(other)
 
     def lp_constraint_model_load_default_toml(self):
-        self.write_working_toml_file()
+        toml_file_name = 'self_temp_toml.toml'
+        tf = working_toml_file(toml_file_name)
         S = tomldata.Data()
-        S.load_file(self.toml_file_name) 
+        S.load_file(toml_file_name) 
         return S
 
     def lp_constraint_model_build_model(self, S):
@@ -251,6 +250,9 @@ class TestTomlInput(unittest.TestCase):
             self.assertEqual(age,25, msg='age must be 25')
 
     def test_toml_input_(self):
+        #S = tomldata.Data()
+        #S.load_file(args.conffile)
+
         # TODO: Need to move some of the functionality from the method below so general functions usable by all
         #S = self.lp_constraint_model_load_default_toml()
         pass

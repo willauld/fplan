@@ -29,7 +29,7 @@ def agelist(str):
 class Data:
     def check_record(self, dict, type, fields):
         ##
-        ## This routine looks a the categories and they labeled components (keys) to 
+        ## This routine looks a the categories and there labeled components (keys) to 
         ## ensure a uniform structure for later processing
         ##
         rec = dict.get(type,{}) 
@@ -180,7 +180,7 @@ class Data:
                 #    entry['rate'] = rate
                 #    v['rate'] = rate
                 lis_return.append(entry)
-                print('entry: ', entry)
+                #print('entry: ', entry)
                 index += 1
             return lis_return
 
