@@ -243,7 +243,16 @@ contrib = 0
 class TestTomlInput(unittest.TestCase):
     """ Tests to ensure we are getting the correct and needed input from toml configuration file """
 
+    def test_toml_agelist(self):
+        for age in tomldata.agelist('55-67'):
+            self.assertGreaterEqual(age,55, msg='age must be at least 55')
+            self.assertLessEqual(age,67, msg='age must not exceed 67')
+        for age in tomldata.agelist('25'):
+            self.assertEqual(age,25, msg='age must be 25')
+
     def test_toml_input_(self):
+        # TODO: Need to move some of the functionality from the method below so general functions usable by all
+        #S = self.lp_constraint_model_load_default_toml()
         pass
 
 

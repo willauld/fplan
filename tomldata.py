@@ -104,6 +104,7 @@ class Data:
                 entry['acctype'] = type
                 entry['index'] = index
                 entry['estateTax'] = accountspecs[type]['tax']
+                entry['origbal'] = v['bal']
                 entry['bal'] = v['bal']
                 entry['mykey'] = k
                 r = self.match_retiree(k)
@@ -112,8 +113,20 @@ class Data:
                         print("Error: Account must match a retiree\n\t[%s.%s] should match [iam.%s] but there is no [iam.%s]\n"%(type,k,k,k))
                         exit(1)
                     ageAtStart = self.match_retiree(self.primary)['ageAtStart']
+                    currentAge = self.match_retiree(self.primary)['age']
                 else:
                     ageAtStart = r['ageAtStart']
+                    currentAge = r['age']
+                if 'rate' not in v:
+                    entry['rate'] = self.r_rate 
+                    v['rate'] = self.r_rate 
+                else:
+                    rate = 1 + v['rate'] / 100  # invest rate: 6 -> 1.06
+                    entry['rate'] = rate
+                    v['rate'] = rate
+                precontribs = 0
+                precontibsPlusReturns = 0
+                tillRetirement = ageAtStart - currentAge
                 if 'contrib' not in v:
                     entry['contrib'] = 0
                     v['contrib'] = 0
@@ -134,30 +147,40 @@ class Data:
                         #print('period is: ', period)
                         for age in agelist(period):
                                 year = age - ageAtStart #self.startage
+                                preyear = age - currentAge
                                 if year < 0:
+                                    # capture all contributions before start of retirement
+                                    b = entry['contrib'] 
+                                    if entry['inflation']:
+                                        b = entry['contrib'] * self.i_rate ** preyear
+                                    precontribs += b
+                                    precontibsPlusReturns += b
+                                    precontibsPlusReturns *= entry['rate']
                                     continue
                                 elif year >= self.numyr:
                                     break
                                 else:
                                     bucket[year] = entry['contrib'] 
                                     if entry['inflation']:
-                                        bucket[year] = entry['contrib'] * self.i_rate ** year
+                                        bucket[year] = entry['contrib'] * self.i_rate ** (preyear+year)
                                     #print("age %d, year %d, bucket: %6.0f += amount %6.0f" %(age, year, bucket[year], adj_amount))
                 if type == 'aftertax':
                     if 'basis' not in v:
                         entry['basis'] = 0
                         v['basis'] = 0
                     else:
-                        entry['basis'] = v['basis']
-                if 'rate' not in v:
-                    entry['rate'] = self.r_rate 
-                    v['rate'] = self.r_rate 
-                else:
-                    rate = 1 + v['rate'] / 100  # invest rate: 6 -> 1.06
-                    entry['rate'] = rate
-                    v['rate'] = rate
+                        entry['origbasis'] = v['basis']
+                        entry['basis'] = v['basis'] + precontribs 
+                entry['bal'] = v['bal'] * v['rate'] ** tillRetirement + precontibsPlusReturns
+                #if 'rate' not in v:
+                #    entry['rate'] = self.r_rate 
+                #    v['rate'] = self.r_rate 
+                #else:
+                #    rate = 1 + v['rate'] / 100  # invest rate: 6 -> 1.06
+                #    entry['rate'] = rate
+                #    v['rate'] = rate
                 lis_return.append(entry)
-                #print('entry: ', entry)
+                print('entry: ', entry)
                 index += 1
             return lis_return
 
@@ -345,12 +368,12 @@ class Data:
 
         do_details("expense", EXP, None)
         do_details("income", INC, TAX)
-        do_details("desired", WANT, None)
-        do_details("max", MAX, None)
+        do_details("desired", WANT, None) # TODO move this from a vector to a single amount for starting year
+        do_details("max", MAX, None) # TODO move this from a vector to a single amount for starting year
         do_SS_details(SS)
 
         self.income = INC
-        self.expenses = EXP # WGA not currently in use
+        self.expenses = EXP 
         self.taxed = TAX
         self.desired = WANT
         self.max = MAX
