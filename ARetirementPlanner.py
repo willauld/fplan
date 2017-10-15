@@ -504,7 +504,8 @@ if __name__ == '__main__':
     ao = app_out.app_output(csv_file_name)
     
     S = tomldata.Data()
-    S.load_file(args.conffile)
+    S.load_toml_file(args.conffile)
+    S.process_toml_info()
     
     #print("\naccounttable: ", S.accounttable)
     
