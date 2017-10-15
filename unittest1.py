@@ -15,9 +15,12 @@ class working_toml_file:
         self.toml_file_name = filename
         #self.toml_file_name = 'self_temp_toml.toml'
         self.write_working_toml_file()
+    
+    def original_toml_string(self):
+        return self.tomls
 
     def write_working_toml_file(self):
-        tomls = """
+        self.tomls = """
 returns = 6
 inflation = 2.5
 [aftertax]
@@ -70,7 +73,7 @@ bal = 100000
 contrib = 0
         """
         self.toml_file = open(self.toml_file_name, 'w')
-        self.toml_file.write(tomls)
+        self.toml_file.write(self.tomls)
         #self.toml_file.flush()
         self.toml_file.close()
 
@@ -162,7 +165,8 @@ class TestLpConstraintModel(unittest.TestCase):
         toml_file_name = 'self_temp_toml.toml'
         tf = working_toml_file(toml_file_name)
         S = tomldata.Data()
-        S.load_file(toml_file_name) 
+        S.load_toml_file(toml_file_name) 
+        S.process_toml_info()
         return S
 
     def lp_constraint_model_build_model(self, S):
@@ -249,13 +253,64 @@ class TestTomlInput(unittest.TestCase):
         for age in tomldata.agelist('25'):
             self.assertEqual(age,25, msg='age must be 25')
 
-    def test_toml_input_(self):
-        #S = tomldata.Data()
-        #S.load_file(args.conffile)
+    def test_toml_input_load_load_toml_file_to_match_crator_string(self):
+        toml_file_name = 't.toml'
+        tf = working_toml_file(toml_file_name)
+        S = tomldata.Data()
+        S.load_toml_file(toml_file_name)
+        self.assertEqual(tf.original_toml_string().lstrip().rstrip(), toml.dumps(S.toml_dict).rstrip())
 
-        # TODO: Need to move some of the functionality from the method below so general functions usable by all
-        #S = self.lp_constraint_model_load_default_toml()
-        pass
+    def test_toml_input_process_toml_info(self):
+        toml_file_name = 't.toml'
+        tf = working_toml_file(toml_file_name)
+        S = tomldata.Data()
+        S.load_toml_file(toml_file_name)
+        S.process_toml_info()
+        # TODO What to do to test this???
+
+    def test_toml_input_match_retiree(self): # Assumes process_toml_info() as run
+        toml_file_name = 't.toml'
+        tf = working_toml_file(toml_file_name)
+        S = tomldata.Data()
+        S.load_toml_file(toml_file_name)
+        S.process_toml_info()
+        retiree1 = 'will'
+        retiree2 = 'spouse'
+        retireeNot = 'joe'
+        v = S.match_retiree(retiree1)
+        self.assertEqual(v['mykey'], retiree1) 
+        v = S.match_retiree(retiree2)
+        self.assertEqual(v['mykey'], retiree2) 
+        v = S.match_retiree(retireeNot)
+        self.assertEqual(v, None) 
+
+    def test_toml_input_load_rmd_needed(self): # Assumes process_toml_info() as run
+        toml_file_name = 't.toml'
+        tf = working_toml_file(toml_file_name)
+        S = tomldata.Data()
+        S.load_toml_file(toml_file_name)
+        S.process_toml_info()
+        retiree1 = 'will'   # toml has age 56, retire 58, through 72 primary so ageAtStart 58 (retire age)
+        retiree2 = 'spouse' # toml has age 54, retire 60, through 75 secondary so ageAtStart 56
+        retireeNot = 'joe'
+        rmd = S.rmd_needed(69-58, retiree1)
+        self.assertEqual(rmd, 0, msg='At age 69 there should be no RMD (i.e., zero)')
+        rmd = S.rmd_needed(70-58, retiree1)
+        self.assertGreater(rmd, 0, msg='At age 70, RMD should be the IRS life expectancy')
+        rmd = S.rmd_needed(69-56, retiree2)
+        self.assertEqual(rmd, 0, msg='At age 69 there should be no RMD (i.e., zero)')
+        rmd = S.rmd_needed(70-56, retiree2)
+        self.assertGreater(rmd, 0, msg='At age 70, RMD should be the IRS life expectancy')
+        rmd = S.rmd_needed(69-56, retireeNot)
+        self.assertEqual(rmd, 0, msg='Non-valid Retiree should alway return rmd 0')
+
+        #test:
+        # - process_toml_info()
+        # - parse_expenses()
+        # - apply_early_penalty()
+        # - account_owner_age()
+        # - maxcontribution()
+        # - check_record()
 
 
 if __name__ == '__main__':
