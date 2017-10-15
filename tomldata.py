@@ -1,4 +1,5 @@
 
+import json # strickly to make a deep copy # threadsafe deepcopy
 import toml
 #import argparse
 #import scipy.optimize
@@ -72,12 +73,14 @@ class Data:
         
     def rmd_needed(self,year,retireekey):
         rmd = 0
-        #print("RMD_NEEDED: year: %d, retireekey: %s" % (year, retireekey))
         v = self.match_retiree(retireekey)
+        if v is None:
+            #print("RMD_NEEDED() year: %d, rmd: %6.3f, Not Valid Retiree, retiree: %s" % (year, rmd, retireekey))
+            return rmd
         age = v['ageAtStart']+year
         if age >= 70: # IRA retirement: minimum distribution starting age 70.5 
             rmd = RMD[age - 70]
-            #print("rmd: %d, age: %d, retiree: %s" % (rmd, age, retireekey))
+        #print("RMD_NEEDED() year: %d, rmd: %6.3f, age: %d, retiree: %s" % (year, rmd, age, retireekey))
         return rmd
 
     def account_owner_age(self,year,account):
@@ -94,7 +97,16 @@ class Data:
             response = True
         return response
 
-    def load_file(self, file):
+    def load_toml_file(self, file):
+        with open(file) as conffile:
+            self.toml_dict = toml.loads(conffile.read())
+            conffile.close()
+        #print("\n\nun tarnished dict: ", self.toml_dict)
+        #for f in self.toml_dict:
+        #    print("\ndict[%s] = " % (f),self.toml_dict[f])
+        #print()
+
+    def process_toml_info(self):
 
         def get_account_info(type):
             index = 0
@@ -230,12 +242,16 @@ class Data:
             return lis_return, start, end-start, lis_return[primaryIndx]['mykey'], secondarykey, delta
 
         self.accounttable = []
+        """
         with open(file) as conffile:
             d = toml.loads(conffile.read())
+            conffile.close()
         #print("\n\nun tarnished dict: ", d)
         #for f in d:
         #    print("\ndict[%s] = " % (f),d[f])
         #print()
+        """
+        d = json.loads(json.dumps(self.toml_dict))
         
         self.check_record( d, 'iam', ('age', 'retire', 'through', 'primary'))
         self.check_record( d, 'SocialSecurity', ('FRA', 'age', 'amount'))
