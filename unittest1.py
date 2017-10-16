@@ -304,11 +304,43 @@ class TestTomlInput(unittest.TestCase):
         rmd = S.rmd_needed(69-56, retireeNot)
         self.assertEqual(rmd, 0, msg='Non-valid Retiree should alway return rmd 0')
 
+    def test_toml_input_apply_early_penalty(self): # Assumes process_toml_info() as run
+        toml_file_name = 't.toml'
+        tf = working_toml_file(toml_file_name)
+        S = tomldata.Data()
+        S.load_toml_file(toml_file_name)
+        S.process_toml_info()
+        retiree1 = 'will'   # toml has age 56, retire 58, through 72 primary so ageAtStart 58 (retire age)
+        retiree2 = 'spouse' # toml has age 54, retire 60, through 75 secondary so ageAtStart 56
+        retireeNot = 'joe'
+        p = S.apply_early_penalty(59-58, retiree1)
+        self.assertTrue(p, msg='At age 59 an early penalty is require, unless...')
+        p = S.apply_early_penalty(60-58, retiree1)
+        self.assertFalse(p, msg='At age 60 no early penalty is require')
+        p = S.apply_early_penalty(59-56, retiree2)
+        self.assertTrue(p, msg='At age 59 an early penalty is require, unless...')
+        p = S.apply_early_penalty(60-56, retiree2)
+        self.assertFalse(p, msg='At age 60 no early penalty is require')
+        p = S.apply_early_penalty(59-56, retireeNot)
+        self.assertFalse(p, msg='A non-existant retiree should return false')
+
+    def test_toml_input_account_owner_age(self): # Assumes process_toml_info() as run
+        toml_file_name = 't.toml'
+        tf = working_toml_file(toml_file_name)
+        S = tomldata.Data()
+        S.load_toml_file(toml_file_name)
+        S.process_toml_info()
+        for account in S.accounttable:
+            if account['acctype'] != 'aftertax':
+                year = 59 - 58 # age - start of plan age for will
+                if account['mykey'] != 'will':
+                    year = 59 - 56 # age - start of plan age for spouse
+                a = S.account_owner_age(year, account)
+                self.assertEqual(a, 59, msg='At age 59 account_owner_age() should be 59')
+
         #test:
         # - process_toml_info()
         # - parse_expenses()
-        # - apply_early_penalty()
-        # - account_owner_age()
         # - maxcontribution()
         # - check_record()
 
