@@ -92,6 +92,8 @@ class Data:
     def apply_early_penalty(self,year,retireekey):
         response = False
         v = self.match_retiree(retireekey)
+        if v is None:
+            return response
         age = v['ageAtStart']+year
         if age < 60: # IRA retirement account require penalty if withdrawn before age 59.5
             response = True
