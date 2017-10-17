@@ -34,6 +34,7 @@ class Data:
         ## ensure a uniform structure for later processing
         ##
         rec = dict.get(type,{}) 
+        #print('check_record(%s): to check ' % type, rec)
         temp = {}
         numNotIn = 0
         numIn = 0
@@ -50,12 +51,13 @@ class Data:
             dict[type] = {'nokey': rec} # add the 'nokey' key for the record without a key value
             for f in temp:
                 dict[type][f] = temp[f]
+        #print('check_record(%s): checked ' % type, dict.get(type,{}))
 
     def maxContribution(self, year, retireekey):
         ### not currently handling 401K max contributions TODO
         max = 0
         for v in self.retiree:
-            if retireekey is None or v['mykey'] == retireekey:
+            if retireekey is None or v['mykey'] == retireekey: # Sum all retiree
                 max += contribspecs['TDRA']
                 age = v['ageAtStart'] + year
                 if age >= contribspecs['CatchupAge']:
@@ -108,9 +110,7 @@ class Data:
         #    print("\ndict[%s] = " % (f),self.toml_dict[f])
         #print()
 
-    def process_toml_info(self):
-
-        def get_account_info(type):
+    def get_account_info(self, d, type):
             index = 0
             lis_return = []
             for k,v in d.get( type , {}).items():
@@ -186,17 +186,12 @@ class Data:
                         entry['origbasis'] = v['basis']
                         entry['basis'] = v['basis'] + precontribs 
                 entry['bal'] = v['bal'] * v['rate'] ** tillRetirement + precontibsPlusReturns
-                #if 'rate' not in v:
-                #    entry['rate'] = self.r_rate 
-                #    v['rate'] = self.r_rate 
-                #else:
-                #    rate = 1 + v['rate'] / 100  # invest rate: 6 -> 1.06
-                #    entry['rate'] = rate
-                #    v['rate'] = rate
                 lis_return.append(entry)
                 #print('entry: ', entry)
                 index += 1
             return lis_return
+
+    def process_toml_info(self):
 
         def get_retiree_info():
             type = 'iam'
@@ -244,16 +239,13 @@ class Data:
             return lis_return, start, end-start, lis_return[primaryIndx]['mykey'], secondarykey, delta
 
         self.accounttable = []
-        """
-        with open(file) as conffile:
-            d = toml.loads(conffile.read())
-            conffile.close()
+        d = json.loads(json.dumps(self.toml_dict)) #thread safe deep copy
+        #"""
         #print("\n\nun tarnished dict: ", d)
         #for f in d:
         #    print("\ndict[%s] = " % (f),d[f])
         #print()
-        """
-        d = json.loads(json.dumps(self.toml_dict))
+        #"""
         
         self.check_record( d, 'iam', ('age', 'retire', 'through', 'primary'))
         self.check_record( d, 'SocialSecurity', ('FRA', 'age', 'amount'))
@@ -279,9 +271,9 @@ class Data:
         #print("\nself.retiree: ", self.retiree, "\n\n")
         
         #print("input dictionary(processed): ", d)
-        self.accounttable += get_account_info('IRA') # returns entry for each account
-        self.accounttable += get_account_info('roth') 
-        self.accounttable += get_account_info('aftertax') 
+        self.accounttable += self.get_account_info(d, 'IRA') # returns entry for each account
+        self.accounttable += self.get_account_info(d, 'roth') 
+        self.accounttable += self.get_account_info(d, 'aftertax') 
         #print("++Accounttable: ", self.accounttable)
 
         self.accmap = {'IRA': 0, 'roth': 0, 'aftertax': 0}
