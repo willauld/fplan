@@ -104,7 +104,7 @@ def consistancy_check(res, years, taxbins, cgbins, accounts, accmap, vindx):
                 print("account[%d] year to year balance NOT OK years %d to %d" % (j, year, year+1))
                 print("difference is", a)
 
-        T,spendable,tax,rate,cg_tax,earlytax = IncomeSummary(year)
+        T,spendable,tax,rate,cg_tax,earlytax,rothearly = IncomeSummary(year)
         if spendable + 0.1 < res.x[vindx.s(year)]  or spendable -0.1 > res.x[vindx.s(year)]:
             print("Calc Spendable %6.2f should equal s(year:%d) %6.2f"% (spendable, year, res.x[vindx.s(year)]))
             for j in range(len(S.accounttable)):
@@ -138,7 +138,7 @@ def print_model_results(res):
     for year in range(S.numyr):
         i_mul = S.i_rate ** year
         age = year + S.startage
-        T,spendable,tax,rate,cg_tax,earlytax = IncomeSummary(year)
+        T,spendable,tax,rate,cg_tax,earlytax,rothearly = IncomeSummary(year)
 
         rmdref = 0
         for j in range(min(2,len(S.accounttable))): # at most the first two accounts are type IRA w/ RMD requirement
@@ -165,7 +165,7 @@ def print_model_results(res):
                 (tax+cg_tax+earlytax)/OneK) )
         s = res.x[vindx.s(year)]/OneK
         star = ' '
-        T,spendable,tax,rate,cg_tax,earlytax = IncomeSummary(year)
+        T,spendable,tax,rate,cg_tax,earlytax,rothearly = IncomeSummary(year)
         if spendable + 0.1 < res.x[vindx.s(year)]  or spendable -0.1 > res.x[vindx.s(year)]:
             s = spendable/OneK
             star = '*'
@@ -252,7 +252,7 @@ def print_tax(res):
     for year in range(S.numyr):
         age = year + S.startage
         i_mul = S.i_rate ** year
-        T,spendable,tax,rate,cg_tax,earlytax = IncomeSummary(year)
+        T,spendable,tax,rate,cg_tax,earlytax,rothearly = IncomeSummary(year)
         f = model.cg_taxable_fraction(year)
         ttax = tax + cg_tax +earlytax
         withdrawal = {'IRA': 0, 'roth': 0, 'aftertax': 0}
@@ -262,10 +262,13 @@ def print_tax(res):
             ao.output("%3d/%3d:" % (year+S.startage, year+S.startage-S.delta))
         else:
             ao.output(" %3d:" % (year+S.startage))
-        ao.output(("@%7.0f" * 13 ) %
+        star = ' '
+        if rothearly:
+            star = '*'
+        ao.output(("@%7.0f" * 5 + "@%6.0f%c" * 1 + "@%7.0f" * 7 ) %
               ( withdrawal['IRA']/OneK, # sum IRA
               S.taxed[year]/OneK, SS_taxable*S.SS[year]/OneK,
-              stded*i_mul/OneK, T/OneK, earlytax/OneK, tax/OneK, rate*100, 
+              stded*i_mul/OneK, T/OneK, earlytax/OneK, star, tax/OneK, rate*100, 
                 withdrawal['aftertax']/OneK, # sum Aftertax
               f*100, cg_tax/OneK,
               ttax/OneK, res.x[vindx.s(year)]/OneK ))
@@ -299,7 +302,7 @@ def print_tax_brackets(res):
     for year in range(S.numyr):
         age = year + S.startage
         i_mul = S.i_rate ** year
-        T,spendable,tax,rate,cg_tax,earlytax = IncomeSummary(year)
+        T,spendable,tax,rate,cg_tax,earlytax,rothearly = IncomeSummary(year)
         ttax = tax + cg_tax
         if S.secondary != "":
             ao.output("%3d/%3d:" % (year+S.startage, year+S.startage-S.delta))
@@ -352,7 +355,7 @@ def print_cap_gains_brackets(res):
             j = len(S.accounttable)-1 # Aftertax / investment account always the last entry when present
             atw = res.x[vindx.w(year,j)]/OneK # Aftertax / investment account
             att = (f*res.x[vindx.w(year,j)])/OneK # non-basis fraction / cg taxable $ 
-        T,spendable,tax,rate,cg_tax,earlytax = IncomeSummary(year)
+        T,spendable,tax,rate,cg_tax,earlytax,rothearly = IncomeSummary(year)
         ttax = tax + cg_tax
         if S.secondary != "":
             ao.output("%3d/%3d:" % (year+S.startage, year+S.startage-S.delta))
@@ -404,10 +407,13 @@ def IncomeSummary(year):
     # Need to account for withdrawals from IRA deposited in Investment account NOT SPENDABLE
     age = year + S.startage
     earlytax = 0
+    roth_early = False
     for j in range(len(S.accounttable)):
         if S.accounttable[j]['acctype'] != 'aftertax':
             if S.apply_early_penalty(year,S.accounttable[j]['mykey']):
                 earlytax += res.x[vindx.w(year,j)]*penalty
+                if res.x[vindx.w(year,j)] > 0 and S.accounttable[j]['acctype'] == 'roth':
+                    roth_early = True
     T = OrdinaryTaxable(year)
     ntax = 0
     rate = 0
@@ -428,7 +434,7 @@ def IncomeSummary(year):
     for j in range(len(S.accounttable)):
         tot_withdrawals += res.x[vindx.w(year,j)] 
     spendable = tot_withdrawals - D + S.income[year] + S.SS[year] - S.expenses[year] - tax -ncg_tax - earlytax
-    return T, spendable, tax, rate, ncg_tax, earlytax
+    return T, spendable, tax, rate, ncg_tax, earlytax, roth_early
 
 def get_result_totals(res):
     twithd = 0 
@@ -442,7 +448,7 @@ def get_result_totals(res):
     for year in range(S.numyr):
         i_mul = S.i_rate ** year
         discountR = S.i_rate**-year # use rate of inflation as discount rate
-        T,spendable,tax,rate,cg_tax,earlytax = IncomeSummary(year)
+        T,spendable,tax,rate,cg_tax,earlytax,rothearly = IncomeSummary(year)
         tot_withdrawals = 0
         for j in range(len(S.accounttable)):
             tot_withdrawals += res.x[vindx.w(year,j)] 
