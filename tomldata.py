@@ -236,8 +236,9 @@ class Data:
                 lis_return[primaryIndx]['ageAtStart'] = start
                 lis_return[secondaryIndx]['ageAtStart'] = start - delta
                 end = max(yearsthrough[0], yearsthrough[1])+lis_return[primaryIndx]['age']
+                primAge = lis_return[primaryIndx]['age']
             #print("delta: %d, start: %d, end: %d, numyr: %d" %(delta, start, end, end-start))
-            return lis_return, start, end-start, lis_return[primaryIndx]['mykey'], secondarykey, delta
+            return lis_return, start, end-start, lis_return[primaryIndx]['mykey'], secondarykey, delta, primAge
 
         self.accounttable = []
         d = json.loads(json.dumps(self.toml_dict)) #thread safe deep copy
@@ -268,7 +269,7 @@ class Data:
         self.i_rate = 1 + d.get('inflation', 0) / 100       # inflation rate: 2.5 -> 1.025
         self.r_rate = 1 + d.get('returns', 6) / 100         # invest rate: 6 -> 1.06
 
-        self.retiree, self.startage, self.numyr, self.primary, self.secondary, self.delta = get_retiree_info() # returns entry for each retiree
+        self.retiree, self.startage, self.numyr, self.primary, self.secondary, self.delta, self.primAge = get_retiree_info() # returns entry for each retiree
         #print("\nself.retiree: ", self.retiree, "\n\n")
         
         #print("input dictionary(processed): ", d)

@@ -197,6 +197,30 @@ def print_account_trans(res):
 
     ao.output("\nAccount Transactions Summary:\n\n")
     print_acc_header1()
+    #
+    # Print pre-plan info
+    #
+    if S.secondary != "":
+        ao.output("%3d/%3d:" % (S.primAge, S.primAge-S.delta))
+    else:
+        ao.output(" %3d:" % (S.primAge))
+    for i in range(S.accmap['IRA']):
+        ao.output(("@%7.0f" * 4) % (
+              S.accounttable[i]['origbal']/OneK, 0, S.accounttable[i]['contrib']/OneK, 0)) # IRAn
+    for i in range(S.accmap['roth']):
+        index = S.accmap['IRA'] + i
+        ao.output(("@%7.0f" * 3) % (
+              S.accounttable[index]['origbal']/OneK, 0, S.accounttable[index]['contrib']/OneK)) # rothn
+    index = S.accmap['IRA'] + S.accmap['roth']
+    if index == len(S.accounttable)-1:
+        ao.output(("@%7.0f" * 3) % (
+                S.accounttable[index]['origbal']/OneK, 0, S.accounttable[index]['contrib']/OneK)) # aftertax
+    ao.output("\n")
+    ao.output("Plan Start: -----------\n")
+    #
+    # Print plan info for each year
+    # TODO clean up the if/else below to follow the above forloop pattern
+    #
     for year in range(S.numyr):
         rmdref = [0,0]
         for j in range(min(2,len(S.accounttable))): # only first two accounts are type IRA w/ RMD
