@@ -396,13 +396,15 @@ class TestTomlInput(unittest.TestCase):
                 calcb = origbal*S.r_rate**(58-56)
                 contrib = acc['contrib']
                 p = contrib*(S.r_rate**(58-56)-1)*(1+(1/(S.r_rate-1)))
+                pwicontrib = (contrib*(1-(S.r_rate*S.i_rate)**(60-58))/(1-S.r_rate*S.i_rate))*(S.r_rate)
                 age60contrib = acc['contributions'][60-58]
                 if acc['inflation'] == False:
                     self.assertEqual(bal, calcb+p, msg='Rate of return and contributions till plan start')
                     self.assertEqual(contrib, age60contrib, msg='No inflation so all contrib values should match')
                 else:
                     # should be close but bal a little higher because the contributions are going up with inflation. TODO clean this up to make more exact
-                    self.assertGreaterEqual(bal, calcb+p, msg='Rate of return and contributions till plan start')
+                    self.assertEqual(round(bal,0), round(calcb+pwicontrib,0), msg='Rate of return and inflating contributions till plan start')
+                    #self.assertGreaterEqual(bal, calcb+p, msg='Rate of return and contributions till plan start')
                     self.assertEqual(contrib*S.i_rate**(60-56), age60contrib, msg='Inflation so contrib values should increase each year with inflation')
 
 
