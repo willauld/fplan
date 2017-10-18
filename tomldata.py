@@ -161,8 +161,8 @@ class Data:
                         #print('period is: ', period)
                         for age in agelist(period):
                                 year = age - ageAtStart #self.startage
-                                preyear = age - currentAge
                                 if year < 0:
+                                    preyear = age - currentAge
                                     # capture all contributions before start of retirement
                                     b = entry['contrib'] 
                                     if entry['inflation']:
@@ -176,7 +176,8 @@ class Data:
                                 else:
                                     bucket[year] = entry['contrib'] 
                                     if entry['inflation']:
-                                        bucket[year] = entry['contrib'] * self.i_rate ** (preyear+year)
+                                        #bucket[year] = entry['contrib'] * self.i_rate ** (preyear+year)
+                                        bucket[year] = entry['contrib'] * self.i_rate ** (age-currentAge)
                                     #print("age %d, year %d, bucket: %6.0f += amount %6.0f" %(age, year, bucket[year], adj_amount))
                 if type == 'aftertax':
                     if 'basis' not in v:
