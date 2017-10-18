@@ -2,7 +2,9 @@ import sys
 import os
 import pickle
 import unittest
+import json
 import toml
+import taxinfo
 import vector_var_index as v
 import app_output
 import taxinfo
@@ -268,7 +270,7 @@ class TestTomlInput(unittest.TestCase):
         S.process_toml_info()
         # TODO What to do to test this???
 
-    def test_toml_input_match_retiree(self): # Assumes process_toml_info() as run
+    def test_toml_input_match_retiree(self): # Assumes process_toml_info() has run
         toml_file_name = 't.toml'
         tf = working_toml_file(toml_file_name)
         S = tomldata.Data()
@@ -284,7 +286,7 @@ class TestTomlInput(unittest.TestCase):
         v = S.match_retiree(retireeNot)
         self.assertEqual(v, None) 
 
-    def test_toml_input_load_rmd_needed(self): # Assumes process_toml_info() as run
+    def test_toml_input_load_rmd_needed(self): # Assumes process_toml_info() has run
         toml_file_name = 't.toml'
         tf = working_toml_file(toml_file_name)
         S = tomldata.Data()
@@ -304,7 +306,7 @@ class TestTomlInput(unittest.TestCase):
         rmd = S.rmd_needed(69-56, retireeNot)
         self.assertEqual(rmd, 0, msg='Non-valid Retiree should alway return rmd 0')
 
-    def test_toml_input_apply_early_penalty(self): # Assumes process_toml_info() as run
+    def test_toml_input_apply_early_penalty(self): # Assumes process_toml_info() has run
         toml_file_name = 't.toml'
         tf = working_toml_file(toml_file_name)
         S = tomldata.Data()
@@ -324,7 +326,7 @@ class TestTomlInput(unittest.TestCase):
         p = S.apply_early_penalty(59-56, retireeNot)
         self.assertFalse(p, msg='A non-existant retiree should return false')
 
-    def test_toml_input_account_owner_age(self): # Assumes process_toml_info() as run
+    def test_toml_input_account_owner_age(self): # Assumes process_toml_info() has run
         toml_file_name = 't.toml'
         tf = working_toml_file(toml_file_name)
         S = tomldata.Data()
@@ -338,11 +340,79 @@ class TestTomlInput(unittest.TestCase):
                 a = S.account_owner_age(year, account)
                 self.assertEqual(a, 59, msg='At age 59 account_owner_age() should be 59')
 
-        #test:
+    def test_toml_input_maxcontribution(self): # Assumes process_toml_info() has run
+        toml_file_name = 't.toml'
+        tf = working_toml_file(toml_file_name)
+        S = tomldata.Data()
+        S.load_toml_file(toml_file_name)
+        S.process_toml_info()
+        retiree1 = 'will'   # toml has age 56, retire 58, through 72 primary so ageAtStart 58 (retire age)
+        retiree2 = 'spouse' # toml has age 54, retire 60, through 75 secondary so ageAtStart 56
+        retireeNot = 'joe'
+        retireeNone = None
+        year = 1
+        m = S.maxContribution(year, retiree1)
+        self.assertEqual(m, (taxinfo.contribspecs['TDRA'] + taxinfo.contribspecs['TDRACatchup'])*S.i_rate**year , msg='TDRA+RothRA contribution plus catchup')
+        m = S.maxContribution(year, retireeNot)
+        self.assertEqual(m, 0, msg='zero if non-existant retiree')
+        m = S.maxContribution(year, retireeNone)
+        self.assertEqual(m, 2*(taxinfo.contribspecs['TDRA'] + taxinfo.contribspecs['TDRACatchup'])*S.i_rate**year, msg='TDRA+RothRA contribution plus catchup for both Retirees')
+
+    def test_toml_input_check_record(self):
+        S = tomldata.Data()
+        orig = {'aftertax': {'bal': 700000, 'basis': 400000, 'contrib': 10, 'period': '56-65'}}
+        to = {'aftertax': {'nokey': {'bal': 700000, 'basis': 400000, 'contrib': 10, 'period': '56-65'}}}
+        d = json.loads(json.dumps(orig)) # thread safe deep copy
+        S.check_record( d, 'aftertax', ('bal', 'rate', 'contrib', 'inflation', 'period', 'basis'))
+        #Do a deep compare:
+        self.assertEqual(pickle.dumps(to), pickle.dumps(d), msg='dictionary should be transformed') 
+        orig = {}
+        to = {}
+        d = json.loads(json.dumps(orig)) # thread safe deep copy
+        S.check_record( d, 'aftertax', ('bal', 'rate', 'contrib', 'inflation', 'period', 'basis'))
+        #Do a deep compare:
+        self.assertEqual(pickle.dumps(to), pickle.dumps(d), msg='{} dictionary should remain {}') 
+
+    def test_toml_input_account_info(self): # Assumes process_toml_info() has run
+        toml_file_name = 't.toml'
+        tf = working_toml_file(toml_file_name)
+        S = tomldata.Data()
+        S.load_toml_file(toml_file_name)
+        S.process_toml_info()
+        # tmol Accounts
+        # IRA.will    bal=2,000,000 contrib=100 inflation=true period=56-65 {inflation applies to contrib}
+        # IRA.spouse  bal=200,000   contrib=0   inflation=false period=      
+        # Roth.spouse bal=100,000   contrib=0   inflation=false period=
+        # aftertax    bal=700,000   contrib=10  inflation=false period=56-65
+        # Plan period 58-73, age will 56 age spouse 54
+        for acc in S.accounttable:
+            origbal = acc['origbal']
+            bal = acc['bal']
+            mykey = acc['mykey']
+            acctype = acc['acctype']
+            if (acctype == 'IRA' or acctype == 'roth') and mykey == 'spouse':
+                self.assertEqual(bal, origbal*S.r_rate**(58-56), msg='Rate of return till plan start, no contributions')
+            elif mykey == 'will' or mykey=='nokey':
+                calcb = origbal*S.r_rate**(58-56)
+                contrib = acc['contrib']
+                p = contrib*(S.r_rate**(58-56)-1)*(1+(1/(S.r_rate-1)))
+                age60contrib = acc['contributions'][60-58]
+                if acc['inflation'] == False:
+                    self.assertEqual(bal, calcb+p, msg='Rate of return and contributions till plan start')
+                    self.assertEqual(contrib, age60contrib, msg='No inflation so all contrib values should match')
+                else:
+                    # should be close but bal a little higher because the contributions are going up with inflation. TODO clean this up to make more exact
+                    self.assertGreaterEqual(bal, calcb+p, msg='Rate of return and contributions till plan start')
+                    self.assertEqual(contrib*S.i_rate**(60-56), age60contrib, msg='Inflation so contrib values should increase each year with inflation')
+
+
+        # TODO add tests for: # may need to refactor to test encapulated functions
         # - process_toml_info()
+        #   - get_retiree_info()
         # - parse_expenses()
-        # - maxcontribution()
-        # - check_record()
+        #   - startamount()
+        #   - do_ss_details()
+        #   - do_details()
 
 
 if __name__ == '__main__':
