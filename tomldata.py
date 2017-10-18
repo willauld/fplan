@@ -4,11 +4,15 @@ import toml
 #import argparse
 #import scipy.optimize
 import re
-#import taxinfo ### TODO replace the following line with this one and edits to this file
-from taxinfo import accountspecs, taxtable, capgainstable, penalty, stded, SS_taxable, contribspecs, RMD
+import taxinfo 
 #import vector_var_index as vvar
 #import app_output as app_out
 #import lp_constraint_model as lp
+
+def check_status_type(status):
+    if status not in ['single', 'joint', 'mseparate']:
+        print('Error, Retirement status of \'%s\' is incorrect.\nPosible options are:\n    joint\n    single\n    mseparate' % status)
+        exit(1)
 
 def agelist(str):
     for x in str.split(','):
@@ -28,6 +32,9 @@ def agelist(str):
             raise Exception("Bad age " + str)
 
 class Data:
+    def __init__(self, tinfo):
+        self.tinfo = tinfo
+
     def check_record(self, dict, type, fields):
         ##
         ## This routine looks a the categories and there labeled components (keys) to 
@@ -58,10 +65,10 @@ class Data:
         max = 0
         for v in self.retiree:
             if retireekey is None or v['mykey'] == retireekey: # Sum all retiree
-                max += contribspecs['TDRA']
+                max += self.tinfo.contribspecs['TDRA']
                 age = v['ageAtStart'] + year
-                if age >= contribspecs['CatchupAge']:
-                    max += contribspecs['TDRACatchup']
+                if age >= self.tinfo.contribspecs['CatchupAge']:
+                    max += self.tinfo.contribspecs['TDRACatchup']
         max *= self.i_rate ** year # adjust for inflation
         #print('maxContribution: %6.0f' % max, retireekey)
         return max
@@ -81,7 +88,7 @@ class Data:
             return rmd
         age = v['ageAtStart']+year
         if age >= 70: # IRA retirement: minimum distribution starting age 70.5 
-            rmd = RMD[age - 70]
+            rmd = self.tinfo.RMD[age - 70]
         #print("RMD_NEEDED() year: %d, rmd: %6.3f, age: %d, retiree: %s" % (year, rmd, age, retireekey))
         return rmd
 
@@ -110,14 +117,14 @@ class Data:
         #    print("\ndict[%s] = " % (f),self.toml_dict[f])
         #print()
 
-    def get_account_info(self, d, type):
+    def get_account_info(self, d, type): # TODO fix the indentation for this method
             index = 0
             lis_return = []
             for k,v in d.get( type , {}).items():
                 entry = {}
                 entry['acctype'] = type
                 entry['index'] = index
-                entry['estateTax'] = accountspecs[type]['tax']
+                entry['estateTax'] = self.tinfo.accountspecs[type]['tax']
                 entry['origbal'] = v['bal']
                 entry['bal'] = v['bal']
                 entry['mykey'] = k
@@ -263,8 +270,12 @@ class Data:
         #    print("\ndict[%s] = " % (f),d[f])
         #print()
         #exit(0)
-        self.retirement_type = d.get('retirement_type', 'joint') # single, joint,...
+        self.retirement_type = d.get('retirement_type', 'joint') # single, joint, mseparate...
+        check_status_type(self.retirement_type)
+        self.tinfo.set_retirement_status(self.retirement_type)
+        #print('Retirement_type: %s'% self.retirement_type)
         self.maximize = d.get('maximize',"Spending") # what to maximize for: Spending or PlusEstate 
+        # TODO varify correct input
 
         self.i_rate = 1 + d.get('inflation', 0) / 100       # inflation rate: 2.5 -> 1.025
         self.r_rate = 1 + d.get('returns', 6) / 100         # invest rate: 6 -> 1.06

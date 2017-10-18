@@ -70,19 +70,39 @@ marriedjointstded = 12700 + 2*4050 # standard deduction + 2 personal exemptions
 marriedseparatestded = 9350 + 4050 # standard deduction + 1 personal exemptions
 singlestded = 6350 + 4050          # standard deduction + 1 personal exemptions
 
-# TODO make these selectable through input file
-taxtable = marriedjointtax
-capgainstable = marriedjointcapitalgains
-stded = marriedjointstded
-RMD = marriedjointRMD
+class taxinfo:
+    def __init__(self):
+        self.taxtable = None
+        self.capgainstable = None
+        self.stded = None
+        self.RMD = None
+        #self.set_retirement_status(status)
 
-# Account specs contains some initial information # TODO if maxcontrib not used delete
-accountspecs = {'IRA': {'tax': 0.85, 'maxcontrib': 18000+5500*2},
-                'roth':{'tax': 1.0, 'maxcontrib': 5500*2},
-                'aftertax': {'tax': 0.9, 'basis': 0}}
-
-contribspecs = {'401k': 18000, '401kCatchup': 3000,  'TDRA': 5500, "TDRACatchup": 1000, 'CatchupAge': 50}
-
-penalty = 0.1       # 10% early withdrawal penalty
-SS_taxable = 0.85   # maximum portion of SS that is taxable
-SS_notTaxable = 1 - SS_taxable
+        # Account specs contains some initial information # TODO if maxcontrib not used delete
+        self.accountspecs = {'IRA': {'tax': 0.85, 'maxcontrib': 18000+5500*2},
+                         'roth':{'tax': 1.0, 'maxcontrib': 5500*2},
+                         'aftertax': {'tax': 0.9, 'basis': 0}}
+    
+        self.contribspecs = {'401k': 18000, '401kCatchup': 3000,  
+                         'TDRA': 5500, "TDRACatchup": 1000, 'CatchupAge': 50}
+    
+        self.penalty = 0.1       # 10% early withdrawal penalty
+        self.SS_taxable = 0.85   # maximum portion of SS that is taxable
+        self.SS_notTaxable = 1 - self.SS_taxable
+    
+    def set_retirement_status(self, status):
+        if status == 'single':
+            self.taxtable = singletax
+            self.capgainstable = singlecapitalgains
+            self.stded = singlestded
+            self.RMD = singleRMD
+        elif status == 'mseparate':
+            self.taxtable = marriedseparatetax
+            self.capgainstable = marriedseparatecapitalgains
+            self.stded = marriedseparatestded
+            self.RMD = marriedseparateRMD
+        else: # status == 'joint':
+            self.taxtable = marriedjointtax
+            self.capgainstable = marriedjointcapitalgains
+            self.stded = marriedjointstded
+            self.RMD = marriedjointRMD

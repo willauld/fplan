@@ -6,8 +6,7 @@
 
 import argparse
 import scipy.optimize
-#import taxinfo ### TODO replace the following line with this one and edits to this file
-from taxinfo import accountspecs, taxtable, capgainstable, penalty, stded, SS_taxable, contribspecs, RMD
+import taxinfo as tif
 import tomldata
 import vector_var_index as vvar
 import app_output as app_out
@@ -59,8 +58,8 @@ def consistancy_check(res, years, taxbins, cgbins, accounts, accmap, vindx):
         fz = False
         fnf = False
         i_mul = S.i_rate ** year
-        for k in range(len(taxtable)): 
-            cut, size, rate, base = taxtable[k]
+        for k in range(len(taxinfo.taxtable)): 
+            cut, size, rate, base = taxinfo.taxtable[k]
             size *= i_mul
             s += res.x[vindx.x(year,k)] 
             if fnf and res.x[vindx.x(year,k)] > 0:
@@ -75,13 +74,13 @@ def consistancy_check(res, years, taxbins, cgbins, accounts, accmap, vindx):
             scg = 0
             fz = False
             fnf = False
-            for l in range(len(capgainstable)): 
-                cut, size, rate = capgainstable[l]
+            for l in range(len(taxinfo.capgainstable)): 
+                cut, size, rate = taxinfo.capgainstable[l]
                 size *= i_mul
                 bamount = res.x[vindx.y(year,l)] 
                 scg += bamount
-                for k in range(len(taxtable)-1):
-                    if taxtable[k][0] >= capgainstable[l][0] and taxtable[k][0] < capgainstable[l+1][0]:
+                for k in range(len(taxinfo.taxtable)-1):
+                    if taxinfo.taxtable[k][0] >= taxinfo.capgainstable[l][0] and taxinfo.taxtable[k][0] < taxinfo.capgainstable[l+1][0]:
                         bamount += res.x[vindx.x(year,k)]
                 if fnf and bamount > 0:
                     print("Inproper packed CG brackets in year %d, bracket %d not empty while previous bracket not full." % (year, l))
@@ -113,8 +112,8 @@ def consistancy_check(res, years, taxbins, cgbins, accounts, accmap, vindx):
             print("+o[%d]: %6.0f +SS[%d]: %6.0f -tax: %6.0f -cg_tax: %6.0f" % (year, S.income[year] ,year, S.SS[year] , tax ,cg_tax))
 
         bt = 0
-        for k in range(len(taxtable)):
-            bt += res.x[vindx.x(year,k)] * taxtable[k][2]
+        for k in range(len(taxinfo.taxtable)):
+            bt += res.x[vindx.x(year,k)] * taxinfo.taxtable[k][2]
         if tax + 0.1 < bt  or tax -0.1 > bt:
             print("Calc tax %6.2f should equal brackettax(bt)[]: %6.2f" % (tax, bt))
     print()
@@ -291,8 +290,8 @@ def print_tax(res):
             star = '*'
         ao.output(("@%7.0f" * 5 + "@%6.0f%c" * 1 + "@%7.0f" * 7 ) %
               ( withdrawal['IRA']/OneK, # sum IRA
-              S.taxed[year]/OneK, SS_taxable*S.SS[year]/OneK,
-              stded*i_mul/OneK, T/OneK, earlytax/OneK, star, tax/OneK, rate*100, 
+              S.taxed[year]/OneK, taxinfo.SS_taxable*S.SS[year]/OneK,
+              taxinfo.stded*i_mul/OneK, T/OneK, earlytax/OneK, star, tax/OneK, rate*100, 
                 withdrawal['aftertax']/OneK, # sum Aftertax
               f*100, cg_tax/OneK,
               ttax/OneK, res.x[vindx.s(year)]/OneK ))
@@ -305,8 +304,8 @@ def print_tax_brackets(res):
             ao.output("@@@@@@%50s" % "Marginal Rate(%):")
         else:
             ao.output("@@@@@@%47s" % "Marginal Rate(%):")
-        for k in range(len(taxtable)):
-            (cut, size, rate, base) = taxtable[k]
+        for k in range(len(taxinfo.taxtable)):
+            (cut, size, rate, base) = taxinfo.taxtable[k]
             ao.output("@%6.0f" % (rate*100))
         ao.output("\n")
         if S.secondary != "":
@@ -317,7 +316,7 @@ def print_tax_brackets(res):
                 ao.output("%s\n" % (S.primary))
             ao.output(" age ")
         ao.output(("@%7s" * 6) % ("fIRA", "TxbleO", "TxbleSS", "deduct", "T_inc", "fedtax"))
-        for k in range(len(taxtable)):
+        for k in range(len(taxinfo.taxtable)):
             ao.output("@brckt%d" % k)
         ao.output("@brkTot\n")
 
@@ -335,10 +334,10 @@ def print_tax_brackets(res):
         ao.output(("@%7.0f" * 6 ) %
               (
               res.x[vindx.w(year,0)]/OneK, # IRA
-              S.taxed[year]/OneK, SS_taxable*S.SS[year]/OneK,
-              stded*i_mul/OneK, T/OneK, tax/OneK) )
+              S.taxed[year]/OneK, taxinfo.SS_taxable*S.SS[year]/OneK,
+              taxinfo.stded*i_mul/OneK, T/OneK, tax/OneK) )
         bt = 0
-        for k in range(len(taxtable)):
+        for k in range(len(taxinfo.taxtable)):
             ao.output("@%6.0f" % res.x[vindx.x(year,k)])
             bt += res.x[vindx.x(year,k)]
         ao.output("@%6.0f\n" % bt)
@@ -350,8 +349,8 @@ def print_cap_gains_brackets(res):
             ao.output("@@@@@@%42s" % "Marginal Rate(%):")
         else:
             ao.output("@@@@@%40s" % " Marginal Rate(%):")
-        for l in range(len(capgainstable)):
-            (cut, size, rate) = capgainstable[l]
+        for l in range(len(taxinfo.capgainstable)):
+            (cut, size, rate) = taxinfo.capgainstable[l]
             ao.output("@%6.0f" % (rate*100))
         ao.output("\n")
         if S.secondary != "":
@@ -362,7 +361,7 @@ def print_cap_gains_brackets(res):
                 ao.output("%s\n" % (S.primary))
             ao.output(" age ")
         ao.output(("@%7s" * 5) % ("fAftaTx","cgTax%", "cgTaxbl", "T_inc", "cgTax"))
-        for l in range(len(capgainstable)):
+        for l in range(len(taxinfo.capgainstable)):
             ao.output("@brckt%d" % l)
         ao.output("@brkTot\n")
 
@@ -392,13 +391,13 @@ def print_cap_gains_brackets(res):
               T/OneK, cg_tax/OneK))
         bt = 0
         bttax = 0
-        for l in range(len(capgainstable)):
+        for l in range(len(taxinfo.capgainstable)):
             ty = 0
             if S.accmap['aftertax'] > 0:
                 ty = res.x[vindx.y(year,l)]
             ao.output("@%6.0f" % ty)
             bt += ty
-            bttax += ty * capgainstable[l][2]
+            bttax += ty * taxinfo.capgainstable[l][2]
         ao.output("@%6.0f\n" % bt)
         if args.verbosewga:
             print(" cg bracket ttax %6.0f " % bttax, end='')
@@ -406,10 +405,10 @@ def print_cap_gains_brackets(res):
             print("x->y[2]: %6.0f "% (res.x[vindx.x(year,2)]+ res.x[vindx.x(year,3)]+ res.x[vindx.x(year,4)]+res.x[vindx.x(year,5)]),end='')
             print("x->y[3]: %6.0f"% res.x[vindx.x(year,6)])
         # TODO move to consistancy_check()
-        #if (capgainstable[0][1]*i_mul -(res.x[vindx.x(year,0)]+res.x[vindx.x(year,1)])) <= res.x[vindx.y(year,1)]:
-        #    print("y[1]remain: %6.0f "% (capgainstable[0][1]*i_mul -(res.x[vindx.x(year,0)]+res.x[vindx.x(year,1)])))
-        #if (capgainstable[1][1]*i_mul - (res.x[vindx.x(year,2)]+ res.x[vindx.x(year,3)]+ res.x[vindx.x(year,4)]+res.x[vindx.x(year,5)])) <= res.x[vindx.y(year,2)]:
-        #    print("y[2]remain: %6.0f " % (capgainstable[1][1]*i_mul - (res.x[vindx.x(year,2)]+ res.x[vindx.x(year,3)]+ res.x[vindx.x(year,4)]+res.x[vindx.x(year,5)])))
+        #if (taxinfo.capgainstable[0][1]*i_mul -(res.x[vindx.x(year,0)]+res.x[vindx.x(year,1)])) <= res.x[vindx.y(year,1)]:
+        #    print("y[1]remain: %6.0f "% (taxinfo.capgainstable[0][1]*i_mul -(res.x[vindx.x(year,0)]+res.x[vindx.x(year,1)])))
+        #if (taxinfo.capgainstable[1][1]*i_mul - (res.x[vindx.x(year,2)]+ res.x[vindx.x(year,3)]+ res.x[vindx.x(year,4)]+res.x[vindx.x(year,5)])) <= res.x[vindx.y(year,2)]:
+        #    print("y[2]remain: %6.0f " % (taxinfo.capgainstable[1][1]*i_mul - (res.x[vindx.x(year,2)]+ res.x[vindx.x(year,3)]+ res.x[vindx.x(year,4)]+res.x[vindx.x(year,5)])))
     printheader_capgains_brackets()
 
 def OrdinaryTaxable(year):
@@ -419,7 +418,7 @@ def OrdinaryTaxable(year):
         if S.accounttable[j]['acctype'] == 'IRA':
             withdrawals += res.x[vindx.w(year,j)]
             deposits += res.x[vindx.D(year,j)]
-    T = withdrawals - deposits + S.taxed[year] + SS_taxable*S.SS[year] -(stded*S.i_rate**year)
+    T = withdrawals - deposits + S.taxed[year] + taxinfo.SS_taxable*S.SS[year] -(taxinfo.stded*S.i_rate**year)
     if T < 0:
         T = 0
     return T
@@ -435,16 +434,16 @@ def IncomeSummary(year):
     for j in range(len(S.accounttable)):
         if S.accounttable[j]['acctype'] != 'aftertax':
             if S.apply_early_penalty(year,S.accounttable[j]['mykey']):
-                earlytax += res.x[vindx.w(year,j)]*penalty
+                earlytax += res.x[vindx.w(year,j)]*taxinfo.penalty
                 if res.x[vindx.w(year,j)] > 0 and S.accounttable[j]['acctype'] == 'roth':
                     roth_early = True
     T = OrdinaryTaxable(year)
     ntax = 0
     rate = 0
-    for k in range(len(taxtable)):
-        ntax += res.x[vindx.x(year,k)]*taxtable[k][2]
+    for k in range(len(taxinfo.taxtable)):
+        ntax += res.x[vindx.x(year,k)]*taxinfo.taxtable[k][2]
         if res.x[vindx.x(year,k)] > 0:
-            rate = taxtable[k][2]
+            rate = taxinfo.taxtable[k][2]
     tax = ntax
     D = 0
     ncg_tax = 0
@@ -452,8 +451,8 @@ def IncomeSummary(year):
     for j in range(len(S.accounttable)):
         D +=  res.x[vindx.D(year,j)]
     if S.accmap['aftertax'] > 0:
-        for l in range(len(capgainstable)):
-            ncg_tax += res.x[vindx.y(year,l)]*capgainstable[l][2]
+        for l in range(len(taxinfo.capgainstable)):
+            ncg_tax += res.x[vindx.y(year,l)]*taxinfo.capgainstable[l][2]
     tot_withdrawals = 0
     for j in range(len(S.accounttable)):
         tot_withdrawals += res.x[vindx.w(year,j)] 
@@ -533,9 +532,11 @@ if __name__ == '__main__':
         csv_file_name = 'a.csv'
     ao = app_out.app_output(csv_file_name)
     
-    S = tomldata.Data()
+    taxinfo = tif.taxinfo()
+    S = tomldata.Data(taxinfo)
     S.load_toml_file(args.conffile)
     S.process_toml_info()
+    #taxinfo = taxinfo(S.retirement_type)
     
     #print("\naccounttable: ", S.accounttable)
     
@@ -555,14 +556,14 @@ if __name__ == '__main__':
         OneK = 1
     
     years = S.numyr
-    taxbins = len(taxtable) 
-    cgbins = len(capgainstable) 
+    taxbins = len(taxinfo.taxtable) 
+    cgbins = len(taxinfo.capgainstable) 
     accounts = len(S.accounttable) 
             
     vindx = vvar.vector_var_index(years, taxbins, cgbins, accounts, S.accmap)
     
     if precheck_consistancy():
-        model = lp.lp_constraint_model(S, vindx, taxtable, capgainstable, penalty, stded, SS_taxable, args.verbose)
+        model = lp.lp_constraint_model(S, vindx, taxinfo.taxtable, taxinfo.capgainstable, taxinfo.penalty, taxinfo.stded, taxinfo.SS_taxable, args.verbose)
         c, A, b = model.build_model()
         res = solve(c, A, b, args.verbose)
         if args.verbosemodel or args.verbosemodelall:

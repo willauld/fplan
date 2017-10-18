@@ -7,7 +7,7 @@ import toml
 import taxinfo
 import vector_var_index as v
 import app_output
-import taxinfo
+import taxinfo as tif
 import lp_constraint_model as lpclass
 import tomldata
 from ARetirementPlanner import solve
@@ -166,7 +166,9 @@ class TestLpConstraintModel(unittest.TestCase):
     def lp_constraint_model_load_default_toml(self):
         toml_file_name = 'self_temp_toml.toml'
         tf = working_toml_file(toml_file_name)
-        S = tomldata.Data()
+        taxinfo = tif.taxinfo()
+        S = tomldata.Data(taxinfo)
+        #S = tomldata.Data()
         S.load_toml_file(toml_file_name) 
         S.process_toml_info()
         return S
@@ -258,14 +260,18 @@ class TestTomlInput(unittest.TestCase):
     def test_toml_input_load_load_toml_file_to_match_crator_string(self):
         toml_file_name = 't.toml'
         tf = working_toml_file(toml_file_name)
-        S = tomldata.Data()
+        taxinfo = tif.taxinfo()
+        S = tomldata.Data(taxinfo)
+        #S = tomldata.Data()
         S.load_toml_file(toml_file_name)
         self.assertEqual(tf.original_toml_string().lstrip().rstrip(), toml.dumps(S.toml_dict).rstrip())
 
     def test_toml_input_process_toml_info(self):
         toml_file_name = 't.toml'
         tf = working_toml_file(toml_file_name)
-        S = tomldata.Data()
+        taxinfo = tif.taxinfo()
+        S = tomldata.Data(taxinfo)
+        #S = tomldata.Data()
         S.load_toml_file(toml_file_name)
         S.process_toml_info()
         # TODO What to do to test this???
@@ -273,7 +279,9 @@ class TestTomlInput(unittest.TestCase):
     def test_toml_input_match_retiree(self): # Assumes process_toml_info() has run
         toml_file_name = 't.toml'
         tf = working_toml_file(toml_file_name)
-        S = tomldata.Data()
+        taxinfo = tif.taxinfo()
+        S = tomldata.Data(taxinfo)
+        #S = tomldata.Data()
         S.load_toml_file(toml_file_name)
         S.process_toml_info()
         retiree1 = 'will'
@@ -289,7 +297,9 @@ class TestTomlInput(unittest.TestCase):
     def test_toml_input_load_rmd_needed(self): # Assumes process_toml_info() has run
         toml_file_name = 't.toml'
         tf = working_toml_file(toml_file_name)
-        S = tomldata.Data()
+        taxinfo = tif.taxinfo()
+        S = tomldata.Data(taxinfo)
+        #S = tomldata.Data()
         S.load_toml_file(toml_file_name)
         S.process_toml_info()
         retiree1 = 'will'   # toml has age 56, retire 58, through 72 primary so ageAtStart 58 (retire age)
@@ -309,7 +319,9 @@ class TestTomlInput(unittest.TestCase):
     def test_toml_input_apply_early_penalty(self): # Assumes process_toml_info() has run
         toml_file_name = 't.toml'
         tf = working_toml_file(toml_file_name)
-        S = tomldata.Data()
+        taxinfo = tif.taxinfo()
+        S = tomldata.Data(taxinfo)
+        #S = tomldata.Data()
         S.load_toml_file(toml_file_name)
         S.process_toml_info()
         retiree1 = 'will'   # toml has age 56, retire 58, through 72 primary so ageAtStart 58 (retire age)
@@ -329,7 +341,9 @@ class TestTomlInput(unittest.TestCase):
     def test_toml_input_account_owner_age(self): # Assumes process_toml_info() has run
         toml_file_name = 't.toml'
         tf = working_toml_file(toml_file_name)
-        S = tomldata.Data()
+        taxinfo = tif.taxinfo()
+        S = tomldata.Data(taxinfo)
+        #S = tomldata.Data()
         S.load_toml_file(toml_file_name)
         S.process_toml_info()
         for account in S.accounttable:
@@ -343,7 +357,9 @@ class TestTomlInput(unittest.TestCase):
     def test_toml_input_maxcontribution(self): # Assumes process_toml_info() has run
         toml_file_name = 't.toml'
         tf = working_toml_file(toml_file_name)
-        S = tomldata.Data()
+        taxinfo = tif.taxinfo()
+        S = tomldata.Data(taxinfo)
+        #S = tomldata.Data()
         S.load_toml_file(toml_file_name)
         S.process_toml_info()
         retiree1 = 'will'   # toml has age 56, retire 58, through 72 primary so ageAtStart 58 (retire age)
@@ -359,7 +375,9 @@ class TestTomlInput(unittest.TestCase):
         self.assertEqual(m, 2*(taxinfo.contribspecs['TDRA'] + taxinfo.contribspecs['TDRACatchup'])*S.i_rate**year, msg='TDRA+RothRA contribution plus catchup for both Retirees')
 
     def test_toml_input_check_record(self):
-        S = tomldata.Data()
+        taxinfo = tif.taxinfo()
+        S = tomldata.Data(taxinfo)
+        #S = tomldata.Data()
         orig = {'aftertax': {'bal': 700000, 'basis': 400000, 'contrib': 10, 'period': '56-65'}}
         to = {'aftertax': {'nokey': {'bal': 700000, 'basis': 400000, 'contrib': 10, 'period': '56-65'}}}
         d = json.loads(json.dumps(orig)) # thread safe deep copy
@@ -376,7 +394,9 @@ class TestTomlInput(unittest.TestCase):
     def test_toml_input_account_info(self): # Assumes process_toml_info() has run
         toml_file_name = 't.toml'
         tf = working_toml_file(toml_file_name)
-        S = tomldata.Data()
+        taxinfo = tif.taxinfo()
+        S = tomldata.Data(taxinfo)
+        #S = tomldata.Data()
         S.load_toml_file(toml_file_name)
         S.process_toml_info()
         # tmol Accounts
