@@ -63,24 +63,39 @@ through = 75    # age you want to plan through
 
 # pre-tax IRA accounts (TDRA)
 [IRA.retiree1]
-bal = 200_000   # current balance 
-#rate = 7.25    # defaults to global rate set above
+bal = 200_000       # current balance 
+#rate = 7.25        # defaults to global rate set above
+#contrib = 0        # Annual contribution you will make for period (below)
+#inflation = false  # Will the contribution rise with inflation?
+#period = '56-60'   # period you will be making the contributions
 
 #[IRA.retiree2]
-#bal = 100_000  # current balance
-#rate = 7.25    # defaults to global rate set above
+#bal = 100_000      # current balance
+#rate = 7.25        # defaults to global rate set above
+#contrib = 0        # Annual contribution you will make for period (below)
+#inflation = false  # Will the contribution rise with inflation?
+#period = '56-60'   # period you will be making the contributions
 
 # roth IRA accounts (RothRA)
 #[roth.retiree1]
-#bal = 20_000   # current balance
-#rate = 7.25    # defaults to global rate set above
+#bal = 20_000       # current balance
+#rate = 7.25        # defaults to global rate set above
+#contrib = 0        # Annual contribution you will make for period (below)
+#inflation = false  # Will the contribution rise with inflation?
+#period = '56-60'   # period you will be making the contributions
 
 #[roth.retiree2]
-#bal = 20_000   # current balance
-#rate = 7.25    # defaults to global rate set above
+#bal = 20_000       # current balance
+#rate = 7.25        # defaults to global rate set above
+#contrib = 0        # Annual contribution you will make for period (below)
+#inflation = false  # Will the contribution rise with inflation?
+#period = '56-60'   # period you will be making the contributions
 
 # after tax savings accounts (ATRSI)
 #[aftertax]
-#bal =   100_000 # current balance
-#basis = 50_000	# Contributions to total, for capital gains tax
-#rate = 7.25    # defaults to global rate set above
+#bal =   100_000    # current balance
+#basis = 50_000	    # Contributions to total, for capital gains tax
+#rate = 7.25        # defaults to global rate set above
+#contrib = 0        # Annual contribution you will make for period (below)
+#inflation = false  # Will the contribution rise with inflation?
+#period = '56-60'   # period you will be making the contributions
