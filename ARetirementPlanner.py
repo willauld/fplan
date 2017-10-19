@@ -27,7 +27,7 @@ def precheck_consistancy():
                 if c is not None: 
                     t += c[year]
         if t > S.income[year]:
-            print("year: %d, contributions to Retirement accounts exceeds other earned income"%year)
+            print("year: %d, total contributions of (%.0f) to all Retirement accounts exceeds other earned income (%.0f)"%(year, t, S.income[year]))
             print("Please change the contributions in the toml file to be less than non-SS income.")
             exit(1)
     return True
@@ -475,7 +475,7 @@ def get_result_totals(res):
 def print_base_config(res):
     totwithd, tincome, tTaxable, tincometax, tcg_tax, tearlytax, tspendable = get_result_totals(res)
     ao.output("\n")
-    ao.output("Optimized for %s\n" % S.maximize)
+    ao.output("Optimized for %s with %s status\n" % (S.maximize, S.retirement_type))
     ao.output('Minium desired: ${:0_.0f}\n'.format(S.desired[0]))
     ao.output('Maximum desired: ${:0_.0f}\n'.format(S.max[0]))
     ao.output('After tax yearly income: ${:0_.0f} adjusting for inflation\n'.format(res.x[vindx.s(0)]))
