@@ -4,13 +4,14 @@ import pickle
 import unittest
 import json
 import toml
-import taxinfo
+import scipy.optimize
+#import taxinfo
 import vector_var_index as v
 import app_output
 import taxinfo as tif
 import lp_constraint_model as lpclass
 import tomldata
-from ARetirementPlanner import solve
+#from ARetirementPlanner import solve
 
 class working_toml_file:
     def __init__(self, filename):
@@ -166,8 +167,8 @@ class TestLpConstraintModel(unittest.TestCase):
     def lp_constraint_model_load_default_toml(self):
         toml_file_name = 'self_temp_toml.toml'
         tf = working_toml_file(toml_file_name)
-        taxinfo = tif.taxinfo()
-        S = tomldata.Data(taxinfo)
+        self.taxinfo = tif.taxinfo()
+        S = tomldata.Data(self.taxinfo)
         #S = tomldata.Data()
         S.load_toml_file(toml_file_name) 
         S.process_toml_info()
@@ -175,12 +176,12 @@ class TestLpConstraintModel(unittest.TestCase):
 
     def lp_constraint_model_build_model(self, S):
         years = S.numyr
-        taxbins = len(taxinfo.taxtable)
-        cgbins = len(taxinfo.capgainstable)
+        taxbins = len(self.taxinfo.taxtable)
+        cgbins = len(self.taxinfo.capgainstable)
         accounts = len(S.accounttable) 
         verbose = False
         vindx = v.vector_var_index(years, taxbins, cgbins, accounts, S.accmap)
-        lp = lpclass.lp_constraint_model(S, vindx, taxinfo.taxtable, taxinfo.capgainstable, taxinfo.penalty, taxinfo.stded, taxinfo.SS_taxable, verbose)
+        lp = lpclass.lp_constraint_model(S, vindx, self.taxinfo.taxtable, self.taxinfo.capgainstable, self.taxinfo.penalty, self.taxinfo.stded, self.taxinfo.SS_taxable, verbose)
         c, A, b = lp.build_model()
         return vindx, lp, c, A, b
 
@@ -191,7 +192,12 @@ class TestLpConstraintModel(unittest.TestCase):
         vindx, lp, c, A, b = self.lp_constraint_model_build_model(S)
         # TODO: Test created model or solve...
         verbose = False
-        res = solve(c, A, b, verbose)
+        #res = solve(c, A, b, verbose)
+        res = scipy.optimize.linprog(c, A_ub=A, b_ub=b,
+                                 options={"disp": verbose,
+                                          #"bland": True,
+                                          "tol": 1.0e-7,
+                                          "maxiter": 3000})
         for i in range(65-max(56,57)): # TODO change the index calculation to load data not my hand chosen numbers
             # check all the values between ages 56-65
             atleast = 100*S.i_rate**i
