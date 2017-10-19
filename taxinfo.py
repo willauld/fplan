@@ -32,7 +32,7 @@ singletax = [
     [91900,     99750,  0.28,   18713.75],
     [191650,    225050, 0.33,   46643.75],
     [416700,    1700,   0.35,   120910.25],
-    [418,400,   -2,     0.396,  121505.25]]
+    [418400,    -2,     0.396,  121505.25]]
 
 # Table Columns:
 # [braket $ start,
@@ -106,3 +106,7 @@ class taxinfo:
             self.capgainstable = marriedjointcapitalgains
             self.stded = marriedjointstded
             self.RMD = marriedjointRMD
+        #print('taxtable:\n', self.taxtable, '\n')
+        #print('capgainstable:\n', self.capgainstable, '\n')
+        #print('stded:\n', self.stded, '\n')
+        #print('RMD:\n', self.RMD, '\n')
