@@ -325,7 +325,7 @@ class Data:
                 fraamount = v['amount']
                 fraage = v['FRA']
                 agestr = v['age']
-                dt = {'key': k, 'amount': fraamount, 'fra': fraage, 'agestr': agestr, 'ageAtStart': r['ageAtStart']}
+                dt = {'key': k, 'amount': fraamount, 'fra': fraage, 'agestr': agestr, 'ageAtStart': r['ageAtStart'], 'currAge': r['age']}
                 if fraamount < 0 and sections == 1: # default spousal support in second slot
                     self.SSinput[1] = dt
                 else:
@@ -340,6 +340,7 @@ class Data:
                 fraage = self.SSinput[i]['fra']
                 fraamount = self.SSinput[i]['amount']
                 ageAtStart = self.SSinput[i]['ageAtStart']
+                currAge = self.SSinput[i]['currAge']
                 if fraamount < 0:
                     assert i == 1
                     fraamount = self.SSinput[0]['amount']/2 # spousal benefit is 1/2 spouses at FRA 
@@ -356,7 +357,7 @@ class Data:
                     elif year >= self.numyr:
                         break
                     else:
-                        adj_amount = amount * self.i_rate ** year
+                        adj_amount = amount * self.i_rate ** (age - currAge) #year
                         #print("age %d, year %d, bucket: %6.0f += amount %6.0f" %(age, year, bucket[year], adj_amount))
                         bucket[year] += adj_amount
 
@@ -375,7 +376,7 @@ class Data:
                         amount = v['amount']
                         #print("amount %6.0f, " % (amount), end='')
                         if v.get('inflation'):
-                            amount *= self.i_rate ** year
+                            amount *= self.i_rate ** (age - self.primAge) # year
                         #print("inf amount %6.0f, year %d, curbucket %6.0f" % (amount , year, bucket[year]), end='')
                         bucket[year] += amount
                         #print("newbucket %6.0f" % (bucket[year]))
