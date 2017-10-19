@@ -199,15 +199,13 @@ class Data:
                 index += 1
             return lis_return
 
-    def process_toml_info(self):
-
-        def get_retiree_info():
+    def get_retiree_info(this, S):## TODO fix the indentation for this method
             type = 'iam'
             indx = 0
             lis_return = []
             yearstoretire = [0,0]
             yearsthrough = [0,0]
-            for k,v in d.get( type , {}).items():
+            for k,v in S.get( type , {}).items():
                 entry = {}
                 entry['primary'] = v.get('primary', False) 
                 entry['index'] = indx
@@ -247,62 +245,7 @@ class Data:
             #print("delta: %d, start: %d, end: %d, numyr: %d" %(delta, start, end, end-start))
             return lis_return, start, end-start, lis_return[primaryIndx]['mykey'], secondarykey, delta, primAge
 
-        self.accounttable = []
-        d = json.loads(json.dumps(self.toml_dict)) #thread safe deep copy
-        #"""
-        #print("\n\nun tarnished dict: ", d)
-        #for f in d:
-        #    print("\ndict[%s] = " % (f),d[f])
-        #print()
-        #"""
-        
-        self.check_record( d, 'iam', ('age', 'retire', 'through', 'primary'))
-        self.check_record( d, 'SocialSecurity', ('FRA', 'age', 'amount'))
-        self.check_record( d, 'IRA', ('bal', 'rate', 'contrib', 'inflation', 'period'))
-        self.check_record( d, 'roth', ('bal', 'rate', 'contrib', 'inflation', 'period'))
-        self.check_record( d, 'aftertax', ('bal', 'rate', 'contrib', 'inflation', 'period', 'basis'))
-        self.check_record( d, 'expense', ('amount', 'age', 'inflation', 'tax'))
-        self.check_record( d, 'income', ('amount', 'age', 'inflation', 'tax'))
-        self.check_record( d, 'desired', ('amount', 'age', 'inflation', 'tax'))
-        self.check_record( d, 'max', ('amount', 'age', 'inflation', 'tax'))
-        #print("\n\ntarnished dict: ", d)
-        #for f in d:
-        #    print("\ndict[%s] = " % (f),d[f])
-        #print()
-        #exit(0)
-        self.retirement_type = d.get('retirement_type', 'joint') # single, joint, mseparate...
-        check_status_type(self.retirement_type)
-        self.tinfo.set_retirement_status(self.retirement_type)
-        #print('Retirement_type: %s'% self.retirement_type)
-        self.maximize = d.get('maximize',"Spending") # what to maximize for: Spending or PlusEstate 
-        # TODO varify correct input
-
-        self.i_rate = 1 + d.get('inflation', 0) / 100       # inflation rate: 2.5 -> 1.025
-        self.r_rate = 1 + d.get('returns', 6) / 100         # invest rate: 6 -> 1.06
-
-        self.retiree, self.startage, self.numyr, self.primary, self.secondary, self.delta, self.primAge = get_retiree_info() # returns entry for each retiree
-        #print("\nself.retiree: ", self.retiree, "\n\n")
-        
-        #print("input dictionary(processed): ", d)
-        self.accounttable += self.get_account_info(d, 'IRA') # returns entry for each account
-        self.accounttable += self.get_account_info(d, 'roth') 
-        self.accounttable += self.get_account_info(d, 'aftertax') 
-        #print("++Accounttable: ", self.accounttable)
-
-        self.accmap = {'IRA': 0, 'roth': 0, 'aftertax': 0}
-        for j in range(len(self.accounttable)):
-            self.accmap[self.accounttable[j]['acctype']] += 1
-        #print("Account Map ", self.accmap)
-
-        self.SSinput = [{}, {}] 
-        self.parse_expenses(d)
-
-        #print("input dictionary(processed): ", d)
-
-    def parse_expenses(self, S):
-        """ Return array of income/expense per year """
-
-        def startamount(amount, fra, start):
+    def startamount(self, amount, fra, start):
             if start > 70:
                 start = 70
             if start < 62:
@@ -312,7 +255,7 @@ class Data:
             if start >= fra:
                 return amount*(1.08**(start-fra))
 
-        def do_SS_details(bucket):
+    def do_SS_details(self, S, bucket):
             sections = 0
             index = 0
             type = 'SocialSecurity'
@@ -348,7 +291,7 @@ class Data:
                     amount = startamount(fraamount, fraage, min(disperseage,fraage))
                 else:
                     # alter amount for start age vs fra (minus if before fra and + is after)
-                    amount = startamount(fraamount, fraage, disperseage)
+                    amount = self.startamount(fraamount, fraage, disperseage)
                 #print("FRA: %d, FRAamount: %6.0f, Age: %s, amount: %6.0f" % (fraage, fraamount, agestr, amount))
                 for age in agelist(agestr):
                     year = age - ageAtStart #self.startage
@@ -361,7 +304,7 @@ class Data:
                         #print("age %d, year %d, bucket: %6.0f += amount %6.0f" %(age, year, bucket[year], adj_amount))
                         bucket[year] += adj_amount
 
-        def do_details(category, bucket, tax):
+    def do_details(self, S, category, bucket, tax):
             #print("CAT: %s" % category)
             for k,v in S.get(category, {}).items():
                 #print("K = %s, v = " % k,v)
@@ -383,18 +326,68 @@ class Data:
                         if tax is not None and v.get('tax'):
                             tax[year] += amount
 
+    def process_toml_info(self):
+        self.accounttable = []
+        d = json.loads(json.dumps(self.toml_dict)) #thread safe deep copy
+        #"""
+        #print("\n\nun tarnished dict: ", d)
+        #for f in d:
+        #    print("\ndict[%s] = " % (f),d[f])
+        #print()
+        #"""
+        
+        self.check_record( d, 'iam', ('age', 'retire', 'through', 'primary'))
+        self.check_record( d, 'SocialSecurity', ('FRA', 'age', 'amount'))
+        self.check_record( d, 'IRA', ('bal', 'rate', 'contrib', 'inflation', 'period'))
+        self.check_record( d, 'roth', ('bal', 'rate', 'contrib', 'inflation', 'period'))
+        self.check_record( d, 'aftertax', ('bal', 'rate', 'contrib', 'inflation', 'period', 'basis'))
+        self.check_record( d, 'expense', ('amount', 'age', 'inflation', 'tax'))
+        self.check_record( d, 'income', ('amount', 'age', 'inflation', 'tax'))
+        self.check_record( d, 'desired', ('amount', 'age', 'inflation', 'tax'))
+        self.check_record( d, 'max', ('amount', 'age', 'inflation', 'tax'))
+        #print("\n\ntarnished dict: ", d)
+        #for f in d:
+        #    print("\ndict[%s] = " % (f),d[f])
+        #print()
+        #exit(0)
+        self.retirement_type = d.get('retirement_type', 'joint') # single, joint, mseparate...
+        check_status_type(self.retirement_type)
+        self.tinfo.set_retirement_status(self.retirement_type)
+        #print('Retirement_type: %s'% self.retirement_type)
+        self.maximize = d.get('maximize',"Spending") # what to maximize for: Spending or PlusEstate 
+        # TODO varify correct input
+
+        self.i_rate = 1 + d.get('inflation', 0) / 100       # inflation rate: 2.5 -> 1.025
+        self.r_rate = 1 + d.get('returns', 6) / 100         # invest rate: 6 -> 1.06
+
+        self.retiree, self.startage, self.numyr, self.primary, self.secondary, self.delta, self.primAge = self.get_retiree_info(d) # returns entry for each retiree
+        #print("\nself.retiree: ", self.retiree, "\n\n")
+        
+        #print("input dictionary(processed): ", d)
+        self.accounttable += self.get_account_info(d, 'IRA') # returns entry for each account
+        self.accounttable += self.get_account_info(d, 'roth') 
+        self.accounttable += self.get_account_info(d, 'aftertax') 
+        #print("++Accounttable: ", self.accounttable)
+
+        self.accmap = {'IRA': 0, 'roth': 0, 'aftertax': 0}
+        for j in range(len(self.accounttable)):
+            self.accmap[self.accounttable[j]['acctype']] += 1
+        #print("Account Map ", self.accmap)
+
+        self.SSinput = [{}, {}] 
+
         INC = [0] * self.numyr
         EXP = [0] * self.numyr
         TAX = [0] * self.numyr
-        WANT = [0] * self.numyr
-        MAX = [0] * self.numyr
+        WANT = [0] * self.numyr # This should just be a single number TODO fixme
+        MAX = [0] * self.numyr # This should just be a single number TODO fixme
         SS = [0] * self.numyr
 
-        do_details("expense", EXP, None)
-        do_details("income", INC, TAX)
-        do_details("desired", WANT, None) # TODO move this from a vector to a single amount for starting year
-        do_details("max", MAX, None) # TODO move this from a vector to a single amount for starting year
-        do_SS_details(SS)
+        self.do_details(d, "expense", EXP, None)
+        self.do_details(d, "income", INC, TAX)
+        self.do_details(d, "desired", WANT, None) # TODO from a vector to a single amount for starting year
+        self.do_details(d, "max", MAX, None) # TODO move from a vector to a single amount for starting year
+        self.do_SS_details(d, SS)
 
         self.income = INC
         self.expenses = EXP 
