@@ -32,18 +32,6 @@ def precheck_consistancy():
             exit(1)
     return True
 
-def solve(c, A, b, verbose):
-
-    res = scipy.optimize.linprog(c, A_ub=A, b_ub=b,
-                                 options={"disp": verbose,
-                                          #"bland": True,
-                                          "tol": 1.0e-7,
-                                          "maxiter": 3000})
-    if res.success == False:
-        print(res)
-        exit(1)
-    return res
-
 def consistancy_check(res, years, taxbins, cgbins, accounts, accmap, vindx):
     # check to see if the ordinary tax brackets are filled in properly
     print()
@@ -523,7 +511,7 @@ if __name__ == '__main__':
     parser.add_argument('-1k', '--noroundingoutput', action='store_true',
                         help="Do not round the output to thousands")
     parser.add_argument('-V', '--version', action='version', version='%(prog)s Version '+__version__,
-                        help="Display the program version number")
+                        help="Display the program version number and exit")
     parser.add_argument('conffile', help='Require configuration input toml file')
     args = parser.parse_args()
     
@@ -536,7 +524,6 @@ if __name__ == '__main__':
     S = tomldata.Data(taxinfo)
     S.load_toml_file(args.conffile)
     S.process_toml_info()
-    #taxinfo = taxinfo(S.retirement_type)
     
     #print("\naccounttable: ", S.accounttable)
     
@@ -565,14 +552,22 @@ if __name__ == '__main__':
     if precheck_consistancy():
         model = lp.lp_constraint_model(S, vindx, taxinfo.taxtable, taxinfo.capgainstable, taxinfo.penalty, taxinfo.stded, taxinfo.SS_taxable, args.verbose)
         c, A, b = model.build_model()
-        res = solve(c, A, b, args.verbose)
+        res = scipy.optimize.linprog(c, A_ub=A, b_ub=b,
+                                 options={"disp": args.verbose,
+                                          #"bland": True,
+                                          "tol": 1.0e-7,
+                                          "maxiter": 3000})
         if args.verbosemodel or args.verbosemodelall:
             if res.success == False:
                 model.print_model_matrix(c, A, b, None, False)
+                print(res)
+                exit(1)
             else:
                 model.print_model_matrix(c, A, b, res.slack, non_binding_only)
-        if args.verbosewga:
+        if args.verbosewga or res.success == False:
             print(res)
+            if res.success == False:
+                exit(1)
         consistancy_check(res, years, taxbins, cgbins, accounts, S.accmap, vindx)
     
         print_model_results(res)
