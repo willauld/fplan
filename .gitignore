@@ -1,5 +1,6 @@
 *~
 *.out
+.vscode
 scott.toml
 AWill.toml
 will.toml
