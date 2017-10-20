@@ -484,7 +484,7 @@ class TestTomlInput(unittest.TestCase):
         S = tomldata.Data(taxinfo)
         S.load_toml_file(toml_file_name)
         S.process_toml_info()
-        # TEST ME
+        # TODO TEST ME
 
     def test_toml_input_start_amount(self):
         S = tomldata.Data(None)
@@ -524,6 +524,33 @@ class TestTomlInput(unittest.TestCase):
         spousecontrib = (21000 * (1.08**(70 - 67))) * 1.025**(70 - 54)
         expect = willcontrib + spousecontrib
         self.assertEqual(S.SS[72 - 58], expect)
+
+    # Assumes process_toml_info() has run
+    def test_toml_input_do_details(self):
+        toml_file_name = 't.toml'
+        tf = working_toml_file(toml_file_name)
+        taxinfo = tif.taxinfo()
+        S = tomldata.Data(taxinfo)
+        S.load_toml_file(toml_file_name)
+        S.process_toml_info()
+        #[income.mytaxfree] amount = 3000 age = "56-" inflation = false tax = false
+        #[income.rental_1] amount = 36000 age = "67-" inflation = true tax = true
+        #[income.rental_2] amount = 2400 age = "67-" inflation = true tax = true
+        # => let's check the INC when will is 65->INC[65-58] and 68->INC[68-58]
+        self.assertEqual(
+            S.income[65 - 58], 3000, msg='No Inflation so should equal configured amount')
+        self.assertEqual(
+            S.taxed[65 - 58], 0, msg='income.mytaxfree is not taxed so zero')
+        expect = 3000 + (36000 + 2400) * 1.025**(68 - 56)
+        taxexpect = expect - 3000
+        self.assertEqual(
+            S.income[68 - 58], expect, msg='Sum of mytaxfree and inflation adjusted rental_1 and rental_2')
+        self.assertEqual(
+            S.taxed[68 - 58], taxexpect, msg='Same as income minus mytaxfee')
+        # TODO Add test cases for the following. Need to convert max and want to single values first
+        #self.assertEqual(S.EXP[72 - 58], expect)
+        #self.assertEqual(S.MAX[72 - 58], expect)
+        #self.assertEqual(S.WANT[72 - 58], expect)
 
     # TODO add tests for:
     # - get_retiree_info()
