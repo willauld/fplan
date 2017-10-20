@@ -227,7 +227,7 @@ class TestLpConstraintModel(unittest.TestCase):
         vindx, lp, c, A, b = self.lp_constraint_model_build_model(S)
         # TODO: Test created model or solve...
 
-        # with open(self.bin_constraint_name, 'wb') as fil: # USE TO UPDATE THE BINARY 'GOOD' model
+        # with open(self.bin_constraint_name, 'wb') as fil:  # USE TO UPDATE THE BINARY 'GOOD' model
         #    pickle.dump([c, A, b], fil)
 
         with open(self.bin_constraint_name, 'rb') as fil:
@@ -250,8 +250,9 @@ class TestLpConstraintModel(unittest.TestCase):
         #print("result: ", result)
         inf.close()
 
-        # with open(self.model_matrix_name, 'wb') as fil1: # USE TO UPDATE THE BINARY 'GOOD' model matrix
-        #    pickle.dump(result, fil1)
+        # USE TO UPDATE THE BINARY 'GOOD' model matrix
+        # with open(self.model_matrix_name, 'wb') as fil1:
+        #   pickle.dump(result, fil1)
 
         with open(self.model_matrix_name, 'rb') as fil2:
             known_good = pickle.load(fil2)
@@ -475,12 +476,59 @@ class TestTomlInput(unittest.TestCase):
                     self.assertEqual(contrib * S.i_rate**(60 - 56), age60contrib,
                                      msg='Inflation so contrib values should increase each year with inflation')
 
-        # TODO add tests for: # may need to refactor to test encapulated functions
-        # - get_retiree_info()
-        # - startamount()
-        # - do_ss_details()
-        # - do_details()
-        # - process_toml_info()
+    # Assumes process_toml_info() has run
+    def test_toml_input_retiree_info(self):
+        toml_file_name = 't.toml'
+        tf = working_toml_file(toml_file_name)
+        taxinfo = tif.taxinfo()
+        S = tomldata.Data(taxinfo)
+        S.load_toml_file(toml_file_name)
+        S.process_toml_info()
+        # TEST ME
+
+    def test_toml_input_start_amount(self):
+        S = tomldata.Data(None)
+        amount = 12000
+        fra = 67
+        start = 62
+        a = S.startamount(amount, fra, start)
+        b = amount / (1.067**(fra - start))
+        self.assertEqual(a, b)
+        start = 70
+        a = S.startamount(amount, fra, start)
+        b = amount * (1.08**(start - fra))
+        self.assertEqual(a, b)
+        start = fra
+        a = S.startamount(amount, fra, start)
+        self.assertEqual(a, amount)
+        start = 61  # test 61 and should fail too young
+        a = S.startamount(amount, fra, start)
+        # will not go to 61, 62 is lower bound
+        b = amount / (1.067**(fra - 62))
+        self.assertEqual(a, b)
+
+    # Assumes process_toml_info() has run
+    def test_toml_input_do_ss_details(self):
+        toml_file_name = 't.toml'
+        tf = working_toml_file(toml_file_name)
+        taxinfo = tif.taxinfo()
+        S = tomldata.Data(taxinfo)
+        S.load_toml_file(toml_file_name)
+        S.process_toml_info()
+        # [iam.will] primary = true, age = 56, retire = 58, through = 72
+        # [SocialSecurity.will] amount = 31000 FRA = 67 age = "68-"
+        # [iam.spouse] primary = false, age = 54, retire = 60, through = 75
+        # [SocialSecurity.spouse] amount = 21000 FRA = 67 age = "70-"
+        # => let's check the SS when spouse is 70 and will is 72 ->SS[72-58]
+        willcontrib = (31000 * (1.08**(68 - 67))) * 1.025**(72 - 56)
+        spousecontrib = (21000 * (1.08**(70 - 67))) * 1.025**(70 - 54)
+        expect = willcontrib + spousecontrib
+        self.assertEqual(S.SS[72 - 58], expect)
+
+    # TODO add tests for:
+    # - get_retiree_info()
+    # - do_details()
+    # - process_toml_info()
 
 
 if __name__ == '__main__':
