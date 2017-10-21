@@ -53,17 +53,11 @@ age = "67-"
 inflation = true
 tax = true          # count this as income tax
 
-#[desired.income]
+#[min.income]
 #amount = 45000    # want $120,000 per year
-#age = "68-"
-#inflation = true
-#tax = true          # count this as income tax
 
 #[max.income]
 #amount = 150000
-#age = "68-"
-#inflation = true
-#tax = false 
 
 # after tax savings accounts
 [aftertax]

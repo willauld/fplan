@@ -49,17 +49,11 @@ through = 75    # age you want to plan through
 #inflation = true   # inflation adjusted
 #tax = true         # federally taxable
 
-#[desired.income]   # used when maximize = "PlusEstate"
+#[min.income]   # used when maximize = "PlusEstate"
 #amount = 45_000    # retirement first year income
-#age = "68-"        # period you expect to receive it TODO **** remove
-#inflation = true   # inflation adjusted TODO **** remove
-#tax = true         # federally taxable TODO **** remove
 
 #[max.income]       # used when maximize = "Spendable" (default)
 #amount = 100_000   # retirement first year income
-#age = "68-"        # period you wh TODO **** remove
-#inflation = true TODO **** remove
-#tax = false  TODO **** remove
 
 # pre-tax IRA accounts (TDRA)
 [IRA.retiree1]
