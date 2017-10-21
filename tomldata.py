@@ -326,6 +326,14 @@ class Data:
                         if tax is not None and v.get('tax'):
                             tax[year] += amount
 
+    def get_section_amount(self, S, category):
+        amount = 0
+        #print("CAT: %s" % category)
+        for k,v in S.get(category, {}).items():
+            #print("K = %s, v = " % k,v)
+            amount = v['amount']
+        return amount
+
     def process_toml_info(self):
         self.accounttable = []
         d = json.loads(json.dumps(self.toml_dict)) #thread safe deep copy
@@ -343,8 +351,8 @@ class Data:
         self.check_record( d, 'aftertax', ('bal', 'rate', 'contrib', 'inflation', 'period', 'basis'))
         self.check_record( d, 'expense', ('amount', 'age', 'inflation', 'tax'))
         self.check_record( d, 'income', ('amount', 'age', 'inflation', 'tax'))
-        self.check_record( d, 'desired', ('amount', 'age', 'inflation', 'tax'))
-        self.check_record( d, 'max', ('amount', 'age', 'inflation', 'tax'))
+        self.check_record( d, 'min', ('amount'))
+        self.check_record( d, 'max', ('amount'))
         #print("\n\ntarnished dict: ", d)
         #for f in d:
         #    print("\ndict[%s] = " % (f),d[f])
@@ -379,19 +387,29 @@ class Data:
         INC = [0] * self.numyr
         EXP = [0] * self.numyr
         TAX = [0] * self.numyr
-        WANT = [0] * self.numyr # This should just be a single number TODO fixme
-        MAX = [0] * self.numyr # This should just be a single number TODO fixme
+        #WANT = [0] * self.numyr # This should just be a single number TODO fixme
+        #MAX = [0] * self.numyr # This should just be a single number TODO fixme
         SS = [0] * self.numyr
 
         self.do_details(d, "expense", EXP, None)
         self.do_details(d, "income", INC, TAX)
-        self.do_details(d, "desired", WANT, None) # TODO from a vector to a single amount for starting year
-        self.do_details(d, "max", MAX, None) # TODO move from a vector to a single amount for starting year
+        self.min = self.get_section_amount(d, "min") 
+        if self.min > 0:
+            if self.maximize != 'PlusEstate':
+                print('Error - Configured Minimum desired Spending (${:0_.0f}) is only valid with \"maximize=\'PlusEstate\'\" however maximize currently set to \'{}\''.format(self.min, self.maximize))
+                exit(1)
+        self.max = self.get_section_amount(d, "max") 
+        if self.max > 0:
+            if self.maximize != 'Spending':
+                print('Error - Configured Maximum desired Spending (${:0_.0f}) is only valid with \"maximize=\'Spinding\'\" however maximize currently set to \'{}\''.format(self.max, self.maximize))
+                #print('Error - Configured Maximum desired Spending is only valid with \"maximize=\'Spinding\'\"')
+                exit(1)
         self.do_SS_details(d, SS)
 
         self.income = INC
         self.expenses = EXP 
         self.taxed = TAX
-        self.desired = WANT
-        self.max = MAX
+        #self.desired = WANT
+        #self.max = MAX
+        #print('MAX: ', self.max)
         self.SS = SS 

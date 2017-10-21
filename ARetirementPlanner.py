@@ -470,15 +470,21 @@ def get_result_totals(res):
         tearlytax += earlytax
         tT += T
         tspendable += spendable
-    return twithd, tincome+twithd, tT, ttax, tcg_tax, tearlytax, tspendable
+    tbeginbal = 0; tendbal = 0
+    for j in range(len(S.accounttable)):
+        tbeginbal += res.x[vindx.b(0,j)]
+        #balance for the year following the last year
+        tendbal += res.x[vindx.b(S.numyr,j)] 
+
+    return twithd, tincome+twithd, tT, ttax, tcg_tax, tearlytax, tspendable, tbeginbal, tendbal
 
 def print_base_config(res):
-    totwithd, tincome, tTaxable, tincometax, tcg_tax, tearlytax, tspendable = get_result_totals(res)
+    totwithd, tincome, tTaxable, tincometax, tcg_tax, tearlytax, tspendable, tbeginbal, tendbal = get_result_totals(res)
     ao.output("\n")
-    ao.output("Optimized for %s with %s status\n" % (S.maximize, S.retirement_type))
-    ao.output('Minium desired: ${:0_.0f}\n'.format(S.desired[0]))
-    ao.output('Maximum desired: ${:0_.0f}\n'.format(S.max[0]))
-    ao.output('After tax yearly income: ${:0_.0f} adjusting for inflation\n'.format(res.x[vindx.s(0)]))
+    ao.output("Optimized for {} with {} status starting with an estate of ${:_.0f}\n".format(S.maximize, S.retirement_type, tbeginbal))
+    ao.output('Minium desired: ${:0_.0f}\n'.format(S.min))
+    ao.output('Maximum desired: ${:0_.0f}\n'.format(S.max))
+    ao.output('After tax yearly income: ${:0_.0f} adjusting for inflation and final estate of ${:_.0f}\n'.format(res.x[vindx.s(0)], tendbal))
     ao.output("\n")
     ao.output('total withdrawals: ${:0_.0f}\n'.format(totwithd))
     ao.output('total ordinary taxable income ${:_.0f}\n'.format(tTaxable))

@@ -107,22 +107,22 @@ class lp_constraint_model:
         # Add constrant (4') rows - not needed if [desired.income] is not defined in input
         #
         #"""
-        if S.desired[0] != 0:
+        if S.min != 0:
             for year in range(1): # Only needs setting at the beginning
                 row = [0] * nvars
                 row[vindx.s(year)] = -1
                 A+=[row]
-                b+=[ - S.desired[year] ]     # [- d_i]
+                b+=[ - S.min ]     # [- d_i]
     
         #
         # Add constraints for (5') rows - not added if [max.income] is not defined in input
         #
-        if S.max[0] != 0:
+        if S.max != 0:
             for year in range(1): # Only needs to be set at the beginning
                 row = [0] * nvars
                 row[vindx.s(year)] = 1
                 A+=[row]
-                b+=[ S.max[year] ]     # [ dm_i]
+                b+=[ S.max ]     # [ dm_i]
     
         #
         # Add constaints for (6') rows
