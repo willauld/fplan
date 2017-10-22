@@ -3,28 +3,17 @@ import os
 import pickle
 import unittest
 import json
+import argparse
 import toml
 import scipy.optimize
-#import taxinfo
 import vector_var_index as v
 import app_output
 import taxinfo as tif
 import lp_constraint_model as lpclass
 import tomldata
-#from ARetirementPlanner import solve
+#import cfg_master  #has the optparse option-handling code
 
-
-class working_toml_file:
-    def __init__(self, filename):
-        self.toml_file_name = filename
-        #self.toml_file_name = 'self_temp_toml.toml'
-        self.write_working_toml_file()
-
-    def original_toml_string(self):
-        return self.tomls
-
-    def write_working_toml_file(self):
-        self.tomls = """
+orig_tomls = """
 returns = 6
 inflation = 2.5
 [aftertax]
@@ -76,16 +65,36 @@ bal = 200000
 bal = 100000
 contrib = 0
         """
+
+class working_toml_file:
+    def __init__(self, filename, skip_file_write=None, skip_file_delete=None):
+        self.toml_file_name = filename
+        #self.toml_file_name = 'self_temp_toml.toml'
+        self.tomls = orig_tomls
+        if skip_file_write is None or skip_file_write == False:
+            self.write_working_toml_file(self.tomls)
+        self.skip_file_delete = False
+        if skip_file_delete is not None and skip_file_delete is True:
+            self.skip_file_delete = True
+
+    def toml_dict(self, dict=None):
+        if dict is None:
+            toml_dict = toml.loads(self.tomls)
+            return toml_dict
+        self.tomls = toml.dumps(dict)
+
+    def write_working_toml_file(self, use_tomls):
         self.toml_file = open(self.toml_file_name, 'w')
-        self.toml_file.write(self.tomls)
+        self.toml_file.write(use_tomls)
         # self.toml_file.flush()
         self.toml_file.close()
 
     def __del__(self):
-        try:
-            os.remove(self.toml_file_name)
-        except OSError as e:  # if failed, report it back to the user ##
-            print("Error: %s - %s." % (e.filename, e.strerror))
+        if self.skip_file_delete is False:
+            try:
+                os.remove(self.toml_file_name)
+            except OSError as e:  # if failed, report it back to the user ##
+                print("WGA Error: %s - %s." % (e.filename, e.strerror))
 
 
 class TestIndexes(unittest.TestCase):
@@ -265,6 +274,51 @@ class TestLpConstraintModel(unittest.TestCase):
             print("Error: %s - %s." % (e.filename, e.strerror))
 
 
+class TestInputThroughSolver(unittest.TestCase):
+    def __init__(self, other):
+        #self.taxinfo = tif.taxinfo()
+        super().__init__(other)
+
+    def test_input_through_solver_joint_first_year_spinding(self):
+        pass
+    def test_input_through_solver_mseparate_first_year_spinding(self):
+        pass
+    def test_input_through_solver_single_first_year_spinding(self):
+        toml_file_name = 't.toml'
+        skipfilewrite = True
+        tf = working_toml_file(toml_file_name, skipfilewrite)
+        dict =tf.toml_dict()
+        dict['retirement_type'] = 'single'
+        tf.toml_dict(dict) # update tf.tomls
+        tf.write_working_toml_file(tf.tomls)
+        taxinfo = tif.taxinfo()
+        S = tomldata.Data(taxinfo)
+        S.load_toml_file(toml_file_name)
+        S.process_toml_info()
+
+        years = S.numyr
+        taxbins = len(taxinfo.taxtable)
+        cgbins = len(taxinfo.capgainstable)
+        accounts = len(S.accounttable)
+        verbose = False
+        vindx = v.vector_var_index(years, taxbins, cgbins, accounts, S.accmap)
+        lp = lpclass.lp_constraint_model(S, vindx, taxinfo.taxtable,
+                                        taxinfo.capgainstable,
+                                        taxinfo.penalty, 
+                                        taxinfo.stded, 
+                                        taxinfo.SS_taxable, verbose)
+        c, A, b = lp.build_model()
+
+        res = scipy.optimize.linprog(c, A_ub=A, b_ub=b,
+                                     options={"disp": verbose,
+                                              #"bland": True,
+                                              "tol": 1.0e-7,
+                                              "maxiter": 3000})
+        # If we get this far test the output
+        year = 0
+        self.assertEqual(res.x[vindx.s(year)], 0, msg='I don\'t know how much yet but solver says ${:0_.0f}'.format(res.x[vindx.s(year)]))
+
+
 class TestTomlInput(unittest.TestCase):
     """ Tests to ensure we are getting the correct and needed input from toml configuration file """
 
@@ -280,10 +334,38 @@ class TestTomlInput(unittest.TestCase):
         tf = working_toml_file(toml_file_name)
         taxinfo = tif.taxinfo()
         S = tomldata.Data(taxinfo)
-        #S = tomldata.Data()
         S.load_toml_file(toml_file_name)
-        self.assertEqual(tf.original_toml_string().lstrip(
-        ).rstrip(), toml.dumps(S.toml_dict).rstrip())
+        s1 = tf.tomls.lstrip().rstrip()
+        s2 = toml.dumps(S.toml_dict).rstrip()
+        self.assertEqual(s1, s2)
+
+    def test_toml_input_load_missing_toml_file_will_fail(self):
+        toml_file_name = 't.toml'
+        # Since the next two lines stops the toml file from 
+        # being written in the background it must be explicitly
+        # written or will not exist as in this test.
+        skipfilewrite = True
+        tf = working_toml_file(toml_file_name, skipfilewrite)
+        taxinfo = tif.taxinfo()
+        S = tomldata.Data(taxinfo)
+        expect_exception = FileNotFoundError(2,'No such file or directory: \'t.toml\'')
+        with self.assertRaises(OSError) as cm:
+            S.load_toml_file(toml_file_name) #This should fail
+        self.assertEqual(str(cm.exception), str(expect_exception))
+
+    def test_toml_input_load_update_dictionary(self):
+        toml_file_name = 't.toml'
+        skipfilewrite = True
+        tf = working_toml_file(toml_file_name, skipfilewrite)
+        dict =tf.toml_dict()
+        dict['retirement_type'] = 'single'
+        tf.toml_dict(dict) # update tf.tomls
+        tf.write_working_toml_file(tf.tomls)
+        taxinfo = tif.taxinfo()
+        S = tomldata.Data(taxinfo)
+        S.load_toml_file(toml_file_name)
+        S.process_toml_info()
+        self.assertEqual(S.retirement_type, 'single', msg='Explicitly setting retirement_type to single so it should match')
 
     def test_toml_input_process_toml_info(self):
         toml_file_name = 't.toml'
@@ -559,4 +641,29 @@ class TestTomlInput(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    #add you app's options here...
+    # Help:
+    # -ctoml filename or --createtomlfile filename
+    options_tpl = ('-ctoml', '--createtomlfile')
+    del_lst = []
+    nameindex = -1
+    filename = None
+    for i,option in enumerate(sys.argv):
+        #print('i/option: ', i, '/', option)
+        if i == nameindex:
+            filename = option
+        if option in options_tpl:
+            nameindex = i+1
+            del_lst.append(i)
+            del_lst.append(i+1) # I don't understand these append(i)
+
+    del_lst.reverse()
+    for i in del_lst:
+        del sys.argv[i]
+    #print('filename: ', filename)
+    #print('sys.argv: ', sys.argv)
+
+    if filename is None:
+        unittest.main()
+    else:
+        tf = working_toml_file(filename, skip_file_delete = True)
