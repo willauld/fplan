@@ -254,8 +254,8 @@ def print_tax(res):
             if S.primary != 'nokey':
                 ao.output("%s\n" % (S.primary))
             ao.output(" age ")
-        ao.output(("@%7s" * 13) %
-          ("fIRA", "TxbleO", "TxbleSS", "deduct", "T_inc", "earlyP", "fedtax", "mTaxB%", "fAftaTx", "cgTax%", "cgTax", "TFedTax", "spndble" ))
+        ao.output(("@%7s" * 15) %
+          ("fIRA", "tIRA", "TxbleO", "TxbleSS", "deduct", "T_inc", "earlyP", "fedtax", "mTaxB%", "fAftaTx", "tAftaTx", "cgTax%", "cgTax", "TFedTax", "spndble" ))
         ao.output("\n")
 
     ao.output("\nTax Summary:\n\n")
@@ -267,8 +267,10 @@ def print_tax(res):
         f = model.cg_taxable_fraction(year)
         ttax = tax + cg_tax +earlytax
         withdrawal = {'IRA': 0, 'roth': 0, 'aftertax': 0}
+        deposit = {'IRA': 0, 'roth': 0, 'aftertax': 0}
         for j in range(len(S.accounttable)):
             withdrawal[S.accounttable[j]['acctype']] += res.x[vindx.w(year,j)]
+            deposit[S.accounttable[j]['acctype']] += res.x[vindx.D(year,j)]
         if S.secondary != "":
             ao.output("%3d/%3d:" % (year+S.startage, year+S.startage-S.delta))
         else:
@@ -276,11 +278,11 @@ def print_tax(res):
         star = ' '
         if rothearly:
             star = '*'
-        ao.output(("@%7.0f" * 5 + "@%6.0f%c" * 1 + "@%7.0f" * 7 ) %
-              ( withdrawal['IRA']/OneK, # sum IRA
+        ao.output(("@%7.0f" * 6 + "@%6.0f%c" * 1 + "@%7.0f" * 8 ) %
+              ( withdrawal['IRA']/OneK, deposit['IRA']/OneK, # sum IRA
               S.taxed[year]/OneK, taxinfo.SS_taxable*S.SS[year]/OneK,
               taxinfo.stded*i_mul/OneK, T/OneK, earlytax/OneK, star, tax/OneK, rate*100, 
-                withdrawal['aftertax']/OneK, # sum Aftertax
+                withdrawal['aftertax']/OneK, deposit['aftertax']/OneK,#Aftertax
               f*100, cg_tax/OneK,
               ttax/OneK, res.x[vindx.s(year)]/OneK ))
         ao.output("\n")
@@ -303,7 +305,7 @@ def print_tax_brackets(res):
             if S.primary != 'nokey':
                 ao.output("%s\n" % (S.primary))
             ao.output(" age ")
-        ao.output(("@%7s" * 6) % ("fIRA", "TxbleO", "TxbleSS", "deduct", "T_inc", "fedtax"))
+        ao.output(("@%7s" * 7) % ("fIRA", "tIRA", "TxbleO", "TxbleSS", "deduct", "T_inc", "fedtax"))
         for k in range(len(taxinfo.taxtable)):
             ao.output("@brckt%d" % k)
         ao.output("@brkTot\n")
@@ -319,9 +321,14 @@ def print_tax_brackets(res):
             ao.output("%3d/%3d:" % (year+S.startage, year+S.startage-S.delta))
         else:
             ao.output(" %3d:" % (year+S.startage))
-        ao.output(("@%7.0f" * 6 ) %
+        withdrawal = {'IRA': 0, 'roth': 0, 'aftertax': 0}
+        deposit = {'IRA': 0, 'roth': 0, 'aftertax': 0}
+        for j in range(len(S.accounttable)):
+            withdrawal[S.accounttable[j]['acctype']] += res.x[vindx.w(year,j)]
+            deposit[S.accounttable[j]['acctype']] += res.x[vindx.D(year,j)]
+        ao.output(("@%7.0f" * 7 ) %
               (
-              res.x[vindx.w(year,0)]/OneK, # IRA
+              withdrawal['IRA']/OneK, deposit['IRA']/OneK, # IRA
               S.taxed[year]/OneK, taxinfo.SS_taxable*S.SS[year]/OneK,
               taxinfo.stded*i_mul/OneK, T/OneK, tax/OneK) )
         bt = 0
@@ -348,7 +355,7 @@ def print_cap_gains_brackets(res):
             if S.primary != 'nokey':
                 ao.output("%s\n" % (S.primary))
             ao.output(" age ")
-        ao.output(("@%7s" * 5) % ("fAftaTx","cgTax%", "cgTaxbl", "T_inc", "cgTax"))
+        ao.output(("@%7s" * 6) % ("fAftaTx", "tAftaTx", "cgTax%", "cgTaxbl", "T_inc", "cgTax"))
         for l in range(len(taxinfo.capgainstable)):
             ao.output("@brckt%d" % l)
         ao.output("@brkTot\n")
@@ -365,6 +372,7 @@ def print_cap_gains_brackets(res):
             f = model.cg_taxable_fraction(year)
             j = len(S.accounttable)-1 # Aftertax / investment account always the last entry when present
             atw = res.x[vindx.w(year,j)]/OneK # Aftertax / investment account
+            atd = res.x[vindx.D(year,j)]/OneK # Aftertax / investment account
             att = (f*res.x[vindx.w(year,j)])/OneK # non-basis fraction / cg taxable $ 
         T,spendable,tax,rate,cg_tax,earlytax,rothearly = IncomeSummary(year)
         ttax = tax + cg_tax
@@ -372,9 +380,9 @@ def print_cap_gains_brackets(res):
             ao.output("%3d/%3d:" % (year+S.startage, year+S.startage-S.delta))
         else:
             ao.output(" %3d:" % (year+S.startage))
-        ao.output(("@%7.0f" * 5 ) %
+        ao.output(("@%7.0f" * 6 ) %
               (
-              atw, # Aftertax / investment account
+              atw, atd, # Aftertax / investment account
               f*100, att, # non-basis fraction / cg taxable $ 
               T/OneK, cg_tax/OneK))
         bt = 0
