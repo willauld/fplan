@@ -280,9 +280,77 @@ class TestInputThroughSolver(unittest.TestCase):
         super().__init__(other)
 
     def test_input_through_solver_joint_first_year_spinding(self):
-        pass
+        toml_file_name = 't.toml'
+        skipfilewrite = True
+        tf = working_toml_file(toml_file_name, skipfilewrite)
+        dict =tf.toml_dict()
+        dict['retirement_type'] = 'joint'
+        tf.toml_dict(dict) # update tf.tomls
+        tf.write_working_toml_file(tf.tomls)
+        taxinfo = tif.taxinfo()
+        S = tomldata.Data(taxinfo)
+        S.load_toml_file(toml_file_name)
+        S.process_toml_info()
+
+        years = S.numyr
+        taxbins = len(taxinfo.taxtable)
+        cgbins = len(taxinfo.capgainstable)
+        accounts = len(S.accounttable)
+        verbose = False
+        vindx = v.vector_var_index(years, taxbins, cgbins, accounts, S.accmap)
+        lp = lpclass.lp_constraint_model(S, vindx, taxinfo.taxtable,
+                                        taxinfo.capgainstable,
+                                        taxinfo.penalty, 
+                                        taxinfo.stded, 
+                                        taxinfo.SS_taxable, verbose)
+        c, A, b = lp.build_model()
+
+        res = scipy.optimize.linprog(c, A_ub=A, b_ub=b,
+                                     options={"disp": verbose,
+                                              #"bland": True,
+                                              "tol": 1.0e-7,
+                                              "maxiter": 3000})
+        # If we get this far test the output
+        year = 0
+        verifiedSolverResult = 224289.687
+        self.assertEqual(round(res.x[vindx.s(year)],3), round(verifiedSolverResult,3), msg='Verified solver result is ${:0_.3f} but here we got ${:0_.3f}'.format(verifiedSolverResult, res.x[vindx.s(year)]))
+
     def test_input_through_solver_mseparate_first_year_spinding(self):
-        pass
+        toml_file_name = 't.toml'
+        skipfilewrite = True
+        tf = working_toml_file(toml_file_name, skipfilewrite)
+        dict =tf.toml_dict()
+        dict['retirement_type'] = 'mseparate'
+        tf.toml_dict(dict) # update tf.tomls
+        tf.write_working_toml_file(tf.tomls)
+        taxinfo = tif.taxinfo()
+        S = tomldata.Data(taxinfo)
+        S.load_toml_file(toml_file_name)
+        S.process_toml_info()
+
+        years = S.numyr
+        taxbins = len(taxinfo.taxtable)
+        cgbins = len(taxinfo.capgainstable)
+        accounts = len(S.accounttable)
+        verbose = False
+        vindx = v.vector_var_index(years, taxbins, cgbins, accounts, S.accmap)
+        lp = lpclass.lp_constraint_model(S, vindx, taxinfo.taxtable,
+                                        taxinfo.capgainstable,
+                                        taxinfo.penalty, 
+                                        taxinfo.stded, 
+                                        taxinfo.SS_taxable, verbose)
+        c, A, b = lp.build_model()
+
+        res = scipy.optimize.linprog(c, A_ub=A, b_ub=b,
+                                     options={"disp": verbose,
+                                              #"bland": True,
+                                              "tol": 1.0e-7,
+                                              "maxiter": 3000})
+        # If we get this far test the output
+        year = 0
+        verifiedSolverResult = 210482.912
+        self.assertEqual(round(res.x[vindx.s(year)],3), round(verifiedSolverResult,3), msg='Verified solver result is ${:0_.3f} but here we got ${:0_.3f}'.format(verifiedSolverResult, res.x[vindx.s(year)]))
+
     def test_input_through_solver_single_first_year_spinding(self):
         toml_file_name = 't.toml'
         skipfilewrite = True
@@ -316,7 +384,8 @@ class TestInputThroughSolver(unittest.TestCase):
                                               "maxiter": 3000})
         # If we get this far test the output
         year = 0
-        self.assertEqual(res.x[vindx.s(year)], 0, msg='I don\'t know how much yet but solver says ${:0_.0f}'.format(res.x[vindx.s(year)]))
+        verifiedSolverResult = 213173.818
+        self.assertEqual(round(res.x[vindx.s(year)],3), round(verifiedSolverResult,3), msg='Verified solver result is ${:0_.3f} but here we got ${:0_.3f}'.format(verifiedSolverResult, res.x[vindx.s(year)]))
 
 
 class TestTomlInput(unittest.TestCase):
