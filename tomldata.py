@@ -288,7 +288,7 @@ class Data:
                     assert i == 1
                     fraamount = self.SSinput[0]['amount']/2 # spousal benefit is 1/2 spouses at FRA 
                     # alter amount for start age vs fra (minus if before fra and + is after)
-                    amount = startamount(fraamount, fraage, min(disperseage,fraage))
+                    amount = self.startamount(fraamount, fraage, min(disperseage,fraage))
                 else:
                     # alter amount for start age vs fra (minus if before fra and + is after)
                     amount = self.startamount(fraamount, fraage, disperseage)
@@ -353,10 +353,11 @@ class Data:
         self.check_record( d, 'income', ('amount', 'age', 'inflation', 'tax'))
         self.check_record( d, 'min', ('amount'))
         self.check_record( d, 'max', ('amount'))
+        self.check_record( d, 'asset', ('value', 'costAndImprovements', 'ageToSell', 'owedAtAgeToSell', 'primaryResidence', 'rate'))
         #print("\n\ntarnished dict: ", d)
-        #for f in d:
-        #    print("\ndict[%s] = " % (f),d[f])
-        #print()
+        for f in d:
+            print("\ndict[%s] = " % (f),d[f])
+        print()
         #exit(0)
         self.retirement_type = d.get('retirement_type', 'joint') # single, joint, mseparate...
         check_status_type(self.retirement_type)
@@ -387,8 +388,6 @@ class Data:
         INC = [0] * self.numyr
         EXP = [0] * self.numyr
         TAX = [0] * self.numyr
-        #WANT = [0] * self.numyr # This should just be a single number TODO fixme
-        #MAX = [0] * self.numyr # This should just be a single number TODO fixme
         SS = [0] * self.numyr
 
         self.do_details(d, "expense", EXP, None)
@@ -409,7 +408,7 @@ class Data:
         self.income = INC
         self.expenses = EXP 
         self.taxed = TAX
-        #self.desired = WANT
-        #self.max = MAX
-        #print('MAX: ', self.max)
         self.SS = SS 
+
+        self.assets = d.get('asset', {})
+        print('assets: ', self.assets)
