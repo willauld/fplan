@@ -236,8 +236,8 @@ class TestLpConstraintModel(unittest.TestCase):
         vindx, lp, c, A, b = self.lp_constraint_model_build_model(S)
         # TODO: Test created model or solve...
 
-        # with open(self.bin_constraint_name, 'wb') as fil:  # USE TO UPDATE THE BINARY 'GOOD' model
-        #    pickle.dump([c, A, b], fil)
+        #with open(self.bin_constraint_name, 'wb') as fil:  # USE TO UPDATE THE BINARY 'GOOD' model
+        #   pickle.dump([c, A, b], fil)
 
         with open(self.bin_constraint_name, 'rb') as fil:
             [nc, nA, nb] = pickle.load(fil)
@@ -260,8 +260,8 @@ class TestLpConstraintModel(unittest.TestCase):
         inf.close()
 
         # USE TO UPDATE THE BINARY 'GOOD' model matrix
-        # with open(self.model_matrix_name, 'wb') as fil1:
-        #   pickle.dump(result, fil1)
+        #with open(self.model_matrix_name, 'wb') as fil1:
+        #    pickle.dump(result, fil1)
 
         with open(self.model_matrix_name, 'rb') as fil2:
             known_good = pickle.load(fil2)
@@ -312,7 +312,7 @@ class TestInputThroughSolver(unittest.TestCase):
                                               "maxiter": 3000})
         # If we get this far test the output
         year = 0
-        verifiedSolverResult = 224289.687
+        verifiedSolverResult = 224849.907
         self.assertEqual(round(res.x[vindx.s(year)],3), round(verifiedSolverResult,3), msg='Verified solver result is ${:0_.3f} but here we got ${:0_.3f}'.format(verifiedSolverResult, res.x[vindx.s(year)]))
 
     def test_input_through_solver_mseparate_first_year_spinding(self):
@@ -348,7 +348,7 @@ class TestInputThroughSolver(unittest.TestCase):
                                               "maxiter": 3000})
         # If we get this far test the output
         year = 0
-        verifiedSolverResult = 210482.912
+        verifiedSolverResult = 211577.468
         self.assertEqual(round(res.x[vindx.s(year)],3), round(verifiedSolverResult,3), msg='Verified solver result is ${:0_.3f} but here we got ${:0_.3f}'.format(verifiedSolverResult, res.x[vindx.s(year)]))
 
     def test_input_through_solver_single_first_year_spinding(self):
@@ -384,7 +384,7 @@ class TestInputThroughSolver(unittest.TestCase):
                                               "maxiter": 3000})
         # If we get this far test the output
         year = 0
-        verifiedSolverResult = 213173.818
+        verifiedSolverResult = 214301.316
         self.assertEqual(round(res.x[vindx.s(year)],3), round(verifiedSolverResult,3), msg='Verified solver result is ${:0_.3f} but here we got ${:0_.3f}'.format(verifiedSolverResult, res.x[vindx.s(year)]))
 
 

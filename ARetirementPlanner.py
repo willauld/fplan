@@ -291,9 +291,9 @@ def print_tax(res):
 def print_tax_brackets(res):
     def printheader_tax_brackets():
         if S.secondary != "":
-            ao.output("@@@@@@%50s" % "Marginal Rate(%):")
+            ao.output("@@@@@@%58s" % "Marginal Rate(%):")
         else:
-            ao.output("@@@@@@%47s" % "Marginal Rate(%):")
+            ao.output("@@@@@@%55s" % "Marginal Rate(%):")
         for k in range(len(taxinfo.taxtable)):
             (cut, size, rate, base) = taxinfo.taxtable[k]
             ao.output("@%6.0f" % (rate*100))
@@ -341,9 +341,9 @@ def print_tax_brackets(res):
 def print_cap_gains_brackets(res):
     def printheader_capgains_brackets():
         if S.secondary != "":
-            ao.output("@@@@@@%42s" % "Marginal Rate(%):")
+            ao.output("@@@@@@%50s" % "Marginal Rate(%):")
         else:
-            ao.output("@@@@@%40s" % " Marginal Rate(%):")
+            ao.output("@@@@@%49s" % " Marginal Rate(%):")
         for l in range(len(taxinfo.capgainstable)):
             (cut, size, rate) = taxinfo.capgainstable[l]
             ao.output("@%6.0f" % (rate*100))
@@ -373,7 +373,7 @@ def print_cap_gains_brackets(res):
             j = len(S.accounttable)-1 # Aftertax / investment account always the last entry when present
             atw = res.x[vindx.w(year,j)]/OneK # Aftertax / investment account
             atd = res.x[vindx.D(year,j)]/OneK # Aftertax / investment account
-            att = (f*res.x[vindx.w(year,j)])/OneK # non-basis fraction / cg taxable $ 
+            att = (f*res.x[vindx.w(year,j)]+S.cg_taxed[year])/OneK # non-basis fraction / cg taxable $ 
         T,spendable,tax,rate,cg_tax,earlytax,rothearly = IncomeSummary(year)
         ttax = tax + cg_tax
         if S.secondary != "":
@@ -414,7 +414,7 @@ def OrdinaryTaxable(year):
         if S.accounttable[j]['acctype'] == 'IRA':
             withdrawals += res.x[vindx.w(year,j)]
             deposits += res.x[vindx.D(year,j)]
-    T = withdrawals - deposits + S.taxed[year] + taxinfo.SS_taxable*S.SS[year] -(taxinfo.stded*S.i_rate**year)
+    T = withdrawals - deposits + S.taxed[year] + taxinfo.SS_taxable*S.SS[year] -(taxinfo.stded*S.i_rate**(S.preplanyears+year))
     if T < 0:
         T = 0
     return T

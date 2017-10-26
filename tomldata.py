@@ -334,6 +334,27 @@ class Data:
             amount = v['amount']
         return amount
 
+    def prepare_assets(self, S, INC, CGTAX):
+        #assets = d.get('asset', {})
+        exemption = 0 # TODO move this to taxinfo.py
+        for k,v in S.get('asset', {}).items():
+            sellprice = v['value'] * (1 + v['rate']/100)**(v['ageToSell'] - self.primAge)
+            income = sellprice - v['owedAtAgeToSell']
+            cgtaxable = sellprice - v['costAndImprovements'] 
+            #print('Asset sell price ${:_.0f}, income ${:_.0f}, cgtaxable ${:_.0f}'.format(sellprice, income, cgtaxable))
+            if v['primaryResidence']:
+                cgtaxable -= exemption
+            year = v['ageToSell'] - self.startage
+            if year > self.numyr:
+                print('Asset ({}) sell year is at age {}. This is passed the planning horizon.\nPlease correct configuration file.'.format(k, v['ageToSell']))
+                exit(1)
+            if income > 0:
+                # TODO must be an aftertax account, ensure there is here!
+                print('HHHEEELLLLPPPP')
+                pass
+            INC[year] += income
+            CGTAX[year] += cgtaxable
+
     def process_toml_info(self):
         self.accounttable = []
         d = json.loads(json.dumps(self.toml_dict)) #thread safe deep copy
@@ -355,9 +376,9 @@ class Data:
         self.check_record( d, 'max', ('amount'))
         self.check_record( d, 'asset', ('value', 'costAndImprovements', 'ageToSell', 'owedAtAgeToSell', 'primaryResidence', 'rate'))
         #print("\n\ntarnished dict: ", d)
-        for f in d:
-            print("\ndict[%s] = " % (f),d[f])
-        print()
+        #for f in d:
+        #    print("\ndict[%s] = " % (f),d[f])
+        #print()
         #exit(0)
         self.retirement_type = d.get('retirement_type', 'joint') # single, joint, mseparate...
         check_status_type(self.retirement_type)
@@ -370,7 +391,8 @@ class Data:
         self.r_rate = 1 + d.get('returns', 6) / 100         # invest rate: 6 -> 1.06
 
         self.retiree, self.startage, self.numyr, self.primary, self.secondary, self.delta, self.primAge = self.get_retiree_info(d) # returns entry for each retiree
-        #print("\nself.retiree: ", self.retiree, "\n\n")
+        self.preplanyears = self.startage - self.primAge
+        #print("\nself.preplanyears: ", self.preplanyears, "\n\n")
         
         #print("input dictionary(processed): ", d)
         self.accounttable += self.get_account_info(d, 'IRA') # returns entry for each account
@@ -388,6 +410,7 @@ class Data:
         INC = [0] * self.numyr
         EXP = [0] * self.numyr
         TAX = [0] * self.numyr
+        CGTAX = [0] * self.numyr
         SS = [0] * self.numyr
 
         self.do_details(d, "expense", EXP, None)
@@ -404,11 +427,13 @@ class Data:
                 #print('Error - Configured Maximum desired Spending is only valid with \"maximize=\'Spinding\'\"')
                 exit(1)
         self.do_SS_details(d, SS)
+        #self.assets = d.get('asset', {})
+        #self.assets = 
+        self.prepare_assets(d, INC, CGTAX)
+        #print('assets: ', self.assets)
 
         self.income = INC
         self.expenses = EXP 
         self.taxed = TAX
+        self.cg_taxed = CGTAX
         self.SS = SS 
-
-        self.assets = d.get('asset', {})
-        print('assets: ', self.assets)

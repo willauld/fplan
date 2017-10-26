@@ -192,7 +192,7 @@ class lp_constraint_model:
         # Add constraints for (11')
         #
         for year in range(S.numyr):
-            adj_inf = S.i_rate**year
+            adj_inf = S.i_rate**(S.preplanyears+year)
             row = [0] * nvars
             for j in range(min(2,len(S.accounttable))): # IRA can only be in the first two accounts
                 if S.accounttable[j]['acctype'] == 'IRA':
@@ -210,7 +210,7 @@ class lp_constraint_model:
                 row = [0] * nvars
                 row[vindx.x(year,k)] = 1
                 A+=[row]
-                b+=[(taxtable[k][1])*(S.i_rate**year)] # inflation adjusted
+                b+=[(taxtable[k][1])*(S.i_rate**(S.preplanyears+year))] # inflation adjusted
         #
         # Add constraints for (13a')
         #
@@ -223,7 +223,8 @@ class lp_constraint_model:
                 j = len(S.accounttable)-1
                 row[vindx.w(year,j)] = -1*f # last Account is investment / stocks
                 A+=[row]
-                b+=[0]
+                #b+=[0]
+                b+=[S.cg_taxed[year]]
         #
         # Add constraints for (13b')
         #
@@ -236,13 +237,14 @@ class lp_constraint_model:
                 for l in range(len(capgainstable)):
                     row[vindx.y(year,l)] = -1
                 A+=[row]
-                b+=[0]
+                #b+=[0]
+                b+=[-S.cg_taxed[year]]
         #
         # Add constraints for (14')
         #
         if S.accmap['aftertax'] > 0:
             for year in range(S.numyr):
-                adj_inf = S.i_rate**year
+                adj_inf = S.i_rate**(S.preplanyears+year)
                 for l in range(len(capgainstable)-1):
                     row = [0] * nvars
                     row[vindx.y(year,l)] = 1
