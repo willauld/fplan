@@ -152,9 +152,8 @@ class lp_constraint_model:
         # Add constaints for (8') rows
         #
         for year in range(S.numyr):
-            row = [0] * nvars
             for j in range(len(S.accounttable)):
-                v = S.accounttable[j].get('contributions', None)     # ['acctype'] != 'aftertax':
+                v = S.accounttable[j].get('contributions', None)
                 if v is not None: 
                     if v[year] > 0:
                         row = [0] * nvars
