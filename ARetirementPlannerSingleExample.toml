@@ -5,7 +5,7 @@
 
 # most fields are options and have resonable defaults
 
-#retirement_type = 'single' # defaults to joint, currently only joint is supported, could be single, joint (married)
+retirement_type = 'single' # defaults to joint, currently only joint is supported, could be single, joint (married)
 
 returns = 6		# return rate of investments
 inflation = 2.5	# yearly inflation rate
@@ -34,6 +34,22 @@ amount = 5_000
 age = "67-"
 inflation = true
 tax = true          # count this as income tax
+
+[asset.rental_1]
+value = 170_000                 # current value of the asset
+costAndImprovements = 150_000   # purchase price plus improvment cost
+ageToSell = 72                  # age at which to sell the asset
+owedAtAgeToSell = 70_000        # amount owed at time of sell (ageToSell)
+primaryResidence = false        # Primary residence gets tax break
+rate = 4                        # avg rate of return (defaults to global rate)
+
+[asset.rental_2] ### TODO delete this section after debug TODO
+value = 100_000                 # current value of the asset
+costAndImprovements = 100_000   # purchase price plus improvment cost
+ageToSell = 72                  # age at which to sell the asset
+owedAtAgeToSell = 60_000        # amount owed at time of sell (ageToSell)
+primaryResidence = false        # Primary residence gets tax break
+rate = 4                        # avg rate of return (defaults to global rate)
 
 #[min.income]
 #amount = 45000    # want $120,000 per year
