@@ -221,6 +221,7 @@ class Data:
                 indx += 1
             delta = 0
             start = entry['retire']
+            primAge = entry['age']
             lis_return[0]['ageAtStart'] = start
             end = yearsthrough[0]+lis_return[0]['age']
             primaryIndx = 0
@@ -338,12 +339,15 @@ class Data:
         #assets = d.get('asset', {})
         exemption = 0 # TODO move this to taxinfo.py
         for k,v in S.get('asset', {}).items():
-            sellprice = v['value'] * (1 + v['rate']/100)**(v['ageToSell'] - self.primAge)
+            rate = v.get('rate', self.r_rate*100-100)
+            sellprice = v['value'] * (1 + rate/100)**(v['ageToSell'] - self.primAge)
             income = sellprice - v['owedAtAgeToSell']
             cgtaxable = sellprice - v['costAndImprovements'] 
             #print('Asset sell price ${:_.0f}, income ${:_.0f}, cgtaxable ${:_.0f}'.format(sellprice, income, cgtaxable))
             if v['primaryResidence']:
                 cgtaxable -= exemption
+            if cgtaxable < 0:
+                cgtaxable = 0
             year = v['ageToSell'] - self.startage
             if year > self.numyr:
                 print('Asset ({}) sell year is at age {}. This is passed the planning horizon.\nPlease correct configuration file.'.format(k, v['ageToSell']))

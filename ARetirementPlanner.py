@@ -367,6 +367,7 @@ def print_cap_gains_brackets(res):
         i_mul = S.i_rate ** year
         f = 1
         atw = 0
+        atd = 0
         att = 0
         if S.accmap['aftertax'] > 0:
             f = model.cg_taxable_fraction(year)
