@@ -243,6 +243,27 @@ def print_account_trans(res):
                 res.x[vindx.w(year,index)]/OneK, 
                 res.x[vindx.D(year,index)]/OneK)) # aftertax account
         ao.output("\n")
+    ao.output("Plan End: -----------\n")
+    #
+    # Post plan info
+    #
+    year = S.numyr
+    if S.secondary != "":
+        ao.output("%3d/%3d:" % (year+S.startage, S.numyr+S.startage-S.delta))
+    else:
+        ao.output(" %3d:" % (year+S.startage))
+    for i in range(S.accmap['IRA']):
+        ao.output(("@%7.0f" * 4) % (
+              res.x[vindx.b(year,i)]/OneK, 0, 0, 0)) # IRAn
+    for i in range(S.accmap['roth']):
+        index = S.accmap['IRA'] + i
+        ao.output(("@%7.0f" * 3) % (
+              res.x[vindx.b(year,index)]/OneK, 0, 0)) # rothn
+    index = S.accmap['IRA'] + S.accmap['roth']
+    if index == len(S.accounttable)-1:
+        ao.output(("@%7.0f" * 3) % (
+              res.x[vindx.b(year,index)]/OneK, 0, 0)) # aftertax
+    ao.output("\n")
     print_acc_header1()
 
 def print_tax(res):
