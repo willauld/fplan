@@ -203,7 +203,7 @@ def print_account_trans(res):
         ao.output(("@%7.0f" * 3) % (
                 S.accounttable[index]['origbal']/OneK, 0, S.accounttable[index]['contrib']/OneK)) # aftertax
     ao.output("\n")
-    ao.output("Plan Start: -----------\n")
+    ao.output("Plan Start: ---------\n")
     #
     # Print plan info for each year
     # TODO clean up the if/else below to follow the above forloop pattern
