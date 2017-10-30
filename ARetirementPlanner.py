@@ -84,7 +84,7 @@ def consistancy_check(res, years, taxbins, cgbins, accounts, accmap, vindx):
                 (year + S.startage, TaxableOrdinary,s))
 
         for j in range(len(S.accounttable)):
-            a = res.x[vindx.b(year+1,j)] -( res.x[vindx.b(year,j)] - res.x[vindx.w(year,j)] + res.x[vindx.D(year,j)])*S.accounttable[j]['rate']
+            a = res.x[vindx.b(year+1,j)] - (res.x[vindx.b(year,j)] - res.x[vindx.w(year,j)] + deposit_amount(S, res, year, j))*S.accounttable[j]['rate']
             if a > 1:
                 v = S.accounttable[j]
                 print("account[%d], type %s, index %d, mykey %s" % (j, v['acctype'], v['index'], v['mykey']))
@@ -96,7 +96,7 @@ def consistancy_check(res, years, taxbins, cgbins, accounts, accmap, vindx):
             print("Calc Spendable %6.2f should equal s(year:%d) %6.2f"% (spendable, year, res.x[vindx.s(year)]))
             for j in range(len(S.accounttable)):
                 print("+w[%d,%d]: %6.0f" % (year, j, res.x[vindx.w(year,j)])) 
-                print("-D[%d,%d]: %6.0f" % (year, j, res.x[vindx.D(year,j)]))
+                print("-D[%d,%d]: %6.0f" % (year, j, deposit_amount(S, res, year, j)))
             print("+o[%d]: %6.0f +SS[%d]: %6.0f -tax: %6.0f -cg_tax: %6.0f" % (year, S.income[year] ,year, S.SS[year] , tax ,cg_tax))
 
         bt = 0
@@ -138,7 +138,7 @@ def print_model_results(res):
         deposit = {'IRA': 0, 'roth': 0, 'aftertax': 0}
         for j in range(len(S.accounttable)):
             withdrawal[S.accounttable[j]['acctype']] += res.x[vindx.w(year,j)]
-            deposit[S.accounttable[j]['acctype']] += res.x[vindx.D(year,j)]
+            deposit[S.accounttable[j]['acctype']] += deposit_amount(S, res, year, j)
 
         if S.secondary != "":
             ao.output("%3d/%3d:" % (year+S.startage, year+S.startage-S.delta))
@@ -159,6 +159,12 @@ def print_model_results(res):
         ao.output("@%7.0f%c" % (s, star) )
         ao.output("\n")
     printheader1()
+
+def deposit_amount(S, res, year, index):
+    amount = res.x[vindx.D(year,index)]
+    if S.accounttable[index]['acctype'] == 'aftertax': 
+        amount += S.asset_sale[year]
+    return amount
 
 def print_account_trans(res):
     def print_acc_header1():
@@ -222,26 +228,26 @@ def print_account_trans(res):
             ao.output(" %3d:" % (year+S.startage))
         if S.accmap['IRA'] >1:
             ao.output(("@%7.0f" * 8) % (
-              res.x[vindx.b(year,0)]/OneK, res.x[vindx.w(year,0)]/OneK, res.x[vindx.D(year,0)]/OneK, rmdref[0]/OneK, # IRA1
-              res.x[vindx.b(year,1)]/OneK, res.x[vindx.w(year,1)]/OneK, res.x[vindx.D(year,1)]/OneK, rmdref[1]/OneK)) # IRA2
+              res.x[vindx.b(year,0)]/OneK, res.x[vindx.w(year,0)]/OneK, deposit_amount(S, res, year, 0)/OneK, rmdref[0]/OneK, # IRA1
+              res.x[vindx.b(year,1)]/OneK, res.x[vindx.w(year,1)]/OneK, deposit_amount(S, res, year, 1)/OneK, rmdref[1]/OneK)) # IRA2
         elif S.accmap['IRA'] == 1:
             ao.output(("@%7.0f" * 4) % (
-              res.x[vindx.b(year,0)]/OneK, res.x[vindx.w(year,0)]/OneK, res.x[vindx.D(year,0)]/OneK, rmdref[0]/OneK)) # IRA1
+              res.x[vindx.b(year,0)]/OneK, res.x[vindx.w(year,0)]/OneK, deposit_amount(S, res, year, 0)/OneK, rmdref[0]/OneK)) # IRA1
         index = S.accmap['IRA']
         if S.accmap['roth'] >1:
             ao.output(("@%7.0f" * 6) % (
-              res.x[vindx.b(year,index)]/OneK, res.x[vindx.w(year,index)]/OneK, res.x[vindx.D(year,index)]/OneK, # roth1
-              res.x[vindx.b(year,index+1)]/OneK, res.x[vindx.w(year,index+1)]/OneK, res.x[vindx.D(year,index+1)]/OneK)) # roth2
+              res.x[vindx.b(year,index)]/OneK, res.x[vindx.w(year,index)]/OneK, deposit_amount(S, res, year, index)/OneK, # roth1
+              res.x[vindx.b(year,index+1)]/OneK, res.x[vindx.w(year,index+1)]/OneK, deposit_amount(S, res, year, index+1)/OneK)) # roth2
         elif S.accmap['roth'] == 1:
             ao.output(("@%7.0f" * 3) % (
-              res.x[vindx.b(year,index)]/OneK, res.x[vindx.w(year,index)]/OneK, res.x[vindx.D(year,index)]/OneK)) # roth1
+              res.x[vindx.b(year,index)]/OneK, res.x[vindx.w(year,index)]/OneK, deposit_amount(S, res, year, index)/OneK)) # roth1
         index = S.accmap['IRA'] + S.accmap['roth']
         #assert index == len(S.accounttable)-1
         if index == len(S.accounttable)-1:
             ao.output(("@%7.0f" * 3) % (
                 res.x[vindx.b(year,index)]/OneK, 
                 res.x[vindx.w(year,index)]/OneK, 
-                res.x[vindx.D(year,index)]/OneK)) # aftertax account
+                deposit_amount(S, res, year, index)/OneK)) # aftertax account
         ao.output("\n")
     ao.output("Plan End: -----------\n")
     #
@@ -283,7 +289,7 @@ def print_tax(res):
     printheader_tax()
     for year in range(S.numyr):
         age = year + S.startage
-        i_mul = S.i_rate ** year
+        i_mul = S.i_rate ** (S.preplanyears+year)
         T,spendable,tax,rate,cg_tax,earlytax,rothearly = IncomeSummary(year)
         f = model.cg_taxable_fraction(year)
         ttax = tax + cg_tax +earlytax
@@ -291,7 +297,7 @@ def print_tax(res):
         deposit = {'IRA': 0, 'roth': 0, 'aftertax': 0}
         for j in range(len(S.accounttable)):
             withdrawal[S.accounttable[j]['acctype']] += res.x[vindx.w(year,j)]
-            deposit[S.accounttable[j]['acctype']] += res.x[vindx.D(year,j)]
+            deposit[S.accounttable[j]['acctype']] += deposit_amount(S, res, year,j)
         if S.secondary != "":
             ao.output("%3d/%3d:" % (year+S.startage, year+S.startage-S.delta))
         else:
@@ -312,9 +318,9 @@ def print_tax(res):
 def print_tax_brackets(res):
     def printheader_tax_brackets():
         if S.secondary != "":
-            ao.output("@@@@@@%58s" % "Marginal Rate(%):")
+            ao.output("@@@@@@@%57s" % "Marginal Rate(%):")
         else:
-            ao.output("@@@@@@%55s" % "Marginal Rate(%):")
+            ao.output("@@@@@@@%54s" % "Marginal Rate(%):")
         for k in range(len(taxinfo.taxtable)):
             (cut, size, rate, base) = taxinfo.taxtable[k]
             ao.output("@%6.0f" % (rate*100))
@@ -346,7 +352,7 @@ def print_tax_brackets(res):
         deposit = {'IRA': 0, 'roth': 0, 'aftertax': 0}
         for j in range(len(S.accounttable)):
             withdrawal[S.accounttable[j]['acctype']] += res.x[vindx.w(year,j)]
-            deposit[S.accounttable[j]['acctype']] += res.x[vindx.D(year,j)]
+            deposit[S.accounttable[j]['acctype']] += deposit_amount(S, res, year, j)
         ao.output(("@%7.0f" * 7 ) %
               (
               withdrawal['IRA']/OneK, deposit['IRA']/OneK, # IRA
@@ -362,9 +368,9 @@ def print_tax_brackets(res):
 def print_cap_gains_brackets(res):
     def printheader_capgains_brackets():
         if S.secondary != "":
-            ao.output("@@@@@@%50s" % "Marginal Rate(%):")
+            ao.output("@@@@@@@%48s" % "Marginal Rate(%):")
         else:
-            ao.output("@@@@@%49s" % " Marginal Rate(%):")
+            ao.output("@@@@@@%47s" % " Marginal Rate(%):")
         for l in range(len(taxinfo.capgainstable)):
             (cut, size, rate) = taxinfo.capgainstable[l]
             ao.output("@%6.0f" % (rate*100))
@@ -394,8 +400,18 @@ def print_cap_gains_brackets(res):
             f = model.cg_taxable_fraction(year)
             j = len(S.accounttable)-1 # Aftertax / investment account always the last entry when present
             atw = res.x[vindx.w(year,j)]/OneK # Aftertax / investment account
-            atd = res.x[vindx.D(year,j)]/OneK # Aftertax / investment account
-            att = (f*res.x[vindx.w(year,j)]+S.cg_taxed[year])/OneK # non-basis fraction / cg taxable $ 
+            atd = deposit_amount(S, res, year, j)/OneK # Aftertax / investment account
+            #
+            # OK, this next bit can be confusing. In the line above atd
+            # includes both the D(i,j) and net amount from sell of assets 
+            # like homes or real estate. But the sale of these illiquid assets
+            # does not use the aftertax account basis. They have been handled
+            # separately in S.cg_asset_taxed. Given this we only ad to
+            # cg_taxable the withdrawals over deposits, as is normal, plus
+            # the taxable amounts from asset sales. 
+            att = ((f*(res.x[vindx.w(year,j)]-res.x[vindx.D(year,j)]))+S.cg_asset_taxed[year])/OneK # non-basis fraction / cg taxable $ 
+            if atd > atw:
+                att = S.cg_asset_taxed[year]/OneK # non-basis fraction / cg taxable $ 
         T,spendable,tax,rate,cg_tax,earlytax,rothearly = IncomeSummary(year)
         ttax = tax + cg_tax
         if S.secondary != "":
@@ -435,7 +451,7 @@ def OrdinaryTaxable(year):
     for j in range(min(2,len(S.accounttable))):
         if S.accounttable[j]['acctype'] == 'IRA':
             withdrawals += res.x[vindx.w(year,j)]
-            deposits += res.x[vindx.D(year,j)]
+            deposits += deposit_amount(S, res, year, j)
     T = withdrawals - deposits + S.taxed[year] + taxinfo.SS_taxable*S.SS[year] -(taxinfo.stded*S.i_rate**(S.preplanyears+year))
     if T < 0:
         T = 0
@@ -467,14 +483,14 @@ def IncomeSummary(year):
     ncg_tax = 0
     #if S.accmap['aftertax'] > 0:
     for j in range(len(S.accounttable)):
-        D +=  res.x[vindx.D(year,j)]
+        D +=  deposit_amount(S, res, year, j)
     if S.accmap['aftertax'] > 0:
         for l in range(len(taxinfo.capgainstable)):
             ncg_tax += res.x[vindx.y(year,l)]*taxinfo.capgainstable[l][2]
     tot_withdrawals = 0
     for j in range(len(S.accounttable)):
         tot_withdrawals += res.x[vindx.w(year,j)] 
-    spendable = tot_withdrawals - D + S.income[year] + S.SS[year] - S.expenses[year] - tax -ncg_tax - earlytax
+    spendable = tot_withdrawals - D + S.income[year] + S.SS[year] - S.expenses[year] - tax -ncg_tax - earlytax + S.asset_sale[year]
     return T, spendable, tax, rate, ncg_tax, earlytax, roth_early
 
 def get_result_totals(res):

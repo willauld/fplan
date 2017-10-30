@@ -353,11 +353,13 @@ class Data:
                 print('Asset ({}) sell year is at age {}. This is passed the planning horizon.\nPlease correct configuration file.'.format(k, v['ageToSell']))
                 exit(1)
             if income > 0:
-                # TODO must be an aftertax account, ensure there is here!
-                print('HHHEEELLLLPPPP')
-                pass
+                if self.accmap['aftertax'] <= 0:
+                    print('Error - Assets to be sold must have an \'aftertax\' investment\naccount into which to deposit the net proceeds. Please\nadd an \'aftertax\' account to yourn configuration; the bal may be zero')
+                    exit(1)
             INC[year] += income
             CGTAX[year] += cgtaxable
+            print('Asset: ', k, 'Sales Income: ', income, 'Sales CG Tax: ', cgtaxable)
+            print('Sales Income: ', INC[year], 'Sales CG Tax: ', CGTAX[year])
 
     def process_toml_info(self):
         self.accounttable = []
@@ -414,6 +416,7 @@ class Data:
         INC = [0] * self.numyr
         EXP = [0] * self.numyr
         TAX = [0] * self.numyr
+        ASSET = [0] * self.numyr
         CGTAX = [0] * self.numyr
         SS = [0] * self.numyr
 
@@ -433,11 +436,12 @@ class Data:
         self.do_SS_details(d, SS)
         #self.assets = d.get('asset', {})
         #self.assets = 
-        self.prepare_assets(d, INC, CGTAX)
+        self.prepare_assets(d, ASSET, CGTAX)
         #print('assets: ', self.assets)
 
         self.income = INC
         self.expenses = EXP 
         self.taxed = TAX
-        self.cg_taxed = CGTAX
+        self.asset_sale = ASSET
+        self.cg_asset_taxed = CGTAX
         self.SS = SS 

@@ -219,11 +219,15 @@ class lp_constraint_model:
                 row = [0] * nvars
                 for l in range(len(capgainstable)):
                     row[vindx.y(year,l)] = 1
-                j = len(S.accounttable)-1
-                row[vindx.w(year,j)] = -1*f # last Account is investment / stocks
+                ### Awful Hack! If year of asset sale, assume w(i,j)-D(i,j) is 
+                ### negative so taxable from this is zero
+                if S.cg_asset_taxed[year] <= 0: # i.e., no sale
+                    j = len(S.accounttable)-1 # last Acc is investment / stocks
+                    row[vindx.w(year,j)] = -1*f 
+                    row[vindx.D(year,j)] = f 
                 A+=[row]
                 #b+=[0]
-                b+=[S.cg_taxed[year]]
+                b+=[S.cg_asset_taxed[year]]
         #
         # Add constraints for (13b')
         #
@@ -231,13 +235,17 @@ class lp_constraint_model:
             for year in range(S.numyr):
                 f = self.cg_taxable_fraction(year)
                 row = [0] * nvars
-                j = len(S.accounttable)-1
-                row[vindx.w(year,j)] = f # last Account is investment / stocks
+                ### Awful Hack! If year of asset sale, assume w(i,j)-D(i,j) is 
+                ### negative so taxable from this is zero
+                if S.cg_asset_taxed[year] <= 0: # i.e., no sale
+                    j = len(S.accounttable)-1 # last Acc is investment / stocks
+                    row[vindx.w(year,j)] = f 
+                    row[vindx.D(year,j)] = -f 
                 for l in range(len(capgainstable)):
                     row[vindx.y(year,l)] = -1
                 A+=[row]
                 #b+=[0]
-                b+=[-S.cg_taxed[year]]
+                b+=[-S.cg_asset_taxed[year]]
         #
         # Add constraints for (14')
         #
@@ -265,7 +273,11 @@ class lp_constraint_model:
                 row[vindx.w(year,j)] = S.accounttable[j]['rate']
                 row[vindx.D(year,j)] = -1*S.accounttable[j]['rate']
                 A+=[row]
-                b+=[0]
+                temp = [0]
+                if S.accounttable[j]['acctype'] == 'aftertax':
+                    temp=[ S.asset_sale[year] * S.accounttable[j]['rate'] ] #TODO test
+                b+=temp
+                #print('temp_a: ', temp, 'rate', S.accounttable[j]['rate'] , 'asset sell price: ', S.asset_sale[year]  )
         #
         # Add constraints for (15b')
         #
@@ -278,7 +290,11 @@ class lp_constraint_model:
                 row[vindx.D(year,j)] = S.accounttable[j]['rate']
                 row[vindx.b(year+1,j)] = -1  ### b[i,j] supports an extra year
                 A+=[row]
-                b+=[0]
+                temp = [0]
+                if S.accounttable[j]['acctype'] == 'aftertax':
+                    temp=[ -1 * S.asset_sale[year] * S.accounttable[j]['rate'] ] #TODO test
+                b+=temp
+                #print('temp_b: ', temp, 'rate', S.accounttable[j]['rate'] , 'asset sell price: ', S.asset_sale[year]  )
         #
         # Constraint for (16a')
         #   Set the begining b[1,j] balances
