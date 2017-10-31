@@ -70,6 +70,9 @@ marriedjointstded = 12700 + 2*4050 # standard deduction + 2 personal exemptions
 marriedseparatestded = 9350 + 4050 # standard deduction + 1 personal exemptions
 singlestded = 6350 + 4050          # standard deduction + 1 personal exemptions
 
+jointprimeresidence = 500000
+singleprimresidence = 250000
+
 class taxinfo:
     def __init__(self):
         self.taxtable = None
@@ -96,16 +99,19 @@ class taxinfo:
             self.capgainstable = singlecapitalgains
             self.stded = singlestded
             self.RMD = singleRMD
+            self.primeresidence = singleprimresidence
         elif status == 'mseparate':
             self.taxtable = marriedseparatetax
             self.capgainstable = marriedseparatecapitalgains
             self.stded = marriedseparatestded
             self.RMD = marriedseparateRMD
+            self.primeresidence = singleprimresidence
         else: # status == 'joint':
             self.taxtable = marriedjointtax
             self.capgainstable = marriedjointcapitalgains
             self.stded = marriedjointstded
             self.RMD = marriedjointRMD
+            self.primeresidence = jointprimresidence = 250000
         #print('taxtable:\n', self.taxtable, '\n')
         #print('capgainstable:\n', self.capgainstable, '\n')
         #print('stded:\n', self.stded, '\n')

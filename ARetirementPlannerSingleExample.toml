@@ -43,12 +43,12 @@ owedAtAgeToSell = 70_000        # amount owed at time of sell (ageToSell)
 primaryResidence = false        # Primary residence gets tax break
 rate = 4                        # avg rate of return (defaults to global rate)
 
-[asset.rental_2] ### TODO delete this section after debug TODO
-value = 100_000                 # current value of the asset
+[asset.home] 
+value = 120_000                 # current value of the asset
 costAndImprovements = 100_000   # purchase price plus improvment cost
 ageToSell = 72                  # age at which to sell the asset
 owedAtAgeToSell = 60_000        # amount owed at time of sell (ageToSell)
-primaryResidence = false        # Primary residence gets tax break
+primaryResidence = true         # Primary residence gets tax break
 rate = 4                        # avg rate of return (defaults to global rate)
 
 #[min.income]

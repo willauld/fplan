@@ -337,20 +337,32 @@ class Data:
 
     def prepare_assets(self, S, INC, CGTAX):
         #assets = d.get('asset', {})
-        exemption = 0 # TODO move this to taxinfo.py
+        exemption = self.tinfo.primeresidence 
+        #print('exemption: ', exemption)
+        self.illiquidassetplanstart = 0
+        self.illiquidassetplanend = 0
         for k,v in S.get('asset', {}).items():
             rate = v.get('rate', self.r_rate*100-100)
             sellprice = v['value'] * (1 + rate/100)**(v['ageToSell'] - self.primAge)
+            self.illiquidassetplanstart += v['value'] * (1 + rate/100)**(self.startage - self.primAge)
+            temp = 0
+            if v['ageToSell'] > self.startage + self.numyr:
+                temp = v['value'] * (1 + rate/100)**(self.numyr - self.primAge)
+            self.illiquidassetplanend += temp
             income = sellprice - v['owedAtAgeToSell']
+            if income < 0:
+                income = 0
             cgtaxable = sellprice - v['costAndImprovements'] 
             #print('Asset sell price ${:_.0f}, income ${:_.0f}, cgtaxable ${:_.0f}'.format(sellprice, income, cgtaxable))
             if v['primaryResidence']:
                 cgtaxable -= exemption
+                #print('cgtaxable: ', cgtaxable)
             if cgtaxable < 0:
                 cgtaxable = 0
+            #print('cgtaxable: ', cgtaxable)
             year = v['ageToSell'] - self.startage
             if year > self.numyr:
-                print('Asset ({}) sell year is at age {}. This is passed the planning horizon.\nPlease correct configuration file.'.format(k, v['ageToSell']))
+                print('Error - Asset ({}) sell year is at age {}. This is passed the planning horizon.\nPlease correct configuration file.'.format(k, v['ageToSell']))
                 exit(1)
             if income > 0:
                 if self.accmap['aftertax'] <= 0:
@@ -358,8 +370,8 @@ class Data:
                     exit(1)
             INC[year] += income
             CGTAX[year] += cgtaxable
-            print('Asset: ', k, 'Sales Income: ', income, 'Sales CG Tax: ', cgtaxable)
-            print('Sales Income: ', INC[year], 'Sales CG Tax: ', CGTAX[year])
+            #print('Asset: ', k, 'Sales Income: ', income, 'Sales CG Tax: ', cgtaxable)
+            #print('Sales Income: ', INC[year], 'Sales CG Tax: ', CGTAX[year])
 
     def process_toml_info(self):
         self.accounttable = []

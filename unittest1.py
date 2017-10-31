@@ -312,7 +312,7 @@ class TestInputThroughSolver(unittest.TestCase):
                                               "maxiter": 3000})
         # If we get this far test the output
         year = 0
-        verifiedSolverResult = 224849.907
+        verifiedSolverResult = 224850.2840
         self.assertEqual(round(res.x[vindx.s(year)],3), round(verifiedSolverResult,3), msg='Verified solver result is ${:0_.3f} but here we got ${:0_.3f}'.format(verifiedSolverResult, res.x[vindx.s(year)]))
 
     def test_input_through_solver_mseparate_first_year_spinding(self):
@@ -348,7 +348,7 @@ class TestInputThroughSolver(unittest.TestCase):
                                               "maxiter": 3000})
         # If we get this far test the output
         year = 0
-        verifiedSolverResult = 211577.468
+        verifiedSolverResult = 211577.9100
         self.assertEqual(round(res.x[vindx.s(year)],3), round(verifiedSolverResult,3), msg='Verified solver result is ${:0_.3f} but here we got ${:0_.3f}'.format(verifiedSolverResult, res.x[vindx.s(year)]))
 
     def test_input_through_solver_single_first_year_spinding(self):
@@ -384,7 +384,7 @@ class TestInputThroughSolver(unittest.TestCase):
                                               "maxiter": 3000})
         # If we get this far test the output
         year = 0
-        verifiedSolverResult = 214301.316
+        verifiedSolverResult = 214301.7049
         self.assertEqual(round(res.x[vindx.s(year)],3), round(verifiedSolverResult,3), msg='Verified solver result is ${:0_.3f} but here we got ${:0_.3f}'.format(verifiedSolverResult, res.x[vindx.s(year)]))
 
 

@@ -45,7 +45,7 @@ def consistancy_check(res, years, taxbins, cgbins, accounts, accmap, vindx):
         s = 0
         fz = False
         fnf = False
-        i_mul = S.i_rate ** year
+        i_mul = S.i_rate ** (S.preplanyears+year)
         for k in range(len(taxinfo.taxtable)): 
             cut, size, rate, base = taxinfo.taxtable[k]
             size *= i_mul
@@ -123,7 +123,7 @@ def print_model_results(res):
     ao.output('\n')
     printheader1()
     for year in range(S.numyr):
-        i_mul = S.i_rate ** year
+        i_mul = S.i_rate ** (S.preplanyears+year)
         age = year + S.startage
         T,spendable,tax,rate,cg_tax,earlytax,rothearly = IncomeSummary(year)
 
@@ -341,7 +341,7 @@ def print_tax_brackets(res):
     printheader_tax_brackets()
     for year in range(S.numyr):
         age = year + S.startage
-        i_mul = S.i_rate ** year
+        i_mul = S.i_rate ** (S.preplanyears+year)
         T,spendable,tax,rate,cg_tax,earlytax,rothearly = IncomeSummary(year)
         ttax = tax + cg_tax
         if S.secondary != "":
@@ -391,7 +391,7 @@ def print_cap_gains_brackets(res):
     printheader_capgains_brackets()
     for year in range(S.numyr):
         age = year + S.startage
-        i_mul = S.i_rate ** year
+        i_mul = S.i_rate ** (S.preplanyears+year)
         f = 1
         atw = 0
         atd = 0
@@ -503,8 +503,7 @@ def get_result_totals(res):
     tspendable = 0
     pv_twithd = 0; pv_ttax = 0; pv_tT = 0
     for year in range(S.numyr):
-        i_mul = S.i_rate ** year
-        discountR = S.i_rate**-year # use rate of inflation as discount rate
+        i_mul = S.i_rate ** (S.preplanyears+year)
         T,spendable,tax,rate,cg_tax,earlytax,rothearly = IncomeSummary(year)
         tot_withdrawals = 0
         for j in range(len(S.accounttable)):
@@ -527,10 +526,12 @@ def get_result_totals(res):
 def print_base_config(res):
     totwithd, tincome, tTaxable, tincometax, tcg_tax, tearlytax, tspendable, tbeginbal, tendbal = get_result_totals(res)
     ao.output("\n")
-    ao.output("Optimized for {} with {} status starting with an estate of ${:_.0f}\n".format(S.maximize, S.retirement_type, tbeginbal))
+    ao.output("Optimized for {} with {} status\n\tstarting at age {} with an estate of ${:_.0f} liquid and ${:_.0f} illiquid\n".format(S.maximize, S.retirement_type, S.startage, tbeginbal, S.illiquidassetplanstart))
+    ao.output('\n')
     ao.output('Minium desired: ${:0_.0f}\n'.format(S.min))
     ao.output('Maximum desired: ${:0_.0f}\n'.format(S.max))
-    ao.output('After tax yearly income: ${:0_.0f} adjusting for inflation and final estate of ${:_.0f}\n'.format(res.x[vindx.s(0)], tendbal))
+    ao.output('\n')
+    ao.output('After tax yearly income: ${:0_.0f} adjusting for inflation\n\tand final estate at age {} with ${:_.0f} liquid and ${:_.0f} illiquid\n'.format(res.x[vindx.s(0)], S.startage + S.numyr, tendbal, S.illiquidassetplanend))
     ao.output("\n")
     ao.output('total withdrawals: ${:0_.0f}\n'.format(totwithd))
     ao.output('total ordinary taxable income ${:_.0f}\n'.format(tTaxable))
