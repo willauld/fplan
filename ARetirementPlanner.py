@@ -526,6 +526,7 @@ def get_result_totals(res):
 def print_base_config(res):
     totwithd, tincome, tTaxable, tincometax, tcg_tax, tearlytax, tspendable, tbeginbal, tendbal = get_result_totals(res)
     ao.output("\n")
+    ao.output("======\n")
     ao.output("Optimized for {} with {} status\n\tstarting at age {} with an estate of ${:_.0f} liquid and ${:_.0f} illiquid\n".format(S.maximize, S.retirement_type, S.startage, tbeginbal, S.illiquidassetplanstart))
     ao.output('\n')
     ao.output('Minium desired: ${:0_.0f}\n'.format(S.min))
@@ -540,6 +541,7 @@ def print_base_config(res):
     ao.output('total cap gains tax: ${:0_.0f}\n'.format(tcg_tax))
     ao.output('total all tax on all income: ${:0_.0f} ({:.1f}%)\n'.format(tincometax+tcg_tax+tearlytax, 100*(tincometax+tcg_tax+tearlytax)/tincome))
     ao.output("Total spendable (after tax money): ${:0_.0f}\n".format(tspendable))
+    ao.output("\n")
 
 # Program entry point
 # Instantiate the parser
@@ -609,7 +611,7 @@ if __name__ == '__main__':
                                  options={"disp": args.verbose,
                                           #"bland": True,
                                           "tol": 1.0e-7,
-                                          "maxiter": 3000})
+                                          "maxiter": 4000})
         if args.verbosemodel or args.verbosemodelall:
             if res.success == False:
                 model.print_model_matrix(c, A, b, None, False)
