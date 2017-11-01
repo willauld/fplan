@@ -355,7 +355,7 @@ class Data:
             cgtaxable = sellprice - v['costAndImprovements'] 
             #print('Asset sell price ${:_.0f}, income ${:_.0f}, cgtaxable ${:_.0f}'.format(sellprice, income, cgtaxable))
             if v['primaryResidence']:
-                cgtaxable -= exemption
+                cgtaxable -= exemption * self.i_rate**(v['ageToSell'] - self.primAge)
                 #print('cgtaxable: ', cgtaxable)
             if cgtaxable < 0:
                 cgtaxable = 0
