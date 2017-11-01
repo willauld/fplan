@@ -346,8 +346,8 @@ class Data:
             sellprice = v['value'] * (1 + rate/100)**(v['ageToSell'] - self.primAge)
             self.illiquidassetplanstart += v['value'] * (1 + rate/100)**(self.startage - self.primAge)
             temp = 0
-            if v['ageToSell'] > self.startage + self.numyr:
-                temp = v['value'] * (1 + rate/100)**(self.numyr - self.primAge)
+            if v['ageToSell'] > self.startage + self.numyr or v['ageToSell'] < self.startage :
+                temp = v['value'] * (1 + rate/100)**(self.startage + self.numyr - self.primAge)
             self.illiquidassetplanend += temp
             income = sellprice - v['owedAtAgeToSell']
             if income < 0:
@@ -361,15 +361,15 @@ class Data:
                 cgtaxable = 0
             #print('cgtaxable: ', cgtaxable)
             year = v['ageToSell'] - self.startage
-            if year > self.numyr:
-                print('Error - Asset ({}) sell year is at age {}. This is passed the planning horizon.\nPlease correct configuration file.'.format(k, v['ageToSell']))
-                exit(1)
-            if income > 0:
-                if self.accmap['aftertax'] <= 0:
+            if v['ageToSell'] != 0:
+                if income > 0 and self.accmap['aftertax'] <= 0:
                     print('Error - Assets to be sold must have an \'aftertax\' investment\naccount into which to deposit the net proceeds. Please\nadd an \'aftertax\' account to yourn configuration; the bal may be zero')
                     exit(1)
-            INC[year] += income
-            CGTAX[year] += cgtaxable
+                if v['ageToSell'] < self.startage or year >= self.numyr:
+                    print('Warning - Asset ({}) sell year is at age {}. This is outside the planning period.\nPlease correct configuration file if this is unintended.'.format(k, v['ageToSell']))
+                else:
+                    INC[year] += income
+                    CGTAX[year] += cgtaxable
             #print('Asset: ', k, 'Sales Income: ', income, 'Sales CG Tax: ', cgtaxable)
             #print('Sales Income: ', INC[year], 'Sales CG Tax: ', CGTAX[year])
 
