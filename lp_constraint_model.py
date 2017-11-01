@@ -132,9 +132,12 @@ class lp_constraint_model:
             row = [0] * nvars
             for j in range(len(S.accounttable)):
                 if S.accounttable[j]['acctype'] != 'aftertax': 
-                        row[vindx.D(year,j)] = 1
+                    row[vindx.D(year,j)] = 1
                 A+=[row]
-                b+=[min(S.income[year],S.maxContribution(year,None))] 
+                #b+=[min(S.income[year],S.maxContribution(year,None))] 
+                # using S.taxed rather than S.income because income could
+                # include non-taxed anueities that don't count.
+                b+=[min(S.taxed[year],S.maxContribution(year,None))] 
         #
         # Add constaints for (7') rows
         #
