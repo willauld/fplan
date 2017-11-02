@@ -275,24 +275,43 @@ class Data:
                 else:
                     self.SSinput[index] = dt
                     index += 1
-
             for i in range(sections):
                 #print("SSinput", self.SSinput)
                 agestr = self.SSinput[i]['agestr']
                 firstage = agelist(agestr)
                 disperseage = next(firstage)
+                if i == 0:
+                    firstdisperseage = disperseage
+                    firstdisperseyear = disperseage - self.SSinput[0]['ageAtStart']
                 fraage = self.SSinput[i]['fra']
                 fraamount = self.SSinput[i]['amount']
                 ageAtStart = self.SSinput[i]['ageAtStart']
                 currAge = self.SSinput[i]['currAge']
-                if fraamount < 0:
-                    assert i == 1
-                    fraamount = self.SSinput[0]['amount']/2 # spousal benefit is 1/2 spouses at FRA 
-                    # alter amount for start age vs fra (minus if before fra and + is after)
-                    amount = self.startamount(fraamount, fraage, min(disperseage,fraage))
-                else:
+                if fraamount >= 0:
                     # alter amount for start age vs fra (minus if before fra and + is after)
                     amount = self.startamount(fraamount, fraage, disperseage)
+                else:
+                    assert i == 1
+                    name = self.SSinput[i]['key']
+                    if firstdisperseyear > disperseage - ageAtStart:
+                        disperseage = firstdisperseyear + ageAtStart
+                        agestr = '{}-'.format(disperseage)
+                        self.SSinput[i]['agestr'] = agestr 
+                        print('Warning - Social Security spousal benefit can only be claimed\nafter the spouse claims benefits.\nPlease correct {}\'s SS age in the configuration file to \'{}\'.'.format(name, agestr))
+                    elif disperseage > fraage and firstdisperseyear != disperseage - ageAtStart:
+                        if firstdisperseyear <= fraage - ageAtStart:
+                            disperseage = fraage
+                            agestr = '{}-'.format(fraage)
+                            self.SSinput[i]['agestr'] = agestr 
+                            print('Warning - Social Security spousal benefits do not increase after FRA,\nresetting benefits start to FRA.\nPlease correct {}\'s SS age in the configuration file to \'{}\'.'.format(name, agestr))
+                        else:
+                            disperseage = firstdisperseyear + ageAtStart
+                            agestr = '{}-'.format(disperseage)
+                            self.SSinput[i]['agestr'] = agestr 
+                            print('Warning - Social Security spousal benefits do not increase after FRA,\nresetting benefits start to spouse claim year.\nPlease correct {}\'s age in the configuration file to \'{}\'.'.format(name, agestr))
+                    fraamount = self.SSinput[0]['amount']/2 # spousal benefit is 1/2 spouses at FRA 
+                    # alter amount for start age vs fra (minus if before fra)
+                    amount = self.startamount(fraamount, fraage, min(disperseage,fraage))
                 #print("FRA: %d, FRAamount: %6.0f, Age: %s, amount: %6.0f" % (fraage, fraamount, agestr, amount))
                 for age in agelist(agestr):
                     year = age - ageAtStart #self.startage
