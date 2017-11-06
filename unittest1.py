@@ -44,6 +44,11 @@ amount = 3000
 age = "56-"
 inflation = false
 tax = false
+[income.stopgap]
+amount = 300
+age = "56-"
+inflation = false
+tax = true
 [income.rental_1]
 amount = 36000
 age = "67-"
@@ -314,7 +319,7 @@ class TestInputThroughSolver(unittest.TestCase):
         self.assertTrue(res.success, msg='res.success indicates solver failed')
         # If we get this far test the output
         year = 0
-        verifiedSolverResult = 224850.2840
+        verifiedSolverResult = 224992.9610
         latestSolverResult = res.x[vindx.s(year)]
         self.assertEqual(round(latestSolverResult,3), round(verifiedSolverResult,3), msg='Verified solver result is ${:0_.3f} but here we got ${:0_.3f}'.format(verifiedSolverResult, latestSolverResult))
 
@@ -352,7 +357,7 @@ class TestInputThroughSolver(unittest.TestCase):
         self.assertTrue(res.success, msg='res.success indicates solver failed')
         # If we get this far test the output
         year = 0
-        verifiedSolverResult = 211577.9100
+        verifiedSolverResult = 211716.375
         self.assertEqual(round(res.x[vindx.s(year)],3), round(verifiedSolverResult,3), msg='Verified solver result is ${:0_.3f} but here we got ${:0_.3f}'.format(verifiedSolverResult, res.x[vindx.s(year)]))
 
     def test_input_through_solver_single_first_year_spinding(self):
@@ -389,7 +394,7 @@ class TestInputThroughSolver(unittest.TestCase):
         self.assertTrue(res.success, msg='res.success indicates solver failed')
         # If we get this far test the output
         year = 0
-        verifiedSolverResult = 214301.7049
+        verifiedSolverResult = 214422.3170
         self.assertEqual(round(res.x[vindx.s(year)],3), round(verifiedSolverResult,3), msg='Verified solver result is ${:0_.3f} but here we got ${:0_.3f}'.format(verifiedSolverResult, res.x[vindx.s(year)]))
 
 
@@ -694,10 +699,10 @@ class TestTomlInput(unittest.TestCase):
         #[income.rental_2] amount = 2400 age = "67-" inflation = true tax = true
         # => let's check the INC when will is 65->INC[65-58] and 68->INC[68-58]
         self.assertEqual(
-            S.income[65 - 58], 3000, msg='No Inflation so should equal configured amount')
+            S.income[65 - 58], 3300, msg='No Inflation so should equal configured amount')
         self.assertEqual(
-            S.taxed[65 - 58], 0, msg='income.mytaxfree is not taxed so zero')
-        expect = 3000 + (36000 + 2400) * 1.025**(68 - 56)
+            S.taxed[65 - 58], 300, msg='income.mytaxfree is not taxed but stopgap is so 300')
+        expect = 3300 + (36000 + 2400) * 1.025**(68 - 56)
         taxexpect = expect - 3000
         self.assertEqual(
             S.income[68 - 58], expect, msg='Sum of mytaxfree and inflation adjusted rental_1 and rental_2')
