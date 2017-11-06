@@ -392,6 +392,23 @@ class Data:
             #print('Asset: ', k, 'Sales Income: ', income, 'Sales CG Tax: ', cgtaxable)
             #print('Sales Income: ', INC[year], 'Sales CG Tax: ', CGTAX[year])
 
+    def verify_taxable_income_covers_contrib(self):
+        verification_failure = False
+        for year in range(self.numyr):
+            contrib = 0
+            for acc in self.accounttable:
+                if acc['mykey'] != 'aftertax':
+                    carray = acc.get('contributions',None)
+                    if carray is not None:
+                        contrib += carray[year]
+            if self.taxed[year] < contrib:
+                verification_failure = True
+                print('Error - IRS requires contributions to retirement accounts\n\tbe less than your ordinary taxable income.\n\tHowever, contributions of ${:_.0f} at age {}\n\texceeds the taxable income of ${:_.0f}'.format(contrib, self.startage+year, self.taxed[year]))
+        if verification_failure:
+            exit(1)
+
+        
+
     def process_toml_info(self):
         self.accounttable = []
         d = json.loads(json.dumps(self.toml_dict)) #thread safe deep copy
@@ -476,3 +493,4 @@ class Data:
         self.asset_sale = ASSET
         self.cg_asset_taxed = CGTAX
         self.SS = SS 
+        self.verify_taxable_income_covers_contrib()
