@@ -216,6 +216,7 @@ class TestLpConstraintModel(unittest.TestCase):
                                               #"bland": True,
                                               "tol": 1.0e-7,
                                               "maxiter": 3000})
+        self.assertTrue(res.success, msg='res.success indicates solver failed')
         # TODO change the index calculation to load data not my hand chosen numbers
         for i in range(65 - max(56, 57)):
             # check all the values between ages 56-65
@@ -310,10 +311,12 @@ class TestInputThroughSolver(unittest.TestCase):
                                               #"bland": True,
                                               "tol": 1.0e-7,
                                               "maxiter": 3000})
+        self.assertTrue(res.success, msg='res.success indicates solver failed')
         # If we get this far test the output
         year = 0
         verifiedSolverResult = 224850.2840
-        self.assertEqual(round(res.x[vindx.s(year)],3), round(verifiedSolverResult,3), msg='Verified solver result is ${:0_.3f} but here we got ${:0_.3f}'.format(verifiedSolverResult, res.x[vindx.s(year)]))
+        latestSolverResult = res.x[vindx.s(year)]
+        self.assertEqual(round(latestSolverResult,3), round(verifiedSolverResult,3), msg='Verified solver result is ${:0_.3f} but here we got ${:0_.3f}'.format(verifiedSolverResult, latestSolverResult))
 
     def test_input_through_solver_mseparate_first_year_spinding(self):
         toml_file_name = 't.toml'
@@ -346,6 +349,7 @@ class TestInputThroughSolver(unittest.TestCase):
                                               #"bland": True,
                                               "tol": 1.0e-7,
                                               "maxiter": 3000})
+        self.assertTrue(res.success, msg='res.success indicates solver failed')
         # If we get this far test the output
         year = 0
         verifiedSolverResult = 211577.9100
@@ -382,6 +386,7 @@ class TestInputThroughSolver(unittest.TestCase):
                                               #"bland": True,
                                               "tol": 1.0e-7,
                                               "maxiter": 3000})
+        self.assertTrue(res.success, msg='res.success indicates solver failed')
         # If we get this far test the output
         year = 0
         verifiedSolverResult = 214301.7049
