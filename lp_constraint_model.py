@@ -276,6 +276,7 @@ class lp_constraint_model:
                 row[vindx.w(year,j)] = S.accounttable[j]['rate']
                 row[vindx.D(year,j)] = -1*S.accounttable[j]['rate']
                 A+=[row]
+                # In the event of a sell of an asset for the year 
                 temp = [0]
                 if S.accounttable[j]['acctype'] == 'aftertax':
                     temp=[ S.asset_sale[year] * S.accounttable[j]['rate'] ] #TODO test

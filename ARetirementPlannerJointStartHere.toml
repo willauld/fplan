@@ -2,7 +2,7 @@
 
 # most fields are options and have reasonable defaults
 
-#retirement_type = 'joint' # defaults to joint, currently only joint is supported, could be single, joint (married)
+#retirement_type = 'joint' # defaults to joint, could be single, joint (married) or mseparate (married filing separately)
 
 returns = 6		# return rate of investments, defaults to 6%
 inflation = 2.5	# yearly inflation rate, defaults to 0%
