@@ -43,6 +43,12 @@ through = 75    # age you want to plan through
 #inflation = true   # inflation adjusted
 #tax = true         # federally taxable
 
+[income.reversemortgage]
+amount = 12000      # yearly amount, 1000/mo
+age = '70-'         # period to receive payments
+inflation = false   # payment is not inflation adjusted
+tax = false         # payment/loan is not taxable
+
 #[income.rental]
 #amount = 5_000     # yearly amount
 #age = "67-"        # period you expect to receive it
