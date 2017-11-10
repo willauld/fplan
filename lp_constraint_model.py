@@ -1,6 +1,6 @@
 
 class lp_constraint_model:
-    def __init__(self, S, vindx, taxtable, capgainstable, penalty, stded, SS_taxable, verbose):
+    def __init__(self, S, vindx, taxtable, capgainstable, penalty, stded, SS_taxable, verbose, no_TDRA_ROTHRA_DEPOSITS):
         self.S = S
         self.var_index = vindx
         self.taxtable = taxtable
@@ -9,6 +9,7 @@ class lp_constraint_model:
         self.stded = stded
         self.ss_taxable = SS_taxable
         self.verbose = verbose
+        self.noTdraRothraDeposits = no_TDRA_ROTHRA_DEPOSITS
 
     # Build model for:
     # Minimize: c^T * x
@@ -175,7 +176,21 @@ class lp_constraint_model:
                         row[vindx.D(year,j)] = 1
                         A+=[row]
                         b+=[0]
-    
+        #
+        # Add constaints for (N') rows
+        #
+        if self.noTdraRothraDeposits:
+            for year in range(S.numyr):
+                for j in range(len(S.accounttable)):
+                    v = S.accounttable[j].get('contributions', None)
+                    max = 0
+                    if v is not None: 
+                        max = v[year]
+                    if S.accounttable[j]['acctype'] != 'aftertax':
+                        row = [0] * nvars
+                        row[vindx.D(year,j)] = 1
+                        A+=[row]
+                        b+=[max]
         #
         # Add constaints for (10') rows
         #

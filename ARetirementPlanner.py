@@ -620,6 +620,8 @@ if __name__ == '__main__':
                         help="Additionally write the output from to a csv file")
     parser.add_argument('-1k', '--noroundingoutput', action='store_true',
                         help="Do not round the output to thousands")
+    parser.add_argument('-nd', '--notdrarothradeposits', action='store_true',
+                        help="Do not allow deposits to TDRA or ROTHRA accounts beyond explicit contributions")
     parser.add_argument('-V', '--version', action='version', version='%(prog)s Version '+__version__,
                         help="Display the program version number and exit")
     parser.add_argument('conffile', help='Require configuration input toml file')
@@ -660,7 +662,7 @@ if __name__ == '__main__':
     vindx = vvar.vector_var_index(years, taxbins, cgbins, accounts, S.accmap)
     
     if precheck_consistancy():
-        model = lp.lp_constraint_model(S, vindx, taxinfo.taxtable, taxinfo.capgainstable, taxinfo.penalty, taxinfo.stded, taxinfo.SS_taxable, args.verbose)
+        model = lp.lp_constraint_model(S, vindx, taxinfo.taxtable, taxinfo.capgainstable, taxinfo.penalty, taxinfo.stded, taxinfo.SS_taxable, args.verbose, args.notdrarothradeposits)
         c, A, b = model.build_model()
         res = scipy.optimize.linprog(c, A_ub=A, b_ub=b,
                                  options={"disp": args.verbose,
