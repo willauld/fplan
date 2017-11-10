@@ -139,7 +139,7 @@ class TestAppOutput(unittest.TestCase):
         temp = sys.stdout
         sys.stdout = open('stdout.log', 'w')
         #sys.stderr = open('stderr.log', 'w')
-        ao.output("1@2@3@4")
+        ao.output("1&@2&@3&@4")
         sys.stdout.close()
         sys.stdout = temp
         inf = open('stdout.log', 'r')
@@ -158,7 +158,7 @@ class TestAppOutput(unittest.TestCase):
         temp = sys.stdout
         sys.stdout = open('stdout.log', 'w')
         #sys.stderr = open('stderr.log', 'w')
-        ao.output("1@2@3@4")
+        ao.output("1&@2&@3&@4")
         sys.stdout.close()
         sys.stdout = temp
         inf = open('stdout.log', 'r')
