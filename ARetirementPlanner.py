@@ -118,7 +118,7 @@ def print_model_results(res):
             age_width = 5
         if names is not None:
             ao.output('{:<s}'.format(names, width=2*age_width, use=2*age_width))
-        ao.output("{:_>{width}.{width}s}".format('age ', width=age_width))
+        ao.output("{:>{width}.{width}s}".format('age ', width=age_width))
         headers = ["fIRA", "tIRA", "RMDref", "fRoth", "tRoth", "fAftaTx", "tAftaTx", "o_inc", "SS", "Expense", "TFedTax", "Spndble"]
         for s in headers:
             ao.output("&@{:>{width}.{width}s}".format(s, width=fieldwidth))
@@ -170,8 +170,7 @@ def print_model_results(res):
 
 def print_income_expense_details():
     def print_income_header(headerlist, map, income_cat, fieldwidth):
-        names = None
-        #namelen = 0
+        names = ''
         if S.secondary != "":
             names = "{}/{}".format(S.primary, S.secondary)
             age_width = 8
@@ -179,8 +178,7 @@ def print_income_expense_details():
             if S.primary != 'nokey':
                 names = "{}".format(S.primary)
             age_width = 5
-        if names is not None:
-            ao.output('{:<{width}.{use}s}'.format(names, width=age_width, use=age_width))
+        ao.output('{:<{width}.{use}s}'.format(names, width=age_width, use=age_width))
         for i in range(len(map)):
             if map[i]> 0:
                 ats = 1
@@ -191,6 +189,8 @@ def print_income_expense_details():
         ao.output("\n")
         ao.output("{str:>{width}s}".format(width=age_width, str='age '))
         for str in headerlist:
+            if str == 'nokey': # HAACCKKK
+                str = 'SS'
             ao.output('&@{:>{width}.{width}s}'.format(str, width=fieldwidth)) 
         ao.output("\n")
 
@@ -226,15 +226,15 @@ def print_account_trans(res):
                 ao.output("%s\n" % (S.primary))
             ao.output(" age ")
         if S.accmap['IRA'] >1:
-            ao.output(("@%7s" * 8) % ("IRA1", "fIRA1", "tIRA1", "RMDref1", "IRA2", "fIRA2", "tIRA2", "RMDref2"))
+            ao.output(("&@%7s" * 8) % ("IRA1", "fIRA1", "tIRA1", "RMDref1", "IRA2", "fIRA2", "tIRA2", "RMDref2"))
         elif S.accmap['IRA'] == 1:
-            ao.output(("@%7s" * 4) % ("IRA", "fIRA", "tIRA", "RMDref"))
+            ao.output(("&@%7s" * 4) % ("IRA", "fIRA", "tIRA", "RMDref"))
         if S.accmap['roth'] >1:
-            ao.output(("@%7s" * 6) % ("Roth1", "fRoth1", "tRoth1", "Roth2", "fRoth2", "tRoth2"))
+            ao.output(("&@%7s" * 6) % ("Roth1", "fRoth1", "tRoth1", "Roth2", "fRoth2", "tRoth2"))
         elif S.accmap['roth'] == 1:
-            ao.output(("@%7s" * 3) % ("Roth", "fRoth", "tRoth"))
+            ao.output(("&@%7s" * 3) % ("Roth", "fRoth", "tRoth"))
         if S.accmap['IRA']+S.accmap['roth'] == len(S.accounttable)-1:
-            ao.output(("@%7s" * 3) % ("AftaTx", "fAftaTx", "tAftaTx"))
+            ao.output(("&@%7s" * 3) % ("AftaTx", "fAftaTx", "tAftaTx"))
         ao.output("\n")
 
     ao.output("\nAccount Transactions Summary:\n\n")
@@ -247,15 +247,15 @@ def print_account_trans(res):
     else:
         ao.output(" %3d:" % (S.primAge))
     for i in range(S.accmap['IRA']):
-        ao.output(("@%7.0f" * 4) % (
+        ao.output(("&@%7.0f" * 4) % (
               S.accounttable[i]['origbal']/OneK, 0, S.accounttable[i]['contrib']/OneK, 0)) # IRAn
     for i in range(S.accmap['roth']):
         index = S.accmap['IRA'] + i
-        ao.output(("@%7.0f" * 3) % (
+        ao.output(("&@%7.0f" * 3) % (
               S.accounttable[index]['origbal']/OneK, 0, S.accounttable[index]['contrib']/OneK)) # rothn
     index = S.accmap['IRA'] + S.accmap['roth']
     if index == len(S.accounttable)-1:
-        ao.output(("@%7.0f" * 3) % (
+        ao.output(("&@%7.0f" * 3) % (
                 S.accounttable[index]['origbal']/OneK, 0, S.accounttable[index]['contrib']/OneK)) # aftertax
     ao.output("\n")
     ao.output("Plan Start: ---------\n")
@@ -276,24 +276,24 @@ def print_account_trans(res):
         else:
             ao.output(" %3d:" % (year+S.startage))
         if S.accmap['IRA'] >1:
-            ao.output(("@%7.0f" * 8) % (
+            ao.output(("&@%7.0f" * 8) % (
               res.x[vindx.b(year,0)]/OneK, res.x[vindx.w(year,0)]/OneK, deposit_amount(S, res, year, 0)/OneK, rmdref[0]/OneK, # IRA1
               res.x[vindx.b(year,1)]/OneK, res.x[vindx.w(year,1)]/OneK, deposit_amount(S, res, year, 1)/OneK, rmdref[1]/OneK)) # IRA2
         elif S.accmap['IRA'] == 1:
-            ao.output(("@%7.0f" * 4) % (
+            ao.output(("&@%7.0f" * 4) % (
               res.x[vindx.b(year,0)]/OneK, res.x[vindx.w(year,0)]/OneK, deposit_amount(S, res, year, 0)/OneK, rmdref[0]/OneK)) # IRA1
         index = S.accmap['IRA']
         if S.accmap['roth'] >1:
-            ao.output(("@%7.0f" * 6) % (
+            ao.output(("&@%7.0f" * 6) % (
               res.x[vindx.b(year,index)]/OneK, res.x[vindx.w(year,index)]/OneK, deposit_amount(S, res, year, index)/OneK, # roth1
               res.x[vindx.b(year,index+1)]/OneK, res.x[vindx.w(year,index+1)]/OneK, deposit_amount(S, res, year, index+1)/OneK)) # roth2
         elif S.accmap['roth'] == 1:
-            ao.output(("@%7.0f" * 3) % (
+            ao.output(("&@%7.0f" * 3) % (
               res.x[vindx.b(year,index)]/OneK, res.x[vindx.w(year,index)]/OneK, deposit_amount(S, res, year, index)/OneK)) # roth1
         index = S.accmap['IRA'] + S.accmap['roth']
         #assert index == len(S.accounttable)-1
         if index == len(S.accounttable)-1:
-            ao.output(("@%7.0f" * 3) % (
+            ao.output(("&@%7.0f" * 3) % (
                 res.x[vindx.b(year,index)]/OneK, 
                 res.x[vindx.w(year,index)]/OneK, 
                 deposit_amount(S, res, year, index)/OneK)) # aftertax account
@@ -308,15 +308,15 @@ def print_account_trans(res):
     else:
         ao.output(" %3d:" % (year+S.startage))
     for i in range(S.accmap['IRA']):
-        ao.output(("@%7.0f" * 4) % (
+        ao.output(("&@%7.0f" * 4) % (
               res.x[vindx.b(year,i)]/OneK, 0, 0, 0)) # IRAn
     for i in range(S.accmap['roth']):
         index = S.accmap['IRA'] + i
-        ao.output(("@%7.0f" * 3) % (
+        ao.output(("&@%7.0f" * 3) % (
               res.x[vindx.b(year,index)]/OneK, 0, 0)) # rothn
     index = S.accmap['IRA'] + S.accmap['roth']
     if index == len(S.accounttable)-1:
-        ao.output(("@%7.0f" * 3) % (
+        ao.output(("&@%7.0f" * 3) % (
               res.x[vindx.b(year,index)]/OneK, 0, 0)) # aftertax
     ao.output("\n")
     print_acc_header1()
@@ -330,7 +330,7 @@ def print_tax(res):
             if S.primary != 'nokey':
                 ao.output("%s\n" % (S.primary))
             ao.output(" age ")
-        ao.output(("@%7s" * 15) %
+        ao.output(("&@%7s" * 15) %
           ("fIRA", "tIRA", "TxbleO", "TxbleSS", "deduct", "T_inc", "earlyP", "fedtax", "mTaxB%", "fAftaTx", "tAftaTx", "cgTax%", "cgTax", "TFedTax", "spndble" ))
         ao.output("\n")
 
@@ -354,7 +354,7 @@ def print_tax(res):
         star = ' '
         if rothearly:
             star = '*'
-        ao.output(("@%7.0f" * 6 + "@%6.0f%c" * 1 + "@%7.0f" * 8 ) %
+        ao.output(("&@%7.0f" * 6 + "&@%6.0f%c" * 1 + "&@%7.0f" * 8 ) %
               ( withdrawal['IRA']/OneK, deposit['IRA']/OneK, # sum IRA
               S.taxed[year]/OneK, taxinfo.SS_taxable*S.SS[year]/OneK,
               taxinfo.stded*i_mul/OneK, T/OneK, earlytax/OneK, star, tax/OneK, rate*100, 
@@ -367,12 +367,15 @@ def print_tax(res):
 def print_tax_brackets(res):
     def printheader_tax_brackets():
         if S.secondary != "":
-            ao.output("@@@@@@@%57s" % "Marginal Rate(%):")
+            #ao.output("@@@@@@@%64s" % "Marginal Rate(%):")
+            spaces = 47
         else:
-            ao.output("@@@@@@@%54s" % "Marginal Rate(%):")
+            #ao.output("@@@@@@@%61s" % "Marginal Rate(%):")
+            spaces = 44
+        ao.output("{amp:&<{amp_width}.{amp_width}s}{at:@<{at_width}.{at_width}s}{str:<{width}.{width}s}".format(str="Marginal Rate(%):", width=17, amp='&', amp_width=spaces, at='@', at_width=7))
         for k in range(len(taxinfo.taxtable)):
             (cut, size, rate, base) = taxinfo.taxtable[k]
-            ao.output("@%6.0f" % (rate*100))
+            ao.output("&@%6.0f" % (rate*100))
         ao.output("\n")
         if S.secondary != "":
             ao.output("%s/%s\n" % (S.primary, S.secondary))
@@ -381,10 +384,10 @@ def print_tax_brackets(res):
             if S.primary != 'nokey':
                 ao.output("%s\n" % (S.primary))
             ao.output(" age ")
-        ao.output(("@%7s" * 7) % ("fIRA", "tIRA", "TxbleO", "TxbleSS", "deduct", "T_inc", "fedtax"))
+        ao.output(("&@%7s" * 7) % ("fIRA", "tIRA", "TxbleO", "TxbleSS", "deduct", "T_inc", "fedtax"))
         for k in range(len(taxinfo.taxtable)):
-            ao.output("@brckt%d" % k)
-        ao.output("@brkTot\n")
+            ao.output("&@brckt%d" % k)
+        ao.output("&@brkTot\n")
 
     ao.output("\nOverall Tax Bracket Summary:\n")
     printheader_tax_brackets()
@@ -402,27 +405,28 @@ def print_tax_brackets(res):
         for j in range(len(S.accounttable)):
             withdrawal[S.accounttable[j]['acctype']] += res.x[vindx.w(year,j)]
             deposit[S.accounttable[j]['acctype']] += deposit_amount(S, res, year, j)
-        ao.output(("@%7.0f" * 7 ) %
+        ao.output(("&@%7.0f" * 7 ) %
               (
               withdrawal['IRA']/OneK, deposit['IRA']/OneK, # IRA
               S.taxed[year]/OneK, taxinfo.SS_taxable*S.SS[year]/OneK,
               taxinfo.stded*i_mul/OneK, T/OneK, tax/OneK) )
         bt = 0
         for k in range(len(taxinfo.taxtable)):
-            ao.output("@%6.0f" % res.x[vindx.x(year,k)])
+            ao.output("&@%6.0f" % res.x[vindx.x(year,k)])
             bt += res.x[vindx.x(year,k)]
-        ao.output("@%6.0f\n" % bt)
+        ao.output("&@%6.0f\n" % bt)
     printheader_tax_brackets()
 
 def print_cap_gains_brackets(res):
     def printheader_capgains_brackets():
         if S.secondary != "":
-            ao.output("@@@@@@@%48s" % "Marginal Rate(%):")
+            spaces = 39 
         else:
-            ao.output("@@@@@@%47s" % " Marginal Rate(%):")
+            spaces = 36
+        ao.output("{amp:&<{amp_width}.{amp_width}s}{at:@<{at_width}.{at_width}s}{str:<{width}.{width}s}".format(str="Marginal Rate(%):", width=17, amp='&', amp_width=spaces, at='@', at_width=6))
         for l in range(len(taxinfo.capgainstable)):
             (cut, size, rate) = taxinfo.capgainstable[l]
-            ao.output("@%6.0f" % (rate*100))
+            ao.output("&@%6.0f" % (rate*100))
         ao.output("\n")
         if S.secondary != "":
             ao.output("%s/%s\n" % (S.primary, S.secondary))
@@ -431,10 +435,10 @@ def print_cap_gains_brackets(res):
             if S.primary != 'nokey':
                 ao.output("%s\n" % (S.primary))
             ao.output(" age ")
-        ao.output(("@%7s" * 6) % ("fAftaTx", "tAftaTx", "cgTax%", "cgTaxbl", "T_inc", "cgTax"))
+        ao.output(("&@%7s" * 6) % ("fAftaTx", "tAftaTx", "cgTax%", "cgTaxbl", "T_inc", "cgTax"))
         for l in range(len(taxinfo.capgainstable)):
-            ao.output("@brckt%d" % l)
-        ao.output("@brkTot\n")
+            ao.output("&@brckt%d" % l)
+        ao.output("&@brkTot\n")
 
     ao.output("\nOverall Capital Gains Bracket Summary:\n")
     printheader_capgains_brackets()
@@ -467,7 +471,7 @@ def print_cap_gains_brackets(res):
             ao.output("%3d/%3d:" % (year+S.startage, year+S.startage-S.delta))
         else:
             ao.output(" %3d:" % (year+S.startage))
-        ao.output(("@%7.0f" * 6 ) %
+        ao.output(("&@%7.0f" * 6 ) %
               (
               atw, atd, # Aftertax / investment account
               f*100, att, # non-basis fraction / cg taxable $ 
@@ -478,10 +482,10 @@ def print_cap_gains_brackets(res):
             ty = 0
             if S.accmap['aftertax'] > 0:
                 ty = res.x[vindx.y(year,l)]
-            ao.output("@%6.0f" % ty)
+            ao.output("&@%6.0f" % ty)
             bt += ty
             bttax += ty * taxinfo.capgainstable[l][2]
-        ao.output("@%6.0f\n" % bt)
+        ao.output("&@%6.0f\n" % bt)
         if args.verbosewga:
             print(" cg bracket ttax %6.0f " % bttax, end='')
             print("x->y[1]: %6.0f "% (res.x[vindx.x(year,0)]+res.x[vindx.x(year,1)]),end='')
