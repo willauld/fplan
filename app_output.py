@@ -15,11 +15,16 @@ class app_output:
 
     def output(self, string): # TODO move to a better place
         #
-        # output writes the information after first changing any '@' in the string
-        # to a space for stdout or a ',' for csv files. The later is written
-        # whenever the csv_file handle is not None
+        # output writes the information after doing two separate
+        # transformations. One for standard out and the other for
+        # writing the csv file. 
+        # For stdout, all '@' are removed and all '&' replaced with
+        # a ' '.
+        # For cvs, all '@' are replaced with ',' and all '&' are 
+        # removed. 
+        # The cvs wrok is done whenever the csv_file handle is not None
         #
-        sys.stdout.write(string.replace('@',' '))
+        sys.stdout.write(string.replace('@','').replace('&',' '))
         if self.csv_file is not None:
-            self.csv_file.write(string.replace('@',','))
+            self.csv_file.write(string.replace('@',',').replace('&',''))
             self.csv_file.flush()

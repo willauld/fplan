@@ -107,21 +107,27 @@ def consistancy_check(res, years, taxbins, cgbins, accounts, accmap, vindx):
     print()
 
 def print_model_results(res): 
-    def printheader1():
+    def printheader1(fieldwidth):
+        names = None
         if S.secondary != "":
-            ao.output("%s/%s\n" % (S.primary, S.secondary))
-            ao.output("    age ")
+            names = "{}/{}\n".format(S.primary, S.secondary)
+            age_width = 8
         else:
             if S.primary != 'nokey':
-                ao.output("%s\n" % (S.primary))
-            ao.output(" age ")
-
-        ao.output(("@%7s" * 12) % ("fIRA", "tIRA", "RMDref", "fRoth", "tRoth", "fAftaTx", "tAftaTx", "o_inc", "SS", "Expense", "TFedTax", "Spndble"))
-        ao.output("\n")
+                names = "{}\n".format(S.primary)
+            age_width = 5
+        if names is not None:
+            ao.output('{:<s}'.format(names, width=2*age_width, use=2*age_width))
+        ao.output("{:_>{width}.{width}s}".format('age ', width=age_width))
+        headers = ["fIRA", "tIRA", "RMDref", "fRoth", "tRoth", "fAftaTx", "tAftaTx", "o_inc", "SS", "Expense", "TFedTax", "Spndble"]
+        for s in headers:
+            ao.output("&@{:>{width}.{width}s}".format(s, width=fieldwidth))
+        ao.output('\n')
 
     ao.output("\nActivity Summary:\n")
     ao.output('\n')
-    printheader1()
+    fieldwidth = 7 
+    printheader1(fieldwidth)
     for year in range(S.numyr):
         i_mul = S.i_rate ** (S.preplanyears+year)
         age = year + S.startage
@@ -144,21 +150,65 @@ def print_model_results(res):
             ao.output("%3d/%3d:" % (year+S.startage, year+S.startage-S.delta))
         else:
             ao.output(" %3d:" % (year+S.startage))
-        ao.output(("@%7.0f" * 11 ) %
-              ( withdrawal['IRA']/OneK, deposit['IRA']/OneK, rmdref/OneK, # IRA
+        items = [ withdrawal['IRA']/OneK, deposit['IRA']/OneK, rmdref/OneK, # IRA
                 withdrawal['roth']/OneK, deposit['roth']/OneK,  # Roth
                 withdrawal['aftertax']/OneK, deposit['aftertax']/OneK,  #D, # AftaTax
                 S.income[year]/OneK, S.SS[year]/OneK, S.expenses[year]/OneK,
-                (tax+cg_tax+earlytax)/OneK) )
+                (tax+cg_tax+earlytax)/OneK ]
+        for i in items:
+            ao.output("&@{:>{width}.0f}".format(i, width=fieldwidth))
         s = res.x[vindx.s(year)]/OneK
         star = ' '
         T,spendable,tax,rate,cg_tax,earlytax,rothearly = IncomeSummary(year)
-        if spendable + 0.1 < res.x[vindx.s(year)]  or spendable -0.1 > res.x[vindx.s(year)]:
+        if spendable + 0.1 < res.x[vindx.s(year)]  or \
+            spendable -0.1 > res.x[vindx.s(year)]:
             s = spendable/OneK
             star = '*'
-        ao.output("@%7.0f%c" % (s, star) )
+        ao.output("&@%7.0f%c" % (s, star) )
         ao.output("\n")
-    printheader1()
+    printheader1(fieldwidth)
+
+def print_income_expense_details():
+    def print_income_header(headerlist, map, income_cat, fieldwidth):
+        names = None
+        #namelen = 0
+        if S.secondary != "":
+            names = "{}/{}".format(S.primary, S.secondary)
+            age_width = 8
+        else:
+            if S.primary != 'nokey':
+                names = "{}".format(S.primary)
+            age_width = 5
+        if names is not None:
+            ao.output('{:<{width}.{use}s}'.format(names, width=age_width, use=age_width))
+        for i in range(len(map)):
+            if map[i]> 0:
+                ats = 1
+                if i > 0:
+                    ats = map[i-1]
+                totalspace = fieldwidth*map[i] + map[i] -1 # -1 is for the &
+                ao.output("&{at:@<{at_width}.{at_width}s}{str:<{width}.{width}s}".format(str=income_cat[i], width=totalspace, at='@', at_width=ats))
+        ao.output("\n")
+        ao.output("{str:>{width}s}".format(width=age_width, str='age '))
+        for str in headerlist:
+            ao.output('&@{:>{width}.{width}s}'.format(str, width=fieldwidth)) 
+        ao.output("\n")
+
+    ao.output("\nIncome and Expense Summary:\n\n")
+    headerlist, map, datamatrix = S.get_SS_income_asset_expense_list()
+    income_cat = ['SSincome:', 'Income:', 'AssetSale:', 'Expense:']
+    fieldwidth = 8 
+    print_income_header(headerlist, map, income_cat, fieldwidth)
+
+    for year in range(S.numyr):
+        if S.secondary != "":
+            ao.output("%3d/%3d:" % (year+S.startage, year+S.startage-S.delta))
+        else:
+            ao.output(" %3d:" % (year+S.startage))
+        for i in range(len(datamatrix)):
+            ao.output("&@{:{width}.0f}".format(datamatrix[i][year]/OneK, width=fieldwidth))
+        ao.output("\n")
+    print_income_header(headerlist, map, income_cat, fieldwidth)
 
 def deposit_amount(S, res, year, index):
     amount = res.x[vindx.D(year,index)]
@@ -168,7 +218,6 @@ def deposit_amount(S, res, year, index):
 
 def print_account_trans(res):
     def print_acc_header1():
-        #ao.output("%s\n" % S.who)
         if S.secondary != "":
             ao.output("%s/%s\n" % (S.primary, S.secondary))
             ao.output("    age ")
@@ -551,6 +600,8 @@ if __name__ == '__main__':
                         help="Extra output from solver")
     parser.add_argument('-va', '--verboseaccounttrans', action='store_true',
                         help="Output detailed account transactions from solver")
+    parser.add_argument('-vi', '--verboseincome', action='store_true',
+                        help="Output detailed list of income as specified in income and Social Security sections")
     parser.add_argument('-vt', '--verbosetax', action='store_true',
                         help="Output detailed tax info from solver")
     parser.add_argument('-vtb', '--verbosetaxbrackets', action='store_true',
@@ -626,6 +677,8 @@ if __name__ == '__main__':
         consistancy_check(res, years, taxbins, cgbins, accounts, S.accmap, vindx)
     
         print_model_results(res)
+        if args.verboseincome:
+            print_income_expense_details()
         if args.verboseaccounttrans:
             print_account_trans(res)
         if args.verbosetax:

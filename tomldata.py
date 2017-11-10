@@ -247,14 +247,14 @@ class Data:
             return lis_return, start, end-start, lis_return[primaryIndx]['mykey'], secondarykey, delta, primAge
 
     def startamount(self, amount, fra, start):
-            if start > 70:
-                start = 70
-            if start < 62:
-                start = 62
-            if start < fra:
-                return amount/(1.067**(fra-start))
-            if start >= fra:
-                return amount*(1.08**(start-fra))
+        if start > 70:
+            start = 70
+        if start < 62:
+            start = 62
+        if start < fra:
+            return amount/(1.067**(fra-start))
+        if start >= fra:
+            return amount*(1.08**(start-fra))
 
     def do_SS_details(self, S, bucket):
             sections = 0
@@ -313,6 +313,7 @@ class Data:
                     # alter amount for start age vs fra (minus if before fra)
                     amount = self.startamount(fraamount, fraage, min(disperseage,fraage))
                 #print("FRA: %d, FRAamount: %6.0f, Age: %s, amount: %6.0f" % (fraage, fraamount, agestr, amount))
+                self.SSinput[i]['bucket'] = [0] * self.numyr
                 for age in agelist(agestr):
                     year = age - ageAtStart #self.startage
                     if year < 0:
@@ -323,11 +324,16 @@ class Data:
                         adj_amount = amount * self.i_rate ** (age - currAge) #year
                         #print("age %d, year %d, bucket: %6.0f += amount %6.0f" %(age, year, bucket[year], adj_amount))
                         bucket[year] += adj_amount
+                        self.SSinput[i]['bucket'][year] = adj_amount
 
     def do_details(self, S, category, bucket, tax):
             #print("CAT: %s" % category)
+            self.details[category] = []
+            i = 0
             for k,v in S.get(category, {}).items():
                 #print("K = %s, v = " % k,v)
+                self.details[category].append({})
+                self.details[category][i]['bucket'] = [0] * self.numyr
                 for age in agelist(v['age']):
                     #print("age %d, startage %d, year %d" % (age, self.startage, age-self.startage))
                     year = age - self.startage
@@ -342,9 +348,11 @@ class Data:
                             amount *= self.i_rate ** (age - self.primAge) # year
                         #print("inf amount %6.0f, year %d, curbucket %6.0f" % (amount , year, bucket[year]), end='')
                         bucket[year] += amount
+                        self.details[category][i]['bucket'][year] = amount 
                         #print("newbucket %6.0f" % (bucket[year]))
                         if tax is not None and v.get('tax'):
                             tax[year] += amount
+                i += 1
 
     def get_section_amount(self, S, category):
         amount = 0
@@ -358,9 +366,14 @@ class Data:
         #assets = d.get('asset', {})
         exemption = self.tinfo.primeresidence 
         #print('exemption: ', exemption)
+        category = 'asset'
         self.illiquidassetplanstart = 0
         self.illiquidassetplanend = 0
-        for k,v in S.get('asset', {}).items():
+        self.details[category] = []
+        i = 0
+        for k,v in S.get(category, {}).items():
+            self.details[category].append({})
+            self.details[category][i]['bucket'] = [0] * self.numyr
             rate = v.get('rate', self.r_rate*100-100)
             sellprice = v['value'] * (1 + rate/100)**(v['ageToSell'] - self.primAge)
             self.illiquidassetplanstart += v['value'] * (1 + rate/100)**(self.startage - self.primAge)
@@ -388,9 +401,28 @@ class Data:
                     print('Warning - Asset ({}) sell year is at age {}. This is outside the planning period.\nPlease correct configuration file if this is unintended.'.format(k, v['ageToSell']))
                 else:
                     INC[year] += income
+                    self.details[category][i]['bucket'][year] = income
                     CGTAX[year] += cgtaxable
             #print('Asset: ', k, 'Sales Income: ', income, 'Sales CG Tax: ', cgtaxable)
             #print('Sales Income: ', INC[year], 'Sales CG Tax: ', CGTAX[year])
+            i += 1
+
+    def get_SS_income_asset_expense_list(self):
+        headerlist = []
+        map = []
+        datamatrix = []
+        type = ['SocialSecurity', 'income', 'asset', 'expense']
+        for t in range(len(type)):
+            count = 0
+            for k,v in self.final_dict.get( type[t] , {}).items():
+                headerlist.append(k)
+                if t == 0:
+                    datamatrix.append(self.SSinput[count]['bucket'])
+                else: 
+                    datamatrix.append(self.details[type[t]][count]['bucket'])
+                count += 1
+            map.append(count)
+        return headerlist, map, datamatrix
 
     def verify_taxable_income_covers_contrib(self):
         verification_failure = False
@@ -406,8 +438,6 @@ class Data:
                 print('Error - IRS requires contributions to retirement accounts\n\tbe less than your ordinary taxable income.\n\tHowever, contributions of ${:_.0f} at age {}\n\texceeds the taxable income of ${:_.0f}'.format(contrib, self.startage+year, self.taxed[year]))
         if verification_failure:
             exit(1)
-
-        
 
     def process_toml_info(self):
         self.accounttable = []
@@ -460,6 +490,7 @@ class Data:
         #print("Account Map ", self.accmap)
 
         self.SSinput = [{}, {}] 
+        self.details = {}
 
         INC = [0] * self.numyr
         EXP = [0] * self.numyr
@@ -479,13 +510,9 @@ class Data:
         if self.max > 0:
             if self.maximize != 'Spending':
                 print('Error - Configured Maximum desired Spending (${:0_.0f}) is only valid with \"maximize=\'Spinding\'\" however maximize currently set to \'{}\''.format(self.max, self.maximize))
-                #print('Error - Configured Maximum desired Spending is only valid with \"maximize=\'Spinding\'\"')
                 exit(1)
         self.do_SS_details(d, SS)
-        #self.assets = d.get('asset', {})
-        #self.assets = 
         self.prepare_assets(d, ASSET, CGTAX)
-        #print('assets: ', self.assets)
 
         self.income = INC
         self.expenses = EXP 
@@ -494,3 +521,4 @@ class Data:
         self.cg_asset_taxed = CGTAX
         self.SS = SS 
         self.verify_taxable_income_covers_contrib()
+        self.final_dict = d
