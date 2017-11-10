@@ -605,7 +605,7 @@ if __name__ == '__main__':
     parser.add_argument('-va', '--verboseaccounttrans', action='store_true',
                         help="Output detailed account transactions from solver")
     parser.add_argument('-vi', '--verboseincome', action='store_true',
-                        help="Output detailed list of income as specified in income and Social Security sections")
+                        help="Output detailed list of income as specified in social security, income, asset and expense sections")
     parser.add_argument('-vt', '--verbosetax', action='store_true',
                         help="Output detailed tax info from solver")
     parser.add_argument('-vtb', '--verbosetaxbrackets', action='store_true',

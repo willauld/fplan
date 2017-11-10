@@ -57,7 +57,7 @@ through = 75    # age you want to plan through
 
 #[asset.home]
 #value = 550_000                 # current value of the asset
-#costAndImprovements = 300_000   # purchase price plus improvment cost
+#costAndImprovements = 300_000   # purchase price plus improvement cost
 #ageToSell = 72                  # age at which to sell the asset
 #owedAtAgeToSell = 100_000       # amount owed at time of sell (ageToSell)
 #primaryResidence = true         # Primary residence gets tax break
@@ -65,7 +65,7 @@ through = 75    # age you want to plan through
 
 #[asset.rental]
 #value = 250_000                 # current value of the asset
-#costAndImprovements = 150_000   # purchase price plus improvment cost
+#costAndImprovements = 150_000   # purchase price plus improvement cost
 #ageToSell = 72                  # age at which to sell the asset
 #owedAtAgeToSell = 100_000       # amount owed at time of sell (ageToSell)
 #primaryResidence = false        # Primary residence gets tax break
