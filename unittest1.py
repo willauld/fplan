@@ -202,9 +202,15 @@ class TestLpConstraintModel(unittest.TestCase):
         cgbins = len(self.taxinfo.capgainstable)
         accounts = len(S.accounttable)
         verbose = False
+        disallowdeposits = False
         vindx = v.vector_var_index(years, taxbins, cgbins, accounts, S.accmap)
-        lp = lpclass.lp_constraint_model(S, vindx, self.taxinfo.taxtable, self.taxinfo.capgainstable,
-                                         self.taxinfo.penalty, self.taxinfo.stded, self.taxinfo.SS_taxable, verbose)
+        lp = lpclass.lp_constraint_model(S, vindx, self.taxinfo.taxtable,
+                                         self.taxinfo.capgainstable,
+                                         self.taxinfo.penalty,
+                                         self.taxinfo.stded,
+                                         self.taxinfo.SS_taxable,
+                                         verbose, 
+                                         disallowdeposits)
         c, A, b = lp.build_model()
         return vindx, lp, c, A, b
 
@@ -303,12 +309,15 @@ class TestInputThroughSolver(unittest.TestCase):
         cgbins = len(taxinfo.capgainstable)
         accounts = len(S.accounttable)
         verbose = False
+        disallowdeposits = False
         vindx = v.vector_var_index(years, taxbins, cgbins, accounts, S.accmap)
         lp = lpclass.lp_constraint_model(S, vindx, taxinfo.taxtable,
                                         taxinfo.capgainstable,
                                         taxinfo.penalty, 
-                                        taxinfo.stded, 
-                                        taxinfo.SS_taxable, verbose)
+                                        taxinfo.stded,
+                                        taxinfo.SS_taxable, 
+                                        verbose, 
+                                        disallowdeposits)
         c, A, b = lp.build_model()
 
         res = scipy.optimize.linprog(c, A_ub=A, b_ub=b,
@@ -341,12 +350,15 @@ class TestInputThroughSolver(unittest.TestCase):
         cgbins = len(taxinfo.capgainstable)
         accounts = len(S.accounttable)
         verbose = False
+        disallowdeposits = False
         vindx = v.vector_var_index(years, taxbins, cgbins, accounts, S.accmap)
         lp = lpclass.lp_constraint_model(S, vindx, taxinfo.taxtable,
                                         taxinfo.capgainstable,
                                         taxinfo.penalty, 
                                         taxinfo.stded, 
-                                        taxinfo.SS_taxable, verbose)
+                                        taxinfo.SS_taxable, 
+                                        verbose, 
+                                        disallowdeposits)
         c, A, b = lp.build_model()
 
         res = scipy.optimize.linprog(c, A_ub=A, b_ub=b,
@@ -378,12 +390,15 @@ class TestInputThroughSolver(unittest.TestCase):
         cgbins = len(taxinfo.capgainstable)
         accounts = len(S.accounttable)
         verbose = False
+        disallowdeposits = False
         vindx = v.vector_var_index(years, taxbins, cgbins, accounts, S.accmap)
         lp = lpclass.lp_constraint_model(S, vindx, taxinfo.taxtable,
                                         taxinfo.capgainstable,
                                         taxinfo.penalty, 
                                         taxinfo.stded, 
-                                        taxinfo.SS_taxable, verbose)
+                                        taxinfo.SS_taxable,
+                                        verbose, 
+                                        disallowdeposits)
         c, A, b = lp.build_model()
 
         res = scipy.optimize.linprog(c, A_ub=A, b_ub=b,
