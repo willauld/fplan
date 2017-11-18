@@ -435,7 +435,7 @@ class Data:
                         contrib += carray[year]
             if self.taxed[year] < contrib:
                 verification_failure = True
-                print('Error - IRS requires contributions to retirement accounts\n\tbe less than your ordinary taxable income.\n\tHowever, contributions of ${:_.0f} at age {}\n\texceeds the taxable income of ${:_.0f}'.format(contrib, self.startage+year, self.taxed[year]))
+                print('Error - IRS requires contributions to retirement accounts\n\tbe less than your ordinary taxable income.\n\tHowever, contributions of ${:_.0f} at age {},\n\tfrom the PRIMARY age line, exceeds the taxable\n\tincome of ${:_.0f}'.format(contrib, self.startage+year, self.taxed[year]))
         if verification_failure:
             exit(1)
 
@@ -520,5 +520,8 @@ class Data:
         self.asset_sale = ASSET
         self.cg_asset_taxed = CGTAX
         self.SS = SS 
+        #print("accounttable: ", self.accounttable)
+        #print("income: ", self.income)
+        #print("taxed: ", self.taxed)
         self.verify_taxable_income_covers_contrib()
         self.final_dict = d
