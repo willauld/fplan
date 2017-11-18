@@ -12,7 +12,7 @@ import vector_var_index as vvar
 import app_output as app_out
 import lp_constraint_model as lp
 
-__version__ = '0.2'
+__version__ = '0.3-rc1'
 
 def precheck_consistancy():
     print("\nDoing Pre-check:")
