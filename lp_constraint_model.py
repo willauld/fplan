@@ -348,7 +348,9 @@ class lp_constraint_model:
         if self.S.accmap['aftertax'] > 0:
             for v in self.S.accounttable:
                 if v['acctype'] == 'aftertax':
-                    f = 1 - (v['basis']/(v['bal']*v['rate']**year))
+                    f = 1
+                    if v['bal'] > 0:
+                        f = 1 - (v['basis']/(v['bal']*v['rate']**year))
                     break # should be the last entry anyway but...
         return f
     
