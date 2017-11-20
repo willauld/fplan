@@ -269,12 +269,13 @@ class Data:
                 fraamount = v['amount']
                 fraage = v['FRA']
                 agestr = v['age']
-                dt = {'key': k, 'amount': fraamount, 'fra': fraage, 'agestr': agestr, 'ageAtStart': r['ageAtStart'], 'currAge': r['age']}
+                dt = {'key': k, 'amount': fraamount, 'fra': fraage, 'agestr': agestr, 'ageAtStart': r['ageAtStart'], 'currAge': r['age'], 'throughAge': r['through']}
                 if fraamount < 0 and sections == 1: # default spousal support in second slot
                     self.SSinput[1] = dt
                 else:
                     self.SSinput[index] = dt
                     index += 1
+
             for i in range(sections):
                 #print("SSinput", self.SSinput)
                 agestr = self.SSinput[i]['agestr']
@@ -325,6 +326,22 @@ class Data:
                         #print("age %d, year %d, bucket: %6.0f += amount %6.0f" %(age, year, bucket[year], adj_amount))
                         bucket[year] += adj_amount
                         self.SSinput[i]['bucket'][year] = adj_amount
+            if sections > 1:
+                #
+                # Must fix up SS for period after one spouse dies
+                #
+                d = [0]*2
+                d[0] = self.SSinput[0]['throughAge']-self.SSinput[0]['ageAtStart']
+                d[1] = self.SSinput[1]['throughAge']-self.SSinput[1]['ageAtStart']
+                (firstToDie, secondToDie) = (1, 0) if d[0] > d[1] else (0, 1)
+                for year in range(d[firstToDie]+1, self.numyr):
+                    if self.SSinput[0]['bucket'][year] > self.SSinput[1]['bucket'][year]:
+                        greater = self.SSinput[0]['bucket'][year]
+                    else:
+                        greater = self.SSinput[1]['bucket'][year]
+                    self.SSinput[firstToDie]['bucket'][year] = 0
+                    self.SSinput[secondToDie]['bucket'][year] = greater
+                    bucket[year] = greater
 
     def do_details(self, S, category, bucket, tax):
             #print("CAT: %s" % category)
