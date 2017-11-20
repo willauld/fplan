@@ -392,17 +392,18 @@ class Data:
             self.details[category].append({})
             self.details[category][i]['bucket'] = [0] * self.numyr
             rate = v.get('rate', self.r_rate*100-100)
+            brokerageRate = v.get('brokerageRate', 4) # default to 4%
             sellprice = v['value'] * (1 + rate/100)**(v['ageToSell'] - self.primAge)
             self.illiquidassetplanstart += v['value'] * (1 + rate/100)**(self.startage - self.primAge)
             temp = 0
             if v['ageToSell'] > self.startage + self.numyr or v['ageToSell'] < self.startage :
                 temp = v['value'] * (1 + rate/100)**(self.startage + self.numyr - self.primAge)
             self.illiquidassetplanend += temp
-            income = sellprice - v['owedAtAgeToSell']
+            income = sellprice*(1-brokerageRate/100) - v['owedAtAgeToSell']
             if income < 0:
                 income = 0
-            cgtaxable = sellprice - v['costAndImprovements'] 
-            #print('Asset sell price ${:_.0f}, income ${:_.0f}, cgtaxable ${:_.0f}'.format(sellprice, income, cgtaxable))
+            cgtaxable = sellprice*(1-brokerageRate/100) - v['costAndImprovements'] 
+            #print('Asset sell price ${:_.0f}, brokerageRate: %{}, income ${:_.0f}, cgtaxable ${:_.0f}'.format(sellprice, brokerageRate, income, cgtaxable))
             if v['primaryResidence']:
                 cgtaxable -= exemption * self.i_rate**(v['ageToSell'] - self.primAge)
                 #print('cgtaxable: ', cgtaxable)
@@ -475,7 +476,7 @@ class Data:
         self.check_record( d, 'income', ('amount', 'age', 'inflation', 'tax'))
         self.check_record( d, 'min', ('amount'))
         self.check_record( d, 'max', ('amount'))
-        self.check_record( d, 'asset', ('value', 'costAndImprovements', 'ageToSell', 'owedAtAgeToSell', 'primaryResidence', 'rate'))
+        self.check_record( d, 'asset', ('value', 'costAndImprovements', 'ageToSell', 'owedAtAgeToSell', 'primaryResidence', 'rate', 'brokerageRate'))
         #print("\n\ntarnished dict: ", d)
         #for f in d:
         #    print("\ndict[%s] = " % (f),d[f])

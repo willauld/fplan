@@ -62,6 +62,7 @@ through = 75    # age you want to plan through
 #owedAtAgeToSell = 100_000       # amount owed at time of sell (ageToSell)
 #primaryResidence = true         # Primary residence gets tax break
 #rate = 4                        # avg rate of return (defaults to global rate)
+#brokerageRate = 4               # brokerage fee percentage (defaults to 4%)
 
 #[asset.rental]
 #value = 250_000                 # current value of the asset
