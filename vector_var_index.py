@@ -112,3 +112,46 @@ class vector_var_index:
         assert j >= 0 and j < self.accounts
         assert i >= 0 and i < self.years
         return self.Dstart + i * self.accounts + j
+
+    def varstr(self, indx):
+        assert indx < self.vsize
+        if indx < self.xcount:
+            a = indx // self.taxbins
+            b = indx % self.taxbins
+            return "x[%d,%d]"%(a,b) # add actual values for i,j 
+        elif indx < self.xcount + self.ycount:
+            c = indx - self.xcount
+            a = c // self.cgbins
+            b = c % self.cgbins
+            return "y[%d,%d]"%(a,b) # add actual values for i,j 
+        elif indx < self.xcount + self.ycount + self.wcount:
+            c = indx - (self.xcount + self.ycount)
+            a = c // self.accounts
+            b = c % self.accounts
+            return "w[%d,%d]"%(a,b) # add actual values for i,j 
+        elif indx < self.xcount + self.ycount + self.wcount + self.bcount:
+            c = indx - (self.xcount + self.ycount + self.wcount)
+            a = c // self.accounts
+            b = c % self.accounts
+            return "b[%d,%d]"%(a,b) # add actual values for i,j 
+        elif indx < self.xcount + self.ycount + self.wcount + self.bcount + self.scount:
+            c = indx - (self.xcount + self.ycount + self.wcount + self.bcount)
+            #a = c // self.years
+            #b = c % self.years
+            return "s[%d]"%(c) # add actual values for i,j 
+        elif indx < self.xcount + self.ycount + self.wcount + self.bcount + self.scount + self.Dcount:
+            c = indx - (self.xcount + self.ycount + self.wcount + self.bcount +self.scount)
+            a = c // self.accounts
+            b = c % self.accounts
+            return "D[%d,%d]"%(a,b) # add actual values for i,j 
+        else:
+            print("\nError -- varstr() corupted\n")
+        return "don't know"
+
+        #self.ycount = 0
+        #if self.accmap['aftertax'] > 0:  # no cgbins if no aftertax account
+        #    self.ycount = self.years * self.cgbins
+        #self.wcount = self.years * self.accounts
+        ## final balances in years+1
+        #self.bcount = (self.years + 1) * self.accounts
+        #self.scount = self.years
