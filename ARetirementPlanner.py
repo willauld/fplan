@@ -4,6 +4,7 @@
 # A Retirement Planner (optimize withdrawals for most efficient use of the nest egg)
 #
 
+import time
 import argparse
 import scipy.optimize
 import taxinfo as tif
@@ -596,6 +597,113 @@ def print_base_config(res):
     ao.output("Total spendable (after tax money): ${:0_.0f}\n".format(tspendable))
     ao.output("\n")
 
+def verifyInputs( c , A , b ): 
+    m = len(A)
+    n = len(A[0])
+    if len(c) != n :
+        print("lp: c vector incorrect length")
+    if len(b) != m :
+        print("lp: b vector incorrect length")
+
+	# Do some sanity checks so that ab does not become singular during the
+	# simplex solution. If the ZeroRow checks are removed then the code for
+	# finding a set of linearly indepent columns must be improved.
+
+	# Check that if a row of A only has zero elements that corresponding
+	# element in b is zero, otherwise the problem is infeasible.
+	# Otherwise return ErrZeroRow.
+    zeroRows = 0
+    for i in range(m):
+        isZero = True
+        for j in range(n) :
+            if A[i][j] != 0 :
+                isZero = False
+                break
+        if isZero and b[i] != 0 :
+            # Infeasible
+            print("ErrInfeasible -- row[%d]\n"% i)
+        elif isZero :
+            zeroRows+=1
+            print("ErrZeroRow -- row[%d]\n"% i)
+    # Check that if a column only has zero elements that the respective C vector
+    # is positive (otherwise unbounded). Otherwise return ErrZeroColumn.
+    zeroColumns = 0
+    for j in range( n) :
+        isZero = True
+        for i in range( m) :
+            if A[i][j] != 0 :
+                isZero = False
+                break
+        if isZero and c[j] < 0 :
+            print("ErrUnbounded -- column[%d] %s\n"% (j, vindx.varstr(j)))
+        elif isZero :
+            zeroColumns+=1
+            print("ErrZeroColumn -- column[%d] %s\n"% (j, vindx.varstr(j)))
+    print("\nZero Rows: %d, Zero Columns: %d\n"%(zeroRows, zeroColumns))
+
+def checkDump(c,A,b):
+    with open("./wson_c", 'r') as input_file:
+        indx = -1
+        for line in input_file:
+            line = line.strip()
+            if indx == -1:
+                print("./wson_c first line is: %s" % line)
+                indx +=1
+                continue
+            if c[indx] != float(line):
+                print("c[%d] is %g but found %g" % (indx, c[indx], float(line)))
+            indx +=1
+        print("c index is %d" % indx)
+    with open("./wson_b", 'r') as input_file:
+        indx = -1
+        for line in input_file:
+            line = line.strip()
+            if indx == -1:
+                print("./wson_b first line is: %s" % line)
+                indx +=1
+                continue
+            if b[indx] != float(line):
+                print("b[%d] is %g but found %g" % (indx, b[indx], float(line)))
+            indx +=1
+        print("b index is %d" % indx)
+    with open("./wson_A", 'r') as input_file:
+        indx = -2
+        for line in input_file:
+            line = line.strip()
+            if indx < 0:
+                print("./wson_A line is: %s" % line)
+                columns = int(line) # second assignment is columns :-)
+                indx +=1
+                continue
+            a = indx // columns
+            b = indx % columns
+            if A[a][b] != float(line):
+                print("indx %d, A[%d][%d] is %g but found %g" % (indx, a, b, A[a][b], float(line)))
+            indx +=1
+        print("A index is %d" % indx)
+            #for number in line.split():
+            #    yield float(number)
+
+def dumpModel(c, A, b):
+    fil=open('./wson_c', 'w+')
+    print('%d' % len(c), file=fil)
+    for val in c:
+        print('%g'%val, file=fil)
+    fil.close()
+    fil=open('./wson_b', 'w+')
+    print('%d' % len(b), file=fil)
+    for val in b:
+        print('%g'%val, file=fil)
+    fil.close()
+    fil=open('./wson_A', 'w+')
+    print('%d' % len(A), file=fil)
+    print('%d' % len(A[0]), file=fil)
+    for r in A:
+        for val in r:
+            print('%g'%val, file=fil)
+    fil.close()
+    #checkDump(c,A,b)
+
 # Program entry point
 # Instantiate the parser
 if __name__ == '__main__':
@@ -616,6 +724,10 @@ if __name__ == '__main__':
                         help="Output the binding constraints of the LP model")
     parser.add_argument('-mall', '--verbosemodelall', action='store_true',
                         help="Output the entire LP model - not just the binding constraints")
+    parser.add_argument('-mdp', '--modeldumpportable', action='store_true',
+                        help="Output the entire LP model as c, A, b each in their own files; wson_[bAc]")
+    parser.add_argument('-ts', '--timesimplex', action='store_true',
+                        help="Measure and print the amount of time used by the simplex solver")
     parser.add_argument('-csv', '--csv', action='store_true',
                         help="Additionally write the output from to a csv file")
     parser.add_argument('-1k', '--noroundingoutput', action='store_true',
@@ -664,11 +776,19 @@ if __name__ == '__main__':
     if precheck_consistancy():
         model = lp.lp_constraint_model(S, vindx, taxinfo.taxtable, taxinfo.capgainstable, taxinfo.penalty, taxinfo.stded, taxinfo.SS_taxable, args.verbose, args.notdrarothradeposits)
         c, A, b = model.build_model()
+        #verifyInputs( c , A , b )
+        if args.modeldumpportable:
+            dumpModel(c, A, b)
+        if args.timesimplex:
+            t = time.process_time()
         res = scipy.optimize.linprog(c, A_ub=A, b_ub=b,
                                  options={"disp": args.verbose,
                                           #"bland": True,
                                           "tol": 1.0e-7,
                                           "maxiter": 4000})
+        if args.timesimplex:
+            elapsed_time = time.process_time() - t
+            print("\nElapsed Simplex time: %s seconds" % elapsed_time)
         if args.verbosemodel or args.verbosemodelall:
             if res.success == False:
                 model.print_model_matrix(c, A, b, None, False)
