@@ -79,6 +79,7 @@ class taxinfo:
         self.capgainstable = None
         self.stded = None
         self.RMD = None
+        self.primeresidence = None
         #self.set_retirement_status(status)
 
         # Account specs contains some initial information # TODO if maxcontrib not used delete
@@ -86,6 +87,7 @@ class taxinfo:
                          'roth':{'tax': 1.0, 'maxcontrib': 5500*2},
                          'aftertax': {'tax': 0.9, 'basis': 0}}
     
+        # 401(k), 403(b) and TSP currently have the same limits
         self.contribspecs = {'401k': 18000, '401kCatchup': 6000,  
                          'TDRA': 5500, "TDRACatchup": 1000, 'CatchupAge': 50}
     
@@ -111,7 +113,7 @@ class taxinfo:
             self.capgainstable = marriedjointcapitalgains
             self.stded = marriedjointstded
             self.RMD = marriedjointRMD
-            self.primeresidence = jointprimresidence = 250000
+            self.primeresidence = jointprimresidence
         #print('taxtable:\n', self.taxtable, '\n')
         #print('capgainstable:\n', self.capgainstable, '\n')
         #print('stded:\n', self.stded, '\n')
