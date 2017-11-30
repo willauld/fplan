@@ -464,7 +464,7 @@ class Data:
             map.append(count)
         return headerlist, map, datamatrix
 
-    def verify_taxable_income_covers_contrib(self):
+    def verify_taxable_income_covers_contrib(self): # and contrib is less than max
                 # TODO: before return check the following:
                 # - No TDRA contributions after reaching age 70
                 # - Contributions are below legal maximums
@@ -476,14 +476,47 @@ class Data:
         verification_failure = False
         for year in range(self.numyr):
             contrib = 0
+            jointMaxContrib = self.maxContribution(year, None)
+            #print("jointMaxContrib: ", jointMaxContrib)
+            #jointMaxContrib = maxContribution(year, None)
             for acc in self.accounttable:
-                if acc['mykey'] != 'aftertax':
+                if acc['acctype'] != 'aftertax':
                     carray = acc.get('contributions',None)
-                    if carray is not None:
+                    if carray is not None and carray[year] > 0:
                         contrib += carray[year]
+                        ownerage = self.account_owner_age(year,acc)
+                        if ownerage >= 70:
+                            if acc['acctype'] =='IRA':
+                                verification_failure = True
+                                print('Error - IRS does not allow contributions to TDRA accounts after age 70.\n\tPlease correct the contributions at age {},\n\tfrom the PRIMARY age line, for account type {} and owner {}'.format(self.startage+year, acc['acctype'], acc['mykey'])) 
+
+            #print("Contrib amount: ", contrib)
             if self.taxed[year] < contrib:
                 verification_failure = True
                 print('Error - IRS requires contributions to retirement accounts\n\tbe less than your ordinary taxable income.\n\tHowever, contributions of ${:_.0f} at age {},\n\tfrom the PRIMARY age line, exceeds the taxable\n\tincome of ${:_.0f}'.format(contrib, self.startage+year, self.taxed[year]))
+            if jointMaxContrib < contrib:
+                verification_failure = True
+                print('Error - IRS requires contributions to retirement accounts\n\tbe less than a define maximum.\n\tHowever, contributions of ${:_.0f} at age {},\n\tfrom the PRIMARY age line, exceeds your maximum amount\n\tof ${:_.0f}'.format(contrib, self.startage+year, jointMaxContrib))
+            #print("TYPE: ", self.retirement_type)
+            if self.retirement_type == 'joint':
+                # Need to check each retiree individually
+                for v in self.retiree:
+                    #print(v)
+                    contrib = 0
+                    personalstartage = v['ageAtStart']
+                    MaxContrib = self.maxContribution(year, v['mykey'])
+                    #print("MaxContrib: ", MaxContrib, v['mykey'])
+                    for acc in self.accounttable:
+                        #print(acc)
+                        if acc['acctype'] != 'aftertax':
+                            if acc['mykey'] == v['mykey']:
+                                carray = acc.get('contributions',None)
+                                if carray is not None:
+                                    contrib += carray[year]
+                    #print("Contrib amount: ", contrib)
+                    if MaxContrib < contrib:
+                        verification_failure = True
+                        print('Error - IRS requires contributions to retirement accounts be less than\n\ta define maximum.\n\tHowever, contributions of ${:_.0f} at age {}, of the account owner\'s\n\tage line, exceeds the maximum personal amount of ${:_.0f} for {}'.format(contrib, personalstartage+year, MaxContrib, v['mykey']))
         if verification_failure:
             exit(1)
 
