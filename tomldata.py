@@ -1,13 +1,8 @@
 
 import json # strickly to make a deep copy # threadsafe deepcopy
 import toml
-#import argparse
-#import scipy.optimize
 import re
-import taxinfo 
-#import vector_var_index as vvar
-#import app_output as app_out
-#import lp_constraint_model as lp
+#import taxinfo 
 
 def check_status_type(status):
     if status not in ['single', 'joint', 'mseparate']:
@@ -60,15 +55,41 @@ class Data:
                 dict[type][f] = temp[f]
         #print('check_record(%s): checked ' % type, dict.get(type,{}))
 
+    def expandYears(self, ageAtStart, agestr):
+        bucket = [0] * self.numyr
+        for age in agelist(agestr):
+            year = age - ageAtStart
+            if year < 0:
+                continue
+            elif year >= self.numyr:
+                break
+            else:
+                bucket[year] = 1
+                #self.SSinput[i]['bucket'][year] = adj_amount
+        return bucket
+
     def maxContribution(self, year, retireekey):
         ### not currently handling 401K max contributions TODO
         max = 0
         for v in self.retiree:
             if retireekey is None or v['mykey'] == retireekey: # Sum all retiree
                 max += self.tinfo.contribspecs['TDRA']
-                age = v['ageAtStart'] + year
+                startage = v['ageAtStart']
+                age = startage + year
                 if age >= self.tinfo.contribspecs['CatchupAge']:
                     max += self.tinfo.contribspecs['TDRACatchup']
+                have_plan = v['definedContributionPlan']
+                if have_plan != None:
+                    a = v.get('dcpbuckets', None)
+                    if a is None:
+                        # lazy expantion of the definedContributionPlan info
+                        v['dcpbuckets'] = self.expandYears(startage, have_plan)
+                        a = v['dcpbuckets']
+                    if a[year] == 1:
+                        max += self.tinfo.contribspecs['401k']
+                        if age >= self.tinfo.contribspecs['CatchupAge']:
+                            max += self.tinfo.contribspecs['401kCatchup']
+
         max *= self.i_rate ** year # adjust for inflation
         #print('maxContribution: %6.0f' % max, retireekey)
         return max
@@ -214,6 +235,7 @@ class Data:
                 if entry['retire'] < entry['age']:
                     entry['retire'] = entry['age']
                 entry['through'] = v['through']
+                entry['definedContributionPlan'] = v.get('definedContributionPlan', None)
                 entry['mykey'] = k
                 yearstoretire[indx]=entry['retire']-entry['age']
                 yearsthrough[indx]=entry['through']-entry['age']+1
@@ -443,6 +465,14 @@ class Data:
         return headerlist, map, datamatrix
 
     def verify_taxable_income_covers_contrib(self):
+                # TODO: before return check the following:
+                # - No TDRA contributions after reaching age 70
+                # - Contributions are below legal maximums
+                #   - Sum of contrib for all retires is less taxable income
+                #   - Sum of contrib for all retires is less sum of legal max's
+                #   - IRA+ROTH+401(k) Contributions are less than other taxable income for each
+                #   - IRA+ROTH+401(k) Contributions are less than legal max for each
+                # - this is all talking about uc(ij)
         verification_failure = False
         for year in range(self.numyr):
             contrib = 0
@@ -467,7 +497,7 @@ class Data:
         #print()
         #"""
         
-        self.check_record( d, 'iam', ('age', 'retire', 'through', 'primary'))
+        self.check_record( d, 'iam', ('age', 'retire', 'through', 'primary', 'definedContributionPlan'))
         self.check_record( d, 'SocialSecurity', ('FRA', 'age', 'amount'))
         self.check_record( d, 'IRA', ('bal', 'rate', 'contrib', 'inflation', 'period'))
         self.check_record( d, 'roth', ('bal', 'rate', 'contrib', 'inflation', 'period'))

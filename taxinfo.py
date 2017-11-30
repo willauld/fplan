@@ -113,7 +113,7 @@ class taxinfo:
             self.capgainstable = marriedjointcapitalgains
             self.stded = marriedjointstded
             self.RMD = marriedjointRMD
-            self.primeresidence = jointprimresidence
+            self.primeresidence = jointprimeresidence
         #print('taxtable:\n', self.taxtable, '\n')
         #print('capgainstable:\n', self.capgainstable, '\n')
         #print('stded:\n', self.stded, '\n')
