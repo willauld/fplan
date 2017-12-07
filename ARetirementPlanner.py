@@ -12,6 +12,7 @@ import tomldata
 import vector_var_index as vvar
 import app_output as app_out
 import lp_constraint_model as lp
+import modelio
 
 __version__ = '0.3-rc2'
 
@@ -641,69 +642,6 @@ def verifyInputs( c , A , b ):
             print("ErrZeroColumn -- column[%d] %s\n"% (j, vindx.varstr(j)))
     print("\nZero Rows: %d, Zero Columns: %d\n"%(zeroRows, zeroColumns))
 
-def checkDump(c,A,b):
-    with open("./wson_c", 'r') as input_file:
-        indx = -1
-        for line in input_file:
-            line = line.strip()
-            if indx == -1:
-                print("./wson_c first line is: %s" % line)
-                indx +=1
-                continue
-            if c[indx] != float(line):
-                print("c[%d] is %g but found %g" % (indx, c[indx], float(line)))
-            indx +=1
-        print("c index is %d" % indx)
-    with open("./wson_b", 'r') as input_file:
-        indx = -1
-        for line in input_file:
-            line = line.strip()
-            if indx == -1:
-                print("./wson_b first line is: %s" % line)
-                indx +=1
-                continue
-            if b[indx] != float(line):
-                print("b[%d] is %g but found %g" % (indx, b[indx], float(line)))
-            indx +=1
-        print("b index is %d" % indx)
-    with open("./wson_A", 'r') as input_file:
-        indx = -2
-        for line in input_file:
-            line = line.strip()
-            if indx < 0:
-                print("./wson_A line is: %s" % line)
-                columns = int(line) # second assignment is columns :-)
-                indx +=1
-                continue
-            a = indx // columns
-            b = indx % columns
-            if A[a][b] != float(line):
-                print("indx %d, A[%d][%d] is %g but found %g" % (indx, a, b, A[a][b], float(line)))
-            indx +=1
-        print("A index is %d" % indx)
-            #for number in line.split():
-            #    yield float(number)
-
-def dumpModel(c, A, b):
-    fil=open('./wson_c', 'w+')
-    print('%d' % len(c), file=fil)
-    for val in c:
-        print('%g'%val, file=fil)
-    fil.close()
-    fil=open('./wson_b', 'w+')
-    print('%d' % len(b), file=fil)
-    for val in b:
-        print('%g'%val, file=fil)
-    fil.close()
-    fil=open('./wson_A', 'w+')
-    print('%d' % len(A), file=fil)
-    print('%d' % len(A[0]), file=fil)
-    for r in A:
-        for val in r:
-            print('%g'%val, file=fil)
-    fil.close()
-    #checkDump(c,A,b)
-
 # Program entry point
 # Instantiate the parser
 if __name__ == '__main__':
@@ -724,12 +662,16 @@ if __name__ == '__main__':
                         help="Output the binding constraints of the LP model")
     parser.add_argument('-mall', '--verbosemodelall', action='store_true',
                         help="Output the entire LP model - not just the binding constraints")
-    parser.add_argument('-mdp', '--modeldumpportable', action='store_true',
-                        help="Output the entire LP model as c, A, b each in their own files; wson_[bAc]")
+    parser.add_argument('-mdp', '--modeldumptable', nargs='?', 
+                        const='./RPlanModel.dat', default='',
+                        help="Output the entire LP model as c, A, b to file MODELDUMPTABLE (default: ./RPlanModel.dat)")
+    parser.add_argument('-mld', '--modelloadtable', nargs='?', 
+                         const='./RPlanModel.dat', default='',
+                        help="Load the LP model as c, A, b from file MODELLOADTABLE (default: ./RPlanModel.dat)")
     parser.add_argument('-ts', '--timesimplex', action='store_true',
                         help="Measure and print the amount of time used by the simplex solver")
-    parser.add_argument('-csv', '--csv', action='store_true',
-                        help="Additionally write the output from to a csv file")
+    parser.add_argument('-csv', '--csv', nargs='?', const='./a.csv', default='',
+                        help="Additionally write the output to a csv file CVS (default: ./ .cvs)")
     parser.add_argument('-1k', '--noroundingoutput', action='store_true',
                         help="Do not round the output to thousands")
     parser.add_argument('-nd', '--notdrarothradeposits', action='store_true',
@@ -740,8 +682,8 @@ if __name__ == '__main__':
     args = parser.parse_args()
     
     csv_file_name = None
-    if args.csv:
-        csv_file_name = 'a.csv'
+    if args.csv != '':
+        csv_file_name = args.csv
     ao = app_out.app_output(csv_file_name)
     
     taxinfo = tif.taxinfo()
@@ -774,11 +716,17 @@ if __name__ == '__main__':
     vindx = vvar.vector_var_index(years, taxbins, cgbins, accounts, S.accmap)
     
     if precheck_consistancy():
-        model = lp.lp_constraint_model(S, vindx, taxinfo.taxtable, taxinfo.capgainstable, taxinfo.penalty, taxinfo.stded, taxinfo.SS_taxable, args.verbose, args.notdrarothradeposits)
-        c, A, b = model.build_model()
+
+        if args.modelloadtable == '':
+            model = lp.lp_constraint_model(S, vindx, taxinfo.taxtable, taxinfo.capgainstable, taxinfo.penalty, taxinfo.stded, taxinfo.SS_taxable, args.verbose, args.notdrarothradeposits)
+            c, A, b = model.build_model()
+            if args.modeldumptable != '':
+                #modelio.dumpModel(c, A, b)
+                modelio.binDumpModel(c, A, b, args.modeldumptable)
+        else:
+            print("Loadfile: ", args.modelloadtable)
+            c, A, b = modelio.binLoadModel(args.modelloadtable)
         #verifyInputs( c , A , b )
-        if args.modeldumpportable:
-            dumpModel(c, A, b)
         if args.timesimplex:
             t = time.process_time()
         res = scipy.optimize.linprog(c, A_ub=A, b_ub=b,
