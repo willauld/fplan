@@ -10,6 +10,7 @@ __pycache__
 *.spec
 *.csv
 *.xlsx
+*.dat
 testfiles
 *.zip
 ~*
