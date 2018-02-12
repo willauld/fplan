@@ -719,13 +719,14 @@ if __name__ == '__main__':
 
         if args.modelloadtable == '':
             model = lp.lp_constraint_model(S, vindx, taxinfo.taxtable, taxinfo.capgainstable, taxinfo.penalty, taxinfo.stded, taxinfo.SS_taxable, args.verbose, args.notdrarothradeposits)
-            c, A, b = model.build_model()
+            c, A, b, notes = model.build_model()
             if args.modeldumptable != '':
                 #modelio.dumpModel(c, A, b)
                 modelio.binDumpModel(c, A, b, args.modeldumptable)
         else:
             print("Loadfile: ", args.modelloadtable)
             c, A, b = modelio.binLoadModel(args.modelloadtable)
+            note = None
         #verifyInputs( c , A , b )
         if args.timesimplex:
             t = time.process_time()
@@ -743,7 +744,7 @@ if __name__ == '__main__':
                 print(res)
                 exit(1)
             else:
-                model.print_model_matrix(c, A, b, res.slack, non_binding_only)
+                model.print_model_matrix(c, A, b, notes, res.slack, non_binding_only)
         if args.verbosewga or res.success == False:
             print(res)
             if res.success == False:
