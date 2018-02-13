@@ -493,11 +493,11 @@ class lp_constraint_model:
         for i in range(S.numyr):
             if row[vindx.s(i)] != 0:
                 print("s[%d]: %6.3f " % (i, row[vindx.s(i)]), end=' ')
-        if S.accmap['aftertax'] > 0:
-            for i in range(S.numyr):
-                for j in range(len(S.accounttable)):
-                    if row[vindx.D(i, j)] != 0:
-                        print("D[%d,%d]: %6.3f " %
-                              (i, j, row[vindx.D(i, j)]), end=' ')
+        # if S.accmap['aftertax'] > 0:
+        for i in range(S.numyr):
+            for j in range(len(S.accounttable)):
+                if row[vindx.D(i, j)] != 0:
+                    print("D[%d,%d]: %6.3f " %
+                          (i, j, row[vindx.D(i, j)]), end=' ')
         if not suppress_newline:
             print()
