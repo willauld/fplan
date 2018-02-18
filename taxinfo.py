@@ -82,7 +82,7 @@ class taxinfo:
         self.primeresidence = None
         #self.set_retirement_status(status)
 
-        # Account specs contains some initial information # TODO if maxcontrib not used delete
+        # Account specs contains some initial information # TODO if maxcontrib not used delete ## only 'tax' used FIXME
         self.accountspecs = {'IRA': {'tax': 0.85, 'maxcontrib': 18000+5500*2},
                          'roth':{'tax': 1.0, 'maxcontrib': 5500*2},
                          'aftertax': {'tax': 0.9, 'basis': 0}}
