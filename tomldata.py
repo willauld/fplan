@@ -218,11 +218,9 @@ class Data:
                             #print("age %d, year %d, bucket: %6.0f += amount %6.0f" %(age, year, bucket[year], adj_amount))
             if type == 'aftertax':
                 if 'basis' not in v:
-                    entry['basis'] = 0
                     v['basis'] = 0
-                else:
-                    entry['origbasis'] = v['basis']
-                    entry['basis'] = v['basis'] + precontribs
+                entry['origbasis'] = v['basis']
+                entry['basis'] = v['basis'] + precontribs
             entry['bal'] = v['bal'] * \
                 v['rate'] ** tillRetirement + precontibsPlusReturns
             lis_return.append(entry)
@@ -230,7 +228,7 @@ class Data:
             index += 1
         return lis_return
 
-    def get_retiree_info(this, S):  # TODO fix the indentation for this method
+    def get_retiree_info(self, S):  # TODO fix the indentation for this method
         type = 'iam'
         indx = 0
         lis_return = []
@@ -323,7 +321,7 @@ class Data:
             firstage = agelist(agestr)
             disperseage = next(firstage)
             if i == 0:
-                firstdisperseage = disperseage
+                #firstdisperseage = disperseage
                 firstdisperseyear = disperseage - self.SSinput[0]['ageAtStart']
             fraage = self.SSinput[i]['fra']
             fraamount = self.SSinput[i]['amount']
