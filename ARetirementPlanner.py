@@ -722,7 +722,7 @@ if __name__ == '__main__':
             c, A, b, notes = model.build_model()
             if args.modeldumptable != '':
                 #modelio.dumpModel(c, A, b)
-                modelio.binDumpModel(c, A, b, args.modeldumptable)
+                modelio.binDumpModel(c, A, b, None, args.modeldumptable)
         else:
             print("Loadfile: ", args.modelloadtable)
             c, A, b = modelio.binLoadModel(args.modelloadtable)
@@ -738,6 +738,8 @@ if __name__ == '__main__':
         if args.timesimplex:
             elapsed_time = time.process_time() - t
             print("\nElapsed Simplex time: %s seconds" % elapsed_time)
+        if args.modeldumptable != '':
+            modelio.binDumpModel(c, A, b, res.x, args.modeldumptable+"X")
         if args.verbosemodel or args.verbosemodelall:
             if res.success == False:
                 model.print_model_matrix(c, A, b, None, False)
