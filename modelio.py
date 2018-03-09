@@ -50,15 +50,26 @@ def checkDump(c, A, b):
         #    yield float(number)
 
 
-def binDumpCheck(c, A, b, X, ftocheck):
+def binDumpCheck(c, A, b, X, vid, ftocheck):
     fsize = os.path.getsize(ftocheck)
+
+    overheads = 3
     sizeX = 0
     if X is not None:
         sizeX = 8 * len(X)
-    if fsize != 3 * 12 + 8 * len(c) + 8 * len(A) * len(A[0]) + 8 * len(b) + sizeX:
-        print('Error - dump file size error, filesize: %d, len(c): %d, len(A): %d, Len(A[0]): %d, len(b): %d, len(X): %d' % (
-            fsize, len(c), len(A), len(A[0]), len(b), sizeX))
-    c1, A1, b1, X1 = binLoadModel(ftocheck)
+        overheads += 1
+
+    sizevid = 0
+    if vid is not None:
+        sizevid = 4 * len(vid)
+        overheads += 1
+
+    if fsize != overheads * 12 + 8 * len(c) + 8 * len(A) * len(A[0]) + 8 * len(b) + sizeX + sizevid:
+        print('Error - dump file size error, filesize: %d, len(c): %d, len(A): %d, Len(A[0]): %d, len(b): %d, sizeX: %d, sizevid: %d' % (
+            fsize, len(c), len(A), len(A[0]), len(b), sizeX, sizevid))
+
+    c1, A1, b1, X1, vid1 = binLoadModel(ftocheck)
+
     # Check loaded C vector
     if len(c) != len(c1):
         print("modelio error: len(c): %d does not match len(c1) %d" %
@@ -66,6 +77,7 @@ def binDumpCheck(c, A, b, X, ftocheck):
     for i in range(len(c)):
         if c[i] != c1[i]:
             print("c[%d] is %g but found %g" % (i, c[i], c1[i]))
+
     # Checking A matrix
     if len(A) != len(A1):
         print("modelio error: len(A): %d does not match len(A1) %d" %
@@ -78,6 +90,7 @@ def binDumpCheck(c, A, b, X, ftocheck):
             if A[i][j] != A1[i][j]:
                 print("A[%d][%d] is %g but found %g" %
                       (i, j, A[i][j], A1[i][j]))
+
     # Checking b vector
     if len(b) != len(b1):
         print("modelio error: len(b): %d does not match len(b1) %d" %
@@ -85,6 +98,7 @@ def binDumpCheck(c, A, b, X, ftocheck):
     for i in range(len(b)):
         if b[i] != b1[i]:
             print("b[%d] is %g but found %g" % (i, b[i], b1[i]))
+
     # Checking X vector
     if X is not None:
         if len(X) != len(X1):
@@ -92,7 +106,16 @@ def binDumpCheck(c, A, b, X, ftocheck):
                   (len(X), len(X1)))
         for i in range(len(X)):
             if X[i] != X1[i]:
-                print("X[%d] is %g but found %g" % (i, b[i], b1[i]))
+                print("X[%d] is %g but found %g" % (i, X[i], X1[i]))
+
+    # Checking vid vector
+    if vid is not None:
+        if len(vid) != len(vid1):
+            print("modelio error: len(vid): %d does not match len(vid1) %d" %
+                  (len(vid), len(vid1)))
+        for i in range(len(vid)):
+            if vid[i] != vid1[i]:
+                print("vid[%d] is %d but found %d" % (i, vid[i], vid1[i]))
 
 
 def binLoadModel(filename=None):
@@ -145,6 +168,7 @@ def binLoadModel(filename=None):
             print("Error - Vector b should not have a width")
         float_array.fromfile(input_file, hArray[0])
         b = float_array
+        overheads = 3
 
         # Load X
         hArray = array('L')  # 12 bytes or 3 longs 4 bytes each
@@ -154,26 +178,49 @@ def binLoadModel(filename=None):
             #print("Loaded Header: length %d, width %d, code %d" % (hArray[0], hArray[1], hArray[2]))
             if hArray[2] != 0xDEADBEEF:
                 print(
-                    'Header Error: header does not have 0xDEADBEAF at the correct place.')
+                    'Header Error: X header does not have 0xDEADBEAF at the correct place.')
             if hArray[1] != 0:  # Reading an array
-                print("Error - Vector C should not have a width")
+                print("Error - Vector X should not have a width")
             #print("loadsize: %d" % hArray[0])
             float_array.fromfile(input_file, hArray[0])
             X = float_array
             sizeX = 8 * len(X)
+            overheads += 1
             #print("len(C from file): %d" % len(float_array))
         except EOFError:
             X = None
             sizeX = 0
             print('Why did you do an EOF on me?')
 
-    if fsize != 3 * 12 + 8 * len(c) + 8 * len(A) * len(A[0]) + 8 * len(b) + sizeX:
-        print('Error - load file size error, filesize: %d, len(c): %d, len(A): %d, Len(A[0]): %d, len(b): %d, sizeX: %d' % (
-            fsize, len(c), len(A), len(A[0]), len(b), sizeX))
-    return c, A, b, X
+        # Load vid
+        hArray = array('L')  # 12 bytes or 3 longs 4 bytes each
+        int_array = array('l')  # 4 bytes each
+        try:
+            hArray.fromfile(input_file, 3)  # Header always 3 longs
+            #print("Loaded Header: length %d, width %d, code %d" % (hArray[0], hArray[1], hArray[2]))
+            if hArray[2] != 0xDEADBEEF:
+                print(
+                    'Header Error: VID header does not have 0xDEADBEAF at the correct place.')
+            if hArray[1] != 0:  # Reading an array
+                print("Error - Vector VID should not have a width")
+            #print("loadsize: %d" % hArray[0])
+            int_array.fromfile(input_file, hArray[0])
+            vid = int_array
+            sizevid = 4 * len(vid)
+            overheads += 1
+            #print("len(C from file): %d" % len(float_array))
+        except EOFError:
+            vid = None
+            sizevid = 0
+            print('Why did you do an EOF on me?')
+
+    if fsize != overheads * 12 + 8 * len(c) + 8 * len(A) * len(A[0]) + 8 * len(b) + sizeX + sizevid:
+        print('Error - load file size error, filesize: %d, len(c): %d, len(A): %d, Len(A[0]): %d, len(b): %d, sizeX: %d, sizevid: %d' % (
+            fsize, len(c), len(A), len(A[0]), len(b), sizeX, sizevid))
+    return c, A, b, X, vid
 
 
-def binDumpModel(c, A, b, X, fname=None):
+def binDumpModel(c, A, b, X, vid, fname=None):
     if fname is None:
         fname = "./RPlanModel.dat"
     stream = open(fname, 'wb')
@@ -181,14 +228,14 @@ def binDumpModel(c, A, b, X, fname=None):
     header = [len(c), 0, 0xDEADBEEF]
     hArray = array('L', header)
     hArray.tofile(stream)
-    #print("c length: %d, dumping" % len(c))
+    print("c length: %d, dumping" % len(c))
     a = array('d', c)
     a.tofile(stream)
 
     header = [len(A), len(A[0]), 0xDEADBEEF]
     hArray = array('L', header)
     hArray.tofile(stream)
-    #print("A length: %d, %d, dumping" % (len(A), len(A[0])))
+    print("A length: %d, %d, dumping" % (len(A), len(A[0])))
     for row in A:
         a = array('d', row)
         a.tofile(stream)
@@ -196,28 +243,43 @@ def binDumpModel(c, A, b, X, fname=None):
     header = [len(b), 0, 0xDEADBEEF]
     hArray = array('L', header)
     hArray.tofile(stream)
-    #print("b length: %d, dumping" % len(b))
+    print("b length: %d, dumping" % len(b))
     a = array('d', b)
     a.tofile(stream)
 
+    overheads = 3
     sizeX = 0
     if X is not None:
         header = [len(X), 0, 0xDEADBEEF]
         hArray = array('L', header)
         hArray.tofile(stream)
-        #print("X length: %d, dumping" % len(X))
+        print("X length: %d, dumping" % len(X))
         a = array('d', X)
         a.tofile(stream)
         sizeX = 8 * len(X)
+        overheads += 1
+
+    sizevid = 0
+    if vid is not None:
+        header = [len(vid), 0, 0xDEADBEEF]
+        hArray = array('L', header)
+        hArray.tofile(stream)
+        print("vid length: %d, dumping" % len(vid))
+        a = array('l', vid)
+        a.tofile(stream)
+        sizevid = 4 * len(vid)
+        overheads += 1
 
     stream.flush()
     stream.close()
 
     fsize = os.path.getsize(fname)
-    if fsize != 3 * 12 + 8 * len(c) + 8 * len(A) * len(A[0]) + 8 * len(b) + sizeX:
-        print('Error - dump file size error, filesize: %d, len(c): %d, len(A): %d, Len(A[0]): %d, len(b): %d, sizeX: %d' % (
-            fsize, len(c), len(A), len(A[0]), len(b), sizeX))
-    binDumpCheck(c, A, b, X, fname)
+    calcsize = overheads * 12 + 8 * \
+        len(c) + 8 * len(A) * len(A[0]) + 8 * len(b) + sizeX + sizevid
+    if fsize != calcsize:
+        print('Error - dump file size error, filesize: %d, len(c): %d, len(A): %d, Len(A[0]): %d, len(b): %d, sizeX: %d, sizevid: %d' % (
+            fsize, len(c), len(A), len(A[0]), len(b), sizeX, sizevid))
+    binDumpCheck(c, A, b, X, vid, fname)
 
 
 def dumpModel(c, A, b):
