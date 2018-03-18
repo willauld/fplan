@@ -735,6 +735,8 @@ if __name__ == '__main__':
         description='Create an optimized finacial plan for retirement.')
     parser.add_argument('-v', '--verbose', action='store_true',
                         help="Extra output from solver")
+    parser.add_argument('-A', '--alltables', action='store_true',
+                        help="Output all plan tables (-va -vi -vt -vtb)")
     parser.add_argument('-va', '--verboseaccounttrans', action='store_true',
                         help="Output detailed account transactions from solver")
     parser.add_argument('-vi', '--verboseincome', action='store_true',
@@ -768,6 +770,12 @@ if __name__ == '__main__':
     parser.add_argument(
         'conffile', help='Require configuration input toml file')
     args = parser.parse_args()
+
+    if args.alltables:
+        args.verboseaccounttrans = True
+        args.verboseincome = True
+        args.verbosetax = True
+        args.verbosetaxbrackets = True
 
     csv_file_name = None
     if args.csv != '':
@@ -806,9 +814,9 @@ if __name__ == '__main__':
     vid = [years, taxbins, cgbins, S.accmap["IRA"],
            S.accmap["roth"], S.accmap["aftertax"]]
 
-    print("Is modelDumpTable Set?")
+    #print("Is modelDumpTable Set?")
     if args.modeldumptable != '':
-        print("ModelDumpTable set")
+        #print("ModelDumpTable set")
         print(args.modeldumptable)
 
     if precheck_consistancy():
@@ -842,7 +850,7 @@ if __name__ == '__main__':
                                  args.modeldumptable + "X")
         if args.verbosemodel or args.verbosemodelall:
             if res.success == False:
-                model.print_model_matrix(c, A, b, None, False)
+                model.print_model_matrix(c, A, b, notes, None, False)
                 print(res)
                 exit(1)
             else:
