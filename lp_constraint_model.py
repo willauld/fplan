@@ -462,9 +462,9 @@ class lp_constraint_model:
         vindx = self.var_index
         taxtable = self.taxtable
         capgainstable = self.cgtaxtable
-        penalty = self.penalty
-        stded = self.stded
-        SS_taxable = self.ss_taxable
+        #penalty = self.penalty
+        #stded = self.stded
+        #SS_taxable = self.ss_taxable
 
         for i in range(S.numyr):
             for k in range(len(taxtable)):
