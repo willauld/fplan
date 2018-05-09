@@ -56,10 +56,7 @@ class lp_constraint_model:
             print("\nConstructing Spending + Estate Model:\n")
         else:
             print("\nConstructing Spending Model:\n")
-            startamount = 0
-            for j in range(len(S.accounttable)):
-                startamount += S.accounttable[j]['bal']
-            balancer = 1 / (startamount)
+            balancer = 0.001
             for j in range(len(S.accounttable)):
                 # balance and discount rate
                 c[vindx.b(S.numyr, j)] = -1 * balancer * \
