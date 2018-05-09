@@ -53,25 +53,27 @@ singlecapitalgains = [
     [37950,     380450,  0.15],
     [418400,    -3,     0.20]]
 
-# Required Minimal Distributions from IRA starting with age 70 
+# Required Minimal Distributions from IRA starting with age 70
 # https://www.irs.gov/publications/p590b#en_US_2016_publink1000231258
 # Using appendix B table III in all cases.
 marriedjointRMD = [
-        27.4, 26.5, 25.6, 24.7, 23.8, 22.9, 22.0, 21.2, 20.3, 19.5,  # age 70-79
-        18.7, 17.9, 17.1, 16.3, 15.5, 14.8, 14.1, 13.4, 12.7, 12.0,  # age 80-89
-        11.4, 10.8, 10.2,  9.6,  9.1,  8.6,  8.1,  7.6,  7.1,  6.7,  # age 90-99
-        6.3,  5.9,  5.5,  5.2,  4.9,  4.5,  4.2,  3.9,  3.7,  3.4,   # age 100+
-        3.1,  2.9,  2.6,  2.4,  2.1,  1.9,  1.9,  1.9,  1.9,  1.9]
+    27.4, 26.5, 25.6, 24.7, 23.8, 22.9, 22.0, 21.2, 20.3, 19.5,  # age 70-79
+    18.7, 17.9, 17.1, 16.3, 15.5, 14.8, 14.1, 13.4, 12.7, 12.0,  # age 80-89
+    11.4, 10.8, 10.2,  9.6,  9.1,  8.6,  8.1,  7.6,  7.1,  6.7,  # age 90-99
+    6.3,  5.9,  5.5,  5.2,  4.9,  4.5,  4.2,  3.9,  3.7,  3.4,   # age 100+
+    3.1,  2.9,  2.6,  2.4,  2.1,  1.9,  1.9,  1.9,  1.9,  1.9]
 
-marriedseparateRMD = marriedjointRMD 
-singleRMD = marriedjointRMD 
+marriedseparateRMD = marriedjointRMD
+singleRMD = marriedjointRMD
 
-marriedjointstded = 12700 + 2*4050 # standard deduction + 2 personal exemptions
-marriedseparatestded = 9350 + 4050 # standard deduction + 1 personal exemptions
+# standard deduction + 2 personal exemptions
+marriedjointstded = 12700 + 2 * 4050
+marriedseparatestded = 9350 + 4050  # standard deduction + 1 personal exemptions
 singlestded = 6350 + 4050          # standard deduction + 1 personal exemptions
 
 jointprimeresidence = 500000
 singleprimresidence = 250000
+
 
 class taxinfo:
     def __init__(self):
@@ -80,21 +82,21 @@ class taxinfo:
         self.stded = None
         self.RMD = None
         self.primeresidence = None
-        #self.set_retirement_status(status)
+        # self.set_retirement_status(status)
 
         # Account specs contains some initial information # TODO if maxcontrib not used delete ## only 'tax' used FIXME
-        self.accountspecs = {'IRA': {'tax': 0.85, 'maxcontrib': 18000+5500*2},
-                         'roth':{'tax': 1.0, 'maxcontrib': 5500*2},
-                         'aftertax': {'tax': 0.9, 'basis': 0}}
-    
+        self.accountspecs = {'IRA': {'tax': 0.85, 'maxcontrib': 18000 + 5500 * 2},
+                             'roth': {'tax': 1.0, 'maxcontrib': 5500 * 2},
+                             'aftertax': {'tax': 1.0, 'basis': 0}}
+
         # 401(k), 403(b) and TSP currently have the same limits
-        self.contribspecs = {'401k': 18000, '401kCatchup': 6000,  
-                         'TDRA': 5500, "TDRACatchup": 1000, 'CatchupAge': 50}
-    
+        self.contribspecs = {'401k': 18000, '401kCatchup': 6000,
+                             'TDRA': 5500, "TDRACatchup": 1000, 'CatchupAge': 50}
+
         self.penalty = 0.1       # 10% early withdrawal penalty
         self.SS_taxable = 0.85   # maximum portion of SS that is taxable
         self.SS_notTaxable = 1 - self.SS_taxable
-    
+
     def set_retirement_status(self, status):
         if status == 'single':
             self.taxtable = singletax
@@ -108,7 +110,7 @@ class taxinfo:
             self.stded = marriedseparatestded
             self.RMD = marriedseparateRMD
             self.primeresidence = singleprimresidence
-        else: # status == 'joint':
+        else:  # status == 'joint':
             self.taxtable = marriedjointtax
             self.capgainstable = marriedjointcapitalgains
             self.stded = marriedjointstded
